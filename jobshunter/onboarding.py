@@ -217,6 +217,39 @@ def _check_text(obj, depth=0) -> None:
             _check_text(v, depth + 1)
 
 
+def onboarding_categories(raw, preset) -> list[dict] | None:
+    """Campo facoltativo "Categorie" della guida, per i profili personalizzati: "cuoco, pasticcere" = una categoria per voce
+    (etichetta = la parola, in maiuscolo). Vuoto o non personalizzato: None (nessuna modifica)."""
+    if preset != "custom" or raw in (None, "", []):
+        return None
+    if isinstance(raw, str):
+        items = re.split(r"[,;\n]", raw)
+    elif isinstance(raw, list) and all(isinstance(x, str) for x in raw):
+        items = raw
+    else:
+        raise OnboardingError("Categorie: scrivi le parole separate da virgole (esempio: cuoco, pasticcere).", "categories")
+    out, seen, seen_terms = [], set(), set()
+    for it in items:
+        term = " ".join(it.split())
+        if not term or term.lower() in seen_terms:  # la stessa voce scritta due volte vale una volta
+            continue
+        seen_terms.add(term.lower())
+        label = term.upper()
+        if len(label) > prof.CAT_LABEL_MAX:
+            label = label[:prof.CAT_LABEL_MAX].rstrip()
+        label = re.sub(r"[^\w \-]", "", label).strip().replace("_", " ")
+        if not label:
+            label = "CAT"
+        n, base = 2, label
+        while label in seen:  # due voci diverse con la stessa etichetta (C++ e C#, o lo stesso inizio): la seconda diventa "C 2", mai persa
+            suffix = f" {n}"
+            label = base[:prof.CAT_LABEL_MAX - len(suffix)].rstrip() + suffix
+            n += 1
+        seen.add(label)
+        out.append({"label": label, "terms": [term]})
+    return out or None
+
+
 def prepare(payload, cfg: dict, store: prof.ProfileStore) -> Plan:
     """Controlla ogni campo e prepara tutto, senza scrivere niente. Solleva OnboardingError."""
     if not isinstance(payload, dict):
@@ -251,10 +284,13 @@ def prepare(payload, cfg: dict, store: prof.ProfileStore) -> Plan:
             "location": {"city": home, "radius_km": radius},
             "seniority": pr.get("seniority", "any"),
             "remote": pr.get("remote", True), "internships": pr.get("internships", True)}
+    cats = onboarding_categories(pr.get("categories"), preset)
+    if cats is not None:
+        data["categories"] = cats
     try:
-        profile = prof.validate_profile(data)
+        profile = prof.validate_profile(data, cfg)
     except prof.ProfileError as e:
-        raise OnboardingError(str(e).capitalize() if str(e)[:1].islower() else str(e), "profile") from None
+        raise OnboardingError(str(e).capitalize() if str(e)[:1].islower() else str(e), "categories" if str(e).startswith("categorie") else "profile") from None
 
     # quale profilo si aggiorna: quello già creato dalla guida, oppure quello automatico mai toccato, altrimenti se ne crea uno
     pid = store.db.kv_get(KV_PROFILE)
@@ -272,6 +308,10 @@ def prepare(payload, cfg: dict, store: prof.ProfileStore) -> Plan:
             n += 1
         profile.name = f"{base} {n}"
     profile.id = target.id if target else None
+    if target is not None and cats is None and target.preset == profile.preset:
+        profile.categories = [dict(c) for c in target.categories]  # rifare la guida non cancella le categorie gia' scelte
+    elif not profile.categories and cats is None and profile.preset != "custom":
+        profile.categories = prof.preset_categories(profile.preset, cfg)  # profilo nuovo (o cambiato di tipo): si parte dalle categorie del preset
 
     notes: list[str] = []
     ov: dict = {"radius_km": radius, "search.internships": profile.internships, "home": home}  # casa vuota = nessuna casa
@@ -391,7 +431,7 @@ def apply(plan: Plan, cfg_file, db, cfg: dict, rescore_fn) -> int:
     settings.save_overrides(cfg_file, plan.overrides)
     try:
         data = plan.profile.to_dict()
-        p = store.update(plan.profile.id, data) if plan.profile.id else store.add(data)
+        p = store.update(plan.profile.id, data) if plan.profile.id else store.add(data, cfg)
         pid = p.id
         db.kv_set(KV_PROFILE, str(p.id))  # subito: un nuovo tentativo riconosce il profilo anche dopo un errore
         fresh = settings.load_config(cfg_file)

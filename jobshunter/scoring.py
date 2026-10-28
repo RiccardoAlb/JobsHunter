@@ -9,6 +9,8 @@ from .models import Job
 
 
 # stage e tirocini: bonus predefinito, valido anche se la configurazione non li elenca
+CAT_BONUS_TITLE = 4  # bonus massimo di una categoria personale che riconosce l'annuncio (parola nel titolo)
+CAT_BONUS_BODY = 2   # idem, parola solo nel testo
 DEFAULT_BONUS = {"stage": 10, "tirocinio": 10, "tirocinante": 8, "internship": 8, "apprendistato": 6}
 
 
@@ -216,6 +218,25 @@ def score_job(job: Job, cfg: dict, profile=None, rules=None) -> Job | None:
             matched.append(term)
     if score == 0:
         return None
+    # categorie personali (fase 6): decidono l'etichetta; danno al massimo un piccolo bonus (+4 se una parola e' nel titolo, +2 se solo nel testo)
+    # e solo se l'annuncio e' gia' pertinente per titoli/parole chiave (da sole non lo fanno entrare)
+    cat_totals = dict(totals) if r.label_groups else {}
+    cat_bonus = 0
+    for label, terms in r.cats:
+        sub, in_title = 0, False
+        for term, weight in terms.items():
+            ft = fold(term)  # titolo e testo sono gia' senza accenti: le parole dell'utente ("perché") si piegano allo stesso modo
+            if match(ft, title):
+                sub += weight * 3
+                in_title = True
+                matched.append(term)
+            elif match(ft, body):
+                sub += weight
+                matched.append(term)
+        if sub:
+            cat_totals[label] = cat_totals.get(label, 0) + sub
+            cat_bonus = max(cat_bonus, CAT_BONUS_TITLE if in_title else CAT_BONUS_BODY)
+    score += cat_bonus
     for term, delta in r.adjust.items():
         if match(term, title):
             score += delta
@@ -234,7 +255,7 @@ def score_job(job: Job, cfg: dict, profile=None, rules=None) -> Job | None:
         if score >= loc_cfg.get("home_min_score", 20):
             score += loc_cfg.get("home_bonus", 20)
 
-    ranked = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)
+    ranked = sorted(cat_totals.items(), key=lambda kv: kv[1], reverse=True)
     category = ranked[0][0] if ranked and ranked[0][1] > 0 else "ALTRO"
     if r.cyber and totals.get("RED", 0) >= 12 and totals.get("BLUE", 0) >= 12:
         category = "PURPLE"

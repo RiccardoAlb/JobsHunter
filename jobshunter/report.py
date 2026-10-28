@@ -59,7 +59,7 @@ def avail_label(r) -> str:
 
 def render(rows, *, title: str, closed_excluded: int = 0) -> str:
     now = datetime.now()
-    cats = sorted({r["category"] for r in rows}, key=lambda c: ORDER.index(c) if c in ORDER else 99)
+    cats = sorted({r["category"] for r in rows}, key=lambda c: (ORDER.index(c) if c in ORDER else 99, c))  # a parita' ordine alfabetico: stabile a ogni avvio
     out = [
         "---",
         f"created: {now:%Y-%m-%d}",

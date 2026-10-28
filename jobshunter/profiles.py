@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import threading
+import unicodedata
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 
@@ -308,6 +310,9 @@ GENERIC_WORDS = {
 }
 
 
+PROFILE_LOCK = threading.Lock()  # creare/modificare/eliminare un profilo + ricalcolarne gli annunci: uno alla volta (ordine dei blocchi: COMPLETE_LOCK della guida, poi questo)
+
+
 class ProfileError(ValueError):
     """Profilo non valido: il messaggio e' in italiano e adatto a essere mostrato all'utente."""
 
@@ -327,6 +332,7 @@ class Profile:
     location: dict = field(default_factory=lambda: {"city": "", "radius_km": 100})
     remote: bool = True
     internships: bool = True
+    categories: list[dict] = field(default_factory=list)   # categorie personali: [{"label", "terms", "weights"?}]
     id: int | None = None
     created: str = ""
     updated: str = ""
@@ -336,6 +342,8 @@ class Profile:
              "include": dict(self.include), "exclude": list(self.exclude), "seniority": self.seniority,
              "contracts": list(self.contracts), "countries": list(self.countries), "location": dict(self.location),
              "remote": self.remote, "internships": self.internships}
+        if self.categories:  # assente = vuoto = comportamento di sempre (i profili salvati prima della fase 6 non hanno la chiave)
+            d["categories"] = [_cat_out(c) for c in self.categories]
         if meta:
             d.update(id=self.id, created=self.created, updated=self.updated)
         return d
@@ -362,7 +370,210 @@ def as_profile(p) -> Profile:
         contracts=[str(c) for c in d.get("contracts") or []], countries=[str(c) for c in d.get("countries") or [DEFAULT_COUNTRY]],
         location={"city": str(loc.get("city") or ""), "radius_km": int(loc.get("radius_km") or 100)},
         remote=bool(d.get("remote", True)), internships=bool(d.get("internships", True)),
+        categories=_cats_lenient(d.get("categories")),
         id=d.get("id"), created=d.get("created") or "", updated=d.get("updated") or "")
+
+
+# ------------------------------------------------------------ categorie ----
+MAX_CATEGORIES = 12
+MAX_CAT_TERMS = 20            # parole per categoria scritte dall'utente
+MAX_CAT_TOTAL = 40            # tetto assoluto (preset con molti gruppi nel config)
+TRUSTED_TERMS = 300           # parole di una categoria COPIATA da un preset (con i pesi di sempre): si accetta cio' che il preset o il config danno
+CAT_LABEL_MAX = 16
+CAT_TERM_MIN, CAT_TERM_MAX = 2, 40
+CAT_DEFAULT_WEIGHT = 5
+RESERVED_LABELS = {"ALTRO"}
+_LABEL_OK = re.compile(r"^[^\W_](?:[^\W_]| |-)*$")   # lettere e numeri (anche accentati), spazio, trattino; mai simboli
+
+
+def _cat_out(c: dict) -> dict:
+    out = {"label": c["label"], "terms": list(c["terms"])}
+    if c.get("weights"):
+        out["weights"] = dict(c["weights"])
+    return out
+
+
+def _cats_lenient(value) -> list[dict]:
+    """Legge le categorie salvate senza mai sollevare errori (un profilo vecchio o rovinato si legge comunque)."""
+    out = []
+    if not isinstance(value, list):
+        return out
+    for c in value[:MAX_CAT_TOTAL]:
+        if not isinstance(c, dict) or not isinstance(c.get("label"), str) or not isinstance(c.get("terms"), list):
+            continue
+        terms = [t for t in c["terms"] if isinstance(t, str) and t.strip()]
+        if not terms:
+            continue
+        w = c.get("weights")
+        weights = {str(k).lower(): int(v) for k, v in w.items() if isinstance(v, (int, float)) and not isinstance(v, bool)} if isinstance(w, dict) else {}
+        out.append({"label": c["label"], "terms": terms, **({"weights": weights} if weights else {})})
+    return out
+
+
+def normalize_label(raw) -> str:
+    """Etichetta di categoria pulita e in maiuscolo, oppure ProfileError.
+
+    Normalizzata in forma NFKC: le lettere con accento combinante diventano quelle normali e le forme "larghe" (ＡＬＴＲＯ) diventano ASCII,
+    cosi' ne' i doppioni ne' il nome riservato si aggirano con trucchi di scrittura."""
+    if not isinstance(raw, str):
+        raise ProfileError("categorie: l'etichetta deve essere un testo")
+    label = " ".join(_CTRL.sub(" ", unicodedata.normalize("NFKC", raw)).split()).upper()
+    if not label:
+        raise ProfileError("categorie: scrivi un nome per la categoria")
+    if len(label) > CAT_LABEL_MAX:
+        raise ProfileError(f"categorie: il nome «{label[:20]}» e' troppo lungo (massimo {CAT_LABEL_MAX} caratteri)")
+    if not _LABEL_OK.match(label):
+        raise ProfileError("categorie: il nome puo' avere solo lettere, numeri, spazi e trattini")
+    if label in RESERVED_LABELS:
+        raise ProfileError(f"categorie: «{label}» e' un nome riservato, scegline un altro")
+    return label
+
+
+def own_labels(preset_key: str, cfg: dict | None = None) -> set[str]:
+    """Etichette (maiuscole) dei gruppi del preset: le categorie con questi nomi e con i pesi sono i gruppi di punteggio del tipo di profilo."""
+    return {c["label"].upper() for c in preset_categories(preset_key, cfg)}
+
+
+def _trusted(label: str, preset: str | None) -> bool:
+    """Una categoria pesata di un tipo di profilo (non personalizzato) e' "copiata dal preset": limiti larghi, nessuna modifica dei suoi valori.
+    Per la cybersecurity i nomi possono venire dal config, quindi basta il tipo; per gli altri serve il nome di un gruppo del preset."""
+    if not preset or preset == "custom" or preset not in PRESETS:
+        return False
+    return preset == "cybersecurity" or label.upper() in {g["label"].upper() for g in PRESETS[preset]["groups"]}
+
+
+TRUSTED_MAX_WEIGHT = 12       # il peso piu' alto di tutte le categorie dei preset reali (e di config.example.toml)
+TRUSTED_TERMS_NO_CFG = 100    # senza il config da confrontare (uso da libreria) si accettano al massimo cosi' tante parole
+_LABEL_SAFE = re.compile(r"^[^\W_][\w \-/&+.]*$")   # etichette di un tipo di profilo: niente < > virgolette o simboli strani
+
+
+def _clean_trusted(c: dict, label_raw, preset: str, cfg: dict | None) -> dict:
+    """Categoria che si presenta come "copiata da un tipo di profilo" (ha i pesi).
+
+    La fiducia non viene dalla richiesta ma dal server: vale senza limiti SOLO se coincide esattamente (etichetta, parole e pesi) con una
+    categoria che il tipo di profilo (e il config) produrrebbe. Altrimenti e' una modifica dell'utente e ha limiti stretti:
+    etichetta sicura, al massimo 20 parole (100 se non c'e' il config da confrontare), pesi da 1 a 12."""
+    if not isinstance(label_raw, str):
+        raise ProfileError("categorie: l'etichetta deve essere un testo")
+    label = " ".join(_CTRL.sub(" ", unicodedata.normalize("NFKC", label_raw)).split()).upper()
+    if not label or len(label) > 40:
+        raise ProfileError("categorie: nome non valido")
+    if label in RESERVED_LABELS:
+        raise ProfileError(f"categorie: «{label}» e' un nome riservato, scegline un altro")
+    terms = c.get("terms")
+    if not isinstance(terms, list) or not terms or len(terms) > TRUSTED_TERMS or any(not isinstance(t, str) or not t.strip() or len(t) > 200 for t in terms):
+        raise ProfileError(f"categorie: {label}: parole non valide")
+    clean, seen = [], set()
+    for t in terms:
+        t = unicodedata.normalize("NFC", _clean_text(t))
+        if t and t.lower() not in seen:
+            seen.add(t.lower())
+            clean.append(t)
+    weights = {}
+    for k, v in (c.get("weights") or {}).items():
+        if not isinstance(k, str) or isinstance(v, bool) or not isinstance(v, (int, float)) or not 1 <= v <= 1000:
+            raise ProfileError(f"categorie: {label}: il peso deve essere un numero")
+        if k.lower() in seen:
+            weights[k.lower()] = int(v)
+    item = {"label": label, "terms": clean, "weights": weights}
+    expected = next((e for e in preset_categories(preset, cfg) if e["label"].upper() == label), None)
+    if expected is not None and {t.lower() for t in expected["terms"]} == seen and \
+            {k.lower(): int(v) for k, v in expected["weights"].items()} == weights:
+        return item  # identica a quella del tipo di profilo: si accetta com'e' (anche se il config ha parole o pesi fuori dai limiti degli utenti)
+    if not _LABEL_SAFE.match(label):
+        raise ProfileError("categorie: il nome puo' avere solo lettere, numeri, spazi e - / & + .")
+    if expected is not None:  # nome di un gruppo del tipo di profilo (o del config): si puo' modificare di poco anche se il gruppo e' grande
+        limit = max(40, len(expected["terms"]) + 20)
+        if cfg is None:
+            limit = max(limit, TRUSTED_TERMS_NO_CFG)  # senza il config il gruppo originale non e' noto: mai piu' stretto del caso senza confronto
+    else:
+        limit = MAX_CAT_TERMS if cfg is not None else TRUSTED_TERMS_NO_CFG
+    if len(clean) > limit:
+        raise ProfileError(f"categorie: {label}: massimo {limit} parole")
+    if any(len(t) > 80 for t in clean):
+        raise ProfileError(f"categorie: {label}: ogni parola puo' avere al massimo 80 caratteri")
+    if any(not 1 <= w <= TRUSTED_MAX_WEIGHT for w in weights.values()):
+        raise ProfileError(f"categorie: {label}: il peso deve essere un numero da 1 a {TRUSTED_MAX_WEIGHT}")
+    return item
+
+
+def clean_categories(value, preset: str | None = None, cfg: dict | None = None) -> list[dict]:
+    """Controlla le categorie ricevute dall'esterno. ProfileError con messaggi in italiano che iniziano con «categorie:»."""
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ProfileError("categorie: serve un elenco")
+    if len(value) > MAX_CAT_TOTAL:
+        raise ProfileError(f"categorie: massimo {MAX_CATEGORIES} per profilo")
+    out, seen, own_count = [], set(), 0
+    for c in value:
+        if not isinstance(c, dict):
+            raise ProfileError("categorie: ogni categoria deve avere un nome e delle parole")
+        raw_w = c.get("weights")
+        if raw_w is not None and not isinstance(raw_w, dict):
+            raise ProfileError("categorie: pesi non validi")
+        trusted = bool(raw_w) and isinstance(c.get("label"), str) and _trusted(" ".join(unicodedata.normalize("NFKC", c["label"]).split()), preset)
+        if trusted:
+            item = _clean_trusted(c, c["label"], preset, cfg)
+            label = item["label"]
+            own_count += 1
+        else:
+            label = normalize_label(c.get("label"))
+            terms = c.get("terms")
+            if isinstance(terms, str):  # comodo per chi scrive "cuoco, chef" in un campo solo
+                terms = [t for t in re.split(r"[,;\n]", terms)]
+            if not isinstance(terms, list):
+                raise ProfileError(f"categorie: {label}: servono delle parole")
+            terms = [unicodedata.normalize("NFC", t) if isinstance(t, str) else t for t in terms]
+            clean = _clean_words(terms, f"categorie: {label}: parole", maxn=MAX_CAT_TERMS, maxlen=CAT_TERM_MAX, minlen=CAT_TERM_MIN)
+            if not clean:
+                raise ProfileError(f"categorie: {label}: scrivi almeno una parola che la riconosce")
+            item = {"label": label, "terms": clean}
+            if raw_w:
+                have = {t.lower() for t in clean}
+                weights = {}
+                for k, v in raw_w.items():
+                    if not isinstance(k, str) or isinstance(v, bool) or not isinstance(v, (int, float)) or not 1 <= v <= 20:
+                        raise ProfileError(f"categorie: {label}: il peso deve essere un numero da 1 a 20")
+                    if k.lower() in have:  # i pesi di parole tolte si scartano in silenzio
+                        weights[k.lower()] = int(v)
+                if weights:
+                    item["weights"] = weights
+        if label in seen:
+            raise ProfileError(f"categorie: «{label}» e' ripetuta")
+        seen.add(label)
+        out.append(item)
+    if len(out) - own_count > MAX_CATEGORIES:
+        raise ProfileError(f"categorie: massimo {MAX_CATEGORIES} per profilo")
+    return out
+
+
+def cat_terms(c: dict) -> dict[str, int]:
+    """{parola: peso} di una categoria (le parole senza peso valgono quanto una parola di un titolo)."""
+    w = c.get("weights") or {}
+    return {t: int(w.get(t.lower(), CAT_DEFAULT_WEIGHT)) for t in c["terms"]}
+
+
+def preset_categories(preset_key: str, cfg: dict | None = None) -> list[dict]:
+    """Le categorie di un preset (gruppi di parole con i pesi di sempre), pronte da copiare in un profilo.
+
+    Per la cybersecurity valgono le parole del config se le ha cambiate (come fa il punteggio di sempre). Niente viene troncato ne'
+    ritoccato (etichette, parole, pesi): il punteggio del profilo copiato e' identico a quello dei gruppi. Le copie si salvano di nuovo
+    senza errori perche' la validazione le riconosce come "categorie di un tipo di profilo" (vedi `_trusted`)."""
+    preset = PRESETS.get(preset_key)
+    if not preset or preset_key == "custom":
+        return []
+    if preset_key == "cybersecurity" and cfg and cfg.get("keywords"):
+        groups = [(c["label"], dict(c["terms"])) for c in cfg["keywords"].values()]
+    else:
+        groups = [(g["label"], dict(g["terms"])) for g in preset["groups"]]
+    out = []
+    for label, terms in groups:
+        label = str(label).upper()
+        terms = {str(k): v for k, v in terms.items() if str(k).strip() and isinstance(v, (int, float)) and not isinstance(v, bool)}
+        if label and terms:
+            out.append({"label": label, "terms": list(terms), "weights": {k.lower(): int(v) for k, v in terms.items()}})
+    return out[:MAX_CAT_TOTAL]
 
 
 def _clean_words(value, what: str, *, maxn: int, maxlen: int = 80, minlen: int = 2) -> list[str]:
@@ -395,7 +606,7 @@ def _clean_text(v: str) -> str:
     return " ".join(_CTRL.sub(" ", v).split())
 
 
-def validate_profile(data) -> Profile:
+def validate_profile(data, cfg: dict | None = None) -> Profile:
     """Controlla un profilo ricevuto dall'esterno e ritorna un Profile pulito, oppure solleva ProfileError."""
     if not isinstance(data, dict):
         raise ProfileError("il profilo deve essere un oggetto JSON")
@@ -452,10 +663,11 @@ def validate_profile(data) -> Profile:
     for key in ("active", "remote", "internships"):
         if key in data and not isinstance(data[key], bool):
             raise ProfileError(f"{key}: serve vero o falso")
+    categories = clean_categories(data.get("categories"), preset, cfg)
     return Profile(name=name, preset=preset, active=data.get("active", True), titles=titles, include=inc,
                    exclude=exclude, seniority=seniority, contracts=list(contracts), countries=countries,
                    location={"city": _clean_text(city), "radius_km": int(radius)},
-                   remote=data.get("remote", True), internships=data.get("internships", True))
+                   remote=data.get("remote", True), internships=data.get("internships", True), categories=categories)
 
 
 # ----------------------------------------------------------------- regole ----
@@ -469,6 +681,8 @@ class Rules:
     flex: bool                      # riconosce anche singolare/plurale e genere (infermiere/infermiera/infermieri)
     cyber: bool                     # categoria PURPLE se RED e BLUE sono alti, come prima
     internship_bonus: bool
+    cats: list[tuple[str, dict[str, int]]] = field(default_factory=list)  # categorie personali che NON sono gruppi di punteggio (bonus piccolo)
+    label_groups: bool = True       # i gruppi di punteggio decidono anche l'etichetta (false = solo le categorie personali)
 
 
 def significant_words(title: str, lang_hint: str | None = None) -> list[str]:
@@ -488,7 +702,7 @@ def title_groups(titles: list[str]) -> list[tuple[str, dict[str, int]]]:
             if w != phrase and w not in used:
                 terms[w] = GENERIC_WORD_WEIGHT if w in GENERIC_WORDS else TITLE_WORD_WEIGHT
         used.update(terms)
-        out.append((phrase.upper()[:24], terms))
+        out.append((unicodedata.normalize("NFKC", phrase).upper()[:24], terms))  # stessa normalizzazione delle etichette e del filtro ?cat=
     return out
 
 
@@ -529,19 +743,36 @@ def build_rules(profile, cfg: dict | None = None) -> Rules:
             groups += title_groups(p.titles)  # i titoli scelti dall'utente si aggiungono al preset
     if cyber and p.titles:
         groups += title_groups(p.titles)
+    cats: list[tuple[str, dict[str, int]]] = []
+    label_groups = True
+    if p.categories:
+        own = own_labels(p.preset, cfg) if p.preset != "custom" else set()
+        # pesate E del tipo di profilo = gruppi di punteggio; una categoria "nota" aggiunta da un altro tipo (es. BLUE a un profilo di sviluppo) e' una categoria dell'utente
+        weighted = [c for c in p.categories if c.get("weights") and c["label"].upper() in own]
+        if p.preset == "custom":
+            cats = [(c["label"], cat_terms(c)) for c in p.categories]
+            label_groups = False   # i titoli danno il punteggio, le categorie scelte dall'utente danno l'etichetta
+        else:
+            if weighted:  # categorie copiate dal preset: SONO i gruppi di punteggio (stessi termini e pesi, punteggi invariati)
+                groups = [(c["label"], cat_terms(c)) for c in weighted]
+                if p.titles:
+                    groups += title_groups(p.titles)
+            cats = [(c["label"], cat_terms(c)) for c in p.categories if c not in weighted]
+            label_groups = bool(weighted)
     adjust = level_tables(p, preset, cfg)
     if p.internships:
         from .scoring import DEFAULT_BONUS
 
         adjust = {**DEFAULT_BONUS, **adjust}
     return Rules(groups=groups, extra=dict(p.include), blacklist=blacklist + list(p.exclude), adjust=adjust,
-                 flex=not cyber, cyber=cyber, internship_bonus=p.internships)
+                 flex=not cyber, cyber=cyber, internship_bonus=p.internships, cats=cats, label_groups=label_groups)
 
 
 def keywords_of(profile, cfg: dict | None = None) -> list[dict]:
     """Elenco piatto {term, weight, group} per l'anteprima."""
     r = build_rules(profile, cfg)
     out = [{"term": t, "weight": w, "group": g} for g, terms in r.groups for t, w in terms.items()]
+    out += [{"term": t, "weight": w, "group": label} for label, terms in r.cats for t, w in terms.items()]
     out += [{"term": t, "weight": w, "group": "EXTRA"} for t, w in r.extra.items()]
     return out
 
@@ -734,10 +965,13 @@ class ProfileStore:
         r = self.conn.execute("SELECT id FROM profiles WHERE name=? COLLATE NOCASE", (name,)).fetchone()
         return bool(r and r["id"] != except_id)
 
-    def add(self, data) -> Profile:
-        p = data if isinstance(data, Profile) else validate_profile(data)
+    def add(self, data, cfg: dict | None = None) -> Profile:
+        """Crea un profilo. Se e' di un preset e non dice niente sulle categorie, ci si copiano quelle del preset (modificabili)."""
+        p = data if isinstance(data, Profile) else validate_profile(data, cfg)
         if isinstance(data, Profile):
-            p = validate_profile(data.to_dict())
+            p = validate_profile(data.to_dict(), cfg)
+        if not p.categories and not (isinstance(data, dict) and "categories" in data):
+            p.categories = preset_categories(p.preset, cfg)
         if self._name_taken(p.name):
             raise ProfileError("esiste già un profilo con questo nome")
         now = now_iso()
@@ -751,11 +985,14 @@ class ProfileStore:
         self.conn.commit()
         return self.get(cur.lastrowid)
 
-    def update(self, profile_id: int, data) -> Profile:
+    def update(self, profile_id: int, data, cfg: dict | None = None) -> Profile:
         old = self.get(profile_id)
         if old is None:
             raise KeyError(profile_id)
-        p = validate_profile(data.to_dict() if isinstance(data, Profile) else data)
+        p = validate_profile(data.to_dict() if isinstance(data, Profile) else data, cfg)
+        if p.preset != old.preset:
+            # cambio di tipo: le categorie del tipo vecchio (pesate) non restano; si parte da quelle del tipo nuovo, come alla creazione
+            p.categories = [c for c in p.categories if not c.get("weights")] + preset_categories(p.preset, cfg)
         if self._name_taken(p.name, old.id):
             raise ProfileError("esiste già un profilo con questo nome")
         try:
@@ -766,6 +1003,22 @@ class ProfileStore:
             raise ProfileError("esiste già un profilo con questo nome") from None
         self.conn.commit()
         return self.get(old.id)
+
+    def raw_row(self, profile_id: int):
+        """La riga del profilo com'e' nel database (per rimetterla a posto se un ricalcolo fallisce)."""
+        r = self.conn.execute("SELECT name, active, data, updated FROM profiles WHERE id=?", (profile_id,)).fetchone()
+        return tuple(r) if r else None
+
+    def restore_raw(self, profile_id: int, row) -> None:
+        if row is not None:
+            self.conn.execute("UPDATE profiles SET name=?, active=?, data=?, updated=? WHERE id=?", (*row, profile_id))
+            self.conn.commit()
+
+    def remove_raw(self, profile_id: int) -> None:
+        """Toglie un profilo appena creato senza i controlli di delete (usata se il primo ricalcolo fallisce)."""
+        self.conn.execute("DELETE FROM job_profiles WHERE profile_id=?", (profile_id,))
+        self.conn.execute("DELETE FROM profiles WHERE id=?", (profile_id,))
+        self.conn.commit()
 
     def set_active(self, profile_id: int, active: bool) -> Profile:
         p = self.get(profile_id)

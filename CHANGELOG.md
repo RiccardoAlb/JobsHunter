@@ -2,6 +2,28 @@
 
 Formato ispirato a [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
+## [0.3.0] - 2026-10-28
+
+Categorie personali per profilo (fase 6). Il numero di versione nel codice resta 0.2.0 finche' non si pubblica.
+
+### Aggiunto
+- Ogni profilo puo' avere le sue **categorie** (nome + parole che la riconoscono): editor nella scheda Ricerca, filtri nella lista (solo quelle con annunci), colore neutro per quelle dell'utente,
+  campo facoltativo "Categorie" nella guida di primo avvio (nessun passo nuovo), `./jh profiles add --category` e `./jh profiles categories`.
+- I preset copiano le loro categorie nel nuovo profilo come categorie modificabili ("Ripristina quelle del preset").
+- Copia di sicurezza del database in `backups/` (ultime tre) prima di ricalcolare le categorie.
+
+### Corretto (dopo il collaudo)
+- Ricalcolo atomico: se fallisce il database non resta bloccato e il profilo torna com'era; salvataggi dei profili serializzati. Cambio di tipo che sostituisce le categorie, categorie di altri tipi solo come bonus,
+  unione delle categorie con "Profilo: tutti", filtri con simboli nel nome, normalizzazione Unicode delle etichette, backup con nome unico, report in ordine stabile.
+
+- Categorie "copiate da un preset" accettate senza limiti solo se identiche a quelle del server, altrimenti limiti stretti; filtro `?cat=` normalizzato e mai "tutto l'elenco" per nomi non validi; ricalcolo e punteggi migliori nella stessa transazione; guida e profili con lo stesso blocco.
+
+- Categorie di un gruppo del tipo di profilo modificabili anche se grandi (fino a 40 parole o parole + 20); etichette ricavate dai titoli normalizzate NFKC.
+
+### Cambiato
+- Un profilo personalizzato con categorie usa quelle per l'etichetta degli annunci (`ALTRO` se nessuna combacia); una categoria dell'utente puo' dare al massimo +4 punti (titolo) o +2 (testo)
+  e mai fa entrare un annuncio da sola. I punteggi e le categorie dei profili esistenti e dei preset non cambiano (test di regressione).
+
 ## [0.2.0] - 2026-10-28
 
 Rifinitura per la pubblicazione.

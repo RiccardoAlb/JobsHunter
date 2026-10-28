@@ -318,12 +318,74 @@ def profiles_show(cfg, name):
             ("Parole da escludere", ", ".join(p.exclude) or "-"), ("Livello", p.seniority),
             ("Contratti", ", ".join(p.contracts) or "tutti"),
             ("Paesi", ", ".join(f"{c} ({prof.COUNTRIES[c]['name']})" for c in p.countries)),
+            ("Categorie", "; ".join(f"{c['label']}: {', '.join(c['terms'][:6])}{'...' if len(c['terms']) > 6 else ''}" for c in p.categories)
+             or "(quelle del tipo di profilo, non modificabili: usa 'profiles categories --restore-preset' per copiarle)"),
             ("Luogo", _where(p)), ("Remoto", "si" if p.remote else "no"), ("Stage", "si" if p.internships else "no"),
             ("Annunci", str(store.job_count(p.id)))]
     grid = Table.grid(padding=(0, 2))
     for k, v in rows:
         grid.add_row(f"[bold]{k}[/]", escape(v))
     console.print(Panel(grid, title=escape(p.name), border_style="green", expand=False))
+
+
+def _parse_cats(items) -> list[dict]:
+    out = []
+    for it in items:
+        label, sep, words = it.partition("=")
+        if not sep:
+            raise prof.ProfileError(f"categorie: scrivi ETICHETTA=parola1,parola2 (manca il segno = in «{it[:30]}»)")
+        out.append({"label": label, "terms": [w for w in words.split(",")]})
+    return out
+
+
+@profiles.command("categories")
+@click.argument("name")
+@click.option("--set", "cats", multiple=True, help="Sostituisce le categorie: \"ETICHETTA=parola1,parola2\" (si puo' ripetere)")
+@click.option("--add", "add_cats", multiple=True, help="Aggiunge o sostituisce UNA categoria \"ETICHETTA=parola1,parola2\"")
+@click.option("--remove", "remove", multiple=True, help="Toglie la categoria con questa etichetta")
+@click.option("--restore-preset", is_flag=True, help="Ripristina le categorie del tipo di profilo")
+@click.option("--clear", is_flag=True, help="Toglie tutte le categorie")
+@click.pass_obj
+def profiles_categories(cfg, name, cats, add_cats, remove, restore_preset, clear):
+    """Mostra o cambia le categorie personali di un profilo (poi ricalcola gli annunci gia' salvati)."""
+    from .rescore import rescore
+
+    store = _profile_store(cfg)
+    p = _find_profile(store, name)
+    current = [dict(c) for c in p.categories]
+    changed = False
+    try:
+        if clear:
+            current, changed = [], True
+        if restore_preset:
+            current, changed = prof.preset_categories(p.preset, cfg), True
+        if cats:
+            current, changed = _parse_cats(cats), True
+        for c in _parse_cats(add_cats):
+            label = prof.normalize_label(c["label"])
+            current = [x for x in current if x["label"] != label] + [c]
+            changed = True
+        for r_ in remove:
+            label = prof.normalize_label(r_)
+            if not any(x["label"] == label for x in current):
+                raise prof.ProfileError(f"categorie: non c'e' nessuna categoria «{label}»")
+            current = [x for x in current if x["label"] != label]
+            changed = True
+        if changed:
+            data = p.to_dict()
+            data["categories"] = current
+            new = store.update(p.id, data)
+            store.db.snapshot()
+            n = rescore(store.db, cfg, [p.id])
+            console.print(f"[green]Categorie aggiornate[/] [dim]({n} annunci ricalcolati)[/]")
+            p = new
+    except prof.ProfileError as e:
+        console.print(f"[red]Categorie non valide:[/] {escape(str(e))}")
+        sys.exit(1)
+    if not p.categories:
+        console.print("[dim]Nessuna categoria personale: valgono quelle del tipo di profilo.[/]")
+    for c in p.categories:
+        console.print(f"[bold]{escape(c['label'])}[/]: {escape(', '.join(c['terms']))}")
 
 
 @profiles.command("add")
@@ -337,15 +399,18 @@ def profiles_show(cfg, name):
 @click.option("--seniority", default="any", show_default=True, help="any, junior, mid o senior")
 @click.option("--no-remote", is_flag=True, help="Non accettare annunci da remoto")
 @click.option("--no-internships", is_flag=True, help="Non cercare stage e tirocini")
+@click.option("--category", "cats", multiple=True, help="Categoria personale \"ETICHETTA=parola1,parola2\" (si puo' ripetere)")
 @click.pass_obj
-def profiles_add(cfg, name, preset, titles, exclude, countries, city, km, seniority, no_remote, no_internships):
+def profiles_add(cfg, name, preset, titles, exclude, countries, city, km, seniority, no_remote, no_internships, cats):
     """Crea un profilo di ricerca."""
     store = _profile_store(cfg)
     data = {"name": name, "preset": preset, "titles": list(titles), "exclude": list(exclude),
             "countries": list(countries) or ["it"], "location": {"city": city, "radius_km": km},
             "seniority": seniority, "remote": not no_remote, "internships": not no_internships}
     try:
-        p = store.add(data)
+        if cats:
+            data["categories"] = _parse_cats(cats)
+        p = store.add(data, cfg)
     except prof.ProfileError as e:
         console.print(f"[red]Profilo non valido:[/] {escape(str(e))}")
         sys.exit(1)
@@ -533,7 +598,7 @@ def stats(cfg):
 
 
 @main.command()
-@click.option("-t", "--type", "category", type=click.Choice(["red", "blue", "sysadm", "sec", "purple"], case_sensitive=False))
+@click.option("-t", "--type", "category", help="Categoria (BLUE, RED... oppure una categoria personale di un profilo)")
 @click.option("-s", "--min-score", default=30, show_default=True)
 @click.option("-n", "--limit", default=20, show_default=True)
 @click.option("--near", is_flag=True, help="Solo annunci vicini a casa")

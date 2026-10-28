@@ -1,6 +1,6 @@
 [project]
 name = "jobshunter"
-version = "0.2.0"
+version = "0.3.0"
 description = "Personal job-search radar for macOS: collects postings from several sources, scores them, removes duplicates and checks they are still open. Local-first, no telemetry."
 readme = "README.en.md"
 requires-python = ">=3.11"

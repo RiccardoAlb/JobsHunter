@@ -30,7 +30,14 @@ CATEGORIES = {"RED", "BLUE", "PURPLE", "SYSADM", "SEC"}
 MAX_JSON_BYTES = 256 * 1024
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
        "connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
-CATEGORY_OK = re.compile(r"^[A-Z0-9 ._-]{1,30}$")  # le categorie dei profili non cyber sono nomi di gruppo (es. BACKEND)
+CATEGORY_OK = re.compile(r"^[^\x00-\x1f\x7f]{1,60}$")  # qualsiasi nome senza caratteri di controllo: il valore va nel SQL solo come parametro  # le categorie dei profili non cyber sono nomi di gruppo (es. BACKEND)
+
+
+def norm_cat(value) -> str:
+    """Nome di categoria dal filtro, normalizzato come le etichette salvate (NFKC e maiuscolo)."""
+    import unicodedata
+
+    return unicodedata.normalize("NFKC", str(value or "")).upper()
 
 
 def to_int(value, default: int = 0, lo: int | None = None, hi: int | None = None) -> int:
@@ -209,7 +216,9 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
     @app.get("/api/jobs")
     def jobs():
         a = request.args
-        cat = a.get("cat", "").upper()
+        cat = norm_cat(a.get("cat", ""))
+        if cat and not CATEGORY_OK.match(cat):
+            return jsonify([])  # un nome che non puo' esistere non trova niente (mai "tutto l'elenco")
         db = open_db()
         cprof = cv_profile()
         cv_ver = cprof.version if cprof else None
@@ -306,6 +315,7 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         db = open_db()
         pid = profile_arg(request.args)
         by_cat = {r["category"]: r["n"] for r in db.stats(pid)}
+        all_cats = db.category_union() if pid is None else dict(by_cat)  # per i chip del filtro: con "tutti" le categorie di tutti i profili
         src, sargs = db._from(pid)  # tutti i conteggi riguardano il profilo scelto (o tutti i profili attivi)
         if sargs:
             src = src.replace("jp.profile_id=?", f"jp.profile_id={int(sargs[0])}")
@@ -317,7 +327,7 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         jooble = one("source LIKE 'jooble%' AND status!='discarded'")
         closed = db.conn.execute(f"SELECT COUNT(*) {src} WHERE avail='closed' AND status!='discarded' AND {DUP_HIDDEN} AND {PROFILE_ACTIVE}").fetchone()[0]
         dc = db.dup_counts()
-        return jsonify(by_cat=by_cat, new=total_new, near=near, total=max(0, sum(by_cat.values()) - jooble),
+        return jsonify(by_cat=by_cat, all_cats=all_cats, new=total_new, near=near, total=max(0, sum(by_cat.values()) - jooble),
                        dups_pending=dc.get("pending", 0), dup_counts=dc, jooble=jooble, jooble_near_new=jooble_near_new,
                        app_counts=db.app_counts(), needs_setup=needs_setup(), closed=closed)
 
@@ -470,7 +480,7 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
             if state["running"]:
                 return jsonify(ok=False, error="una scansione è in corso: aspetta che finisca o fermala"), 409
         db = open_db()
-        with onboarding.COMPLETE_LOCK:  # prepare + apply di seguito: due richieste insieme non creano due profili
+        with onboarding.COMPLETE_LOCK, prof.PROFILE_LOCK:  # prima la conclusione della guida, poi i profili (sempre in quest'ordine: niente deadlock)
             try:
                 plan = onboarding.prepare(b, cfg, prof.ProfileStore(db))
             except onboarding.OnboardingError as e:
@@ -505,6 +515,7 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
     # ---- profili di ricerca ----
     def profile_json(p: prof.Profile, store: prof.ProfileStore) -> dict:
         d = p.to_dict(meta=True)
+        d.setdefault("categories", [])
         d["job_count"] = store.job_count(p.id)
         return d
 
@@ -525,7 +536,8 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
             if key == "cybersecurity" and cfg.get("keywords"):
                 groups = [{"label": c["label"], "terms": dict(c["terms"])} for c in cfg["keywords"].values()]
             out.append({"key": key, "label": p["label"], "description": p["description"],
-                        "default_titles": list(p["default_titles"]), "groups": groups})
+                        "default_titles": list(p["default_titles"]), "groups": groups,
+                        "categories": prof.preset_categories(key, cfg)})
         return jsonify(out)
 
     @app.get("/api/countries")
@@ -538,20 +550,29 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         store = ProfilesDB()
         return jsonify([profile_json(p, store) for p in store.list()])
 
+    recalc_failed = "Non sono riuscito a ricalcolare gli annunci: il profilo e' rimasto com'era. Riprova tra un attimo."
+
     @app.post("/api/profiles")
     def profiles_create():
-        store = ProfilesDB()
-        try:
-            p = store.add(body_profile())
-        except prof.ProfileError as e:
-            return bad(str(e))
-        rescore(store.db, cfg, [p.id])
-        return jsonify(ok=True, profile=profile_json(store.get(p.id), store))
+        body = body_profile()
+        with prof.PROFILE_LOCK:
+            store = ProfilesDB()
+            try:
+                p = store.add(body, cfg)
+            except prof.ProfileError as e:
+                return bad(str(e))
+            try:
+                rescore(store.db, cfg, [p.id])
+            except Exception as e:  # il ricalcolo ha rimesso a posto il database (rollback): si toglie anche il profilo appena creato
+                app.logger.error("ricalcolo del nuovo profilo non riuscito (%s)", type(e).__name__)
+                store.remove_raw(p.id)
+                return jsonify(ok=False, error=recalc_failed), 500
+            return jsonify(ok=True, profile=profile_json(store.get(p.id), store))
 
     @app.post("/api/profiles/preview")
     def profiles_preview():
         try:
-            p = prof.validate_profile(body_profile())
+            p = prof.validate_profile(body_profile(), cfg)
         except prof.ProfileError as e:
             return bad(str(e))
         qs = prof.profile_queries(p, cfg)
@@ -573,31 +594,42 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
 
     @app.post("/api/profiles/<int:pid>")
     def profiles_update(pid):
-        store = ProfilesDB()
-        old = store.get(pid)
-        if old is None:
-            abort(404)
-        try:
-            new = store.update(pid, body_profile())
-        except prof.ProfileError as e:
-            return bad(str(e))
-        a, b = old.to_dict(), new.to_dict()
-        a.pop("active"), b.pop("active")
-        if a != b:  # cambiano le regole: si rivalutano gli annunci già salvati
-            rescore(store.db, cfg, [pid])
-        else:
-            store.db.refresh_best()
-        return jsonify(ok=True, profile=profile_json(store.get(pid), store))
+        body = body_profile()
+        with prof.PROFILE_LOCK:  # salvataggio e ricalcolo sono un blocco solo: due salvataggi insieme non si mescolano
+            store = ProfilesDB()
+            old = store.get(pid)  # riletto DENTRO il blocco
+            if old is None:
+                abort(404)
+            saved_row = store.raw_row(pid)
+            try:
+                new = store.update(pid, body, cfg)
+            except prof.ProfileError as e:
+                return bad(str(e))
+            a, b = old.to_dict(), new.to_dict()
+            a.pop("active"), b.pop("active")
+            if a != b:  # cambiano le regole: si rivalutano gli annunci già salvati
+                if old.categories != new.categories:
+                    store.db.snapshot()  # copia di sicurezza prima di ricalcolare le categorie
+                try:
+                    rescore(store.db, cfg, [pid])
+                except Exception as e:  # rollback gia' fatto dal ricalcolo: si rimette anche il profilo com'era, cosi' riprovare ricalcola davvero
+                    app.logger.error("ricalcolo del profilo non riuscito (%s)", type(e).__name__)
+                    store.restore_raw(pid, saved_row)
+                    return jsonify(ok=False, error=recalc_failed), 500
+            else:
+                store.db.refresh_best()
+            return jsonify(ok=True, profile=profile_json(store.get(pid), store))
 
     @app.post("/api/profiles/<int:pid>/delete")
     def profiles_delete(pid):
-        store = ProfilesDB()
-        if store.get(pid) is None:
-            abort(404)
-        try:
-            store.delete(pid)
-        except prof.ProfileError as e:
-            return bad(str(e))
+        with prof.PROFILE_LOCK:
+            store = ProfilesDB()
+            if store.get(pid) is None:
+                abort(404)
+            try:
+                store.delete(pid)
+            except prof.ProfileError as e:
+                return bad(str(e))
         return jsonify(ok=True)
 
     # ---- il tuo CV: caricamento, competenze, confronto con gli annunci (tutto in locale) ----
@@ -961,7 +993,9 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         b = request.get_json(silent=True) or {}
         if not isinstance(b, dict):
             abort(400, description="serve un oggetto JSON")
-        cat = str(b.get("cat") or "").upper()
+        cat = norm_cat(b.get("cat") or "")
+        if cat and not CATEGORY_OK.match(cat):
+            return jsonify(ok=False, error="nessun annuncio con questi filtri"), 404
         geo, geo_label = geo_arg(b)
         result = build_report(
             cfg, open_db(),

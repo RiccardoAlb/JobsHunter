@@ -217,7 +217,7 @@ class DB:
         self.conn.execute("INSERT OR REPLACE INTO job_profiles (job_uid, profile_id, score, category, matched) "
                           "VALUES (?,?,?,?,?)", (uid, profile_id, score, category, m))
 
-    def refresh_best(self, uids: list[str] | None = None) -> int:
+    def refresh_best(self, uids: list[str] | None = None, commit: bool = True) -> int:
         """jobs.score/category/matched = valori del profilo ATTIVO col punteggio piu' alto (a parita' il primo creato).
 
         Gli annunci senza alcun profilo attivo restano come sono. Ritorna quanti annunci ha aggiornato."""
@@ -235,8 +235,34 @@ class DB:
         self.conn.executemany("UPDATE jobs SET score=?, category=?, matched=? WHERE uid=? "
                               "AND (score IS NOT ? OR category IS NOT ? OR matched IS NOT ?)",
                               [(*v, u, *v) for u, v in best.items()])
-        self.conn.commit()
+        if commit:
+            self.conn.commit()
         return len(best)
+
+    def snapshot(self, tag: str = "prima-del-ricalcolo", keep: int = 3) -> str | None:
+        """Copia di sicurezza coerente del database in <home>/backups (permessi 600), tenendo le ultime `keep` dello stesso tipo.
+
+        Ritorna il percorso, oppure None se non e' riuscita (un backup mancato non deve bloccare il lavoro)."""
+        import os
+        from . import settings
+
+        try:
+            folder = settings.home() / "backups"
+            folder.mkdir(parents=True, exist_ok=True)
+            dst = folder / f"jobshunter-{tag}-{datetime.now(timezone.utc):%Y%m%d-%H%M%S-%f}.db"  # microsecondi: due salvataggi nello stesso secondo = due copie
+            out = sqlite3.connect(dst)
+            try:
+                with out:
+                    self.conn.backup(out)
+            finally:
+                out.close()
+            os.chmod(dst, 0o600)
+            old = sorted(folder.glob(f"jobshunter-{tag}-*.db"))
+            for f in old[:-keep]:
+                f.unlink(missing_ok=True)
+            return str(dst)
+        except (OSError, sqlite3.Error):
+            return None
 
     def drop_orphans(self) -> int:
         """Toglie le righe di job_profiles di profili che non esistono piu' (es. eliminati durante una scansione)."""
@@ -347,8 +373,14 @@ class DB:
         if only_new:
             sql += " AND status='new'"
         if category:
-            sql += " AND category=?"
-            args.append(category.upper())
+            if profile in (None, "", "all"):
+                # "Profilo: tutti": vale anche la categoria che un annuncio ha in un altro profilo attivo (unione delle categorie di tutti i profili)
+                sql += (" AND (category=? OR jobs.uid IN (SELECT jp.job_uid FROM job_profiles jp JOIN profiles p ON p.id=jp.profile_id "
+                        "WHERE p.active=1 AND jp.category=?))")
+                args += [category.upper(), category.upper()]
+            else:
+                sql += " AND category=?"
+                args.append(category.upper())
         if status:
             sql += " AND status=?"
             args.append(status)
@@ -682,6 +714,13 @@ class DB:
     def dup_counts(self) -> dict:
         rows = self.conn.execute("SELECT status, COUNT(*) n FROM dup_pairs GROUP BY status").fetchall()
         return {r["status"]: r["n"] for r in rows}
+
+    def category_union(self) -> dict[str, int]:
+        """Per "Profilo: tutti": {categoria: annunci} sommando le categorie di tutti i profili attivi (un annuncio puo' stare in piu' categorie)."""
+        rows = self.conn.execute(
+            "SELECT jp.category c, COUNT(DISTINCT jp.job_uid) n FROM job_profiles jp JOIN profiles p ON p.id=jp.profile_id AND p.active=1 "
+            f"JOIN jobs ON jobs.uid=jp.job_uid WHERE jobs.status!='discarded' AND {NOT_HIDDEN} GROUP BY jp.category")
+        return {r["c"]: r["n"] for r in rows if r["c"]}
 
     def stats(self, profile=None):
         src, src_args = self._from(profile)

@@ -357,6 +357,14 @@
     .onb-foot .btn.primary { order: -1; flex-basis: 100%; }
   }
 
+  /* categorie del profilo */
+  .catbox .skl { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .catbox .skchip button { background: none; border: 0; color: var(--dim); padding: 0 5px; font-size: 13px; line-height: 1; cursor: pointer; }
+  .catbox .skchip button:hover { color: var(--text); }
+  .catbox .catrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+  .catbox input[type=text] { background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 7px 10px; font: inherit; min-width: 0; }
+  .catbox .cat-name { width: 150px; } .catbox .cat-words { flex: 1 1 220px; }
+  .catbox .caterr { color: var(--red); font-size: 13px; margin: 4px 0; }
   /* attribuzione Adzuna: almeno 116x23 px, sempre con link al sito */
   a.adz { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 116px; min-height: 23px; padding: 0 8px; border: 1px solid var(--line2); border-radius: 4px; background: var(--panel); color: var(--muted); font: 12px/1 var(--sans); text-decoration: none; white-space: nowrap; vertical-align: middle; }
   a.adz b { color: var(--blue); font-weight: 700; margin-left: 3px; }
@@ -482,7 +490,9 @@ try { const g = localStorage.getItem("jh-profile"); if (g) F.profile = g; } catc
 const saveProfile = () => { try { localStorage.setItem("jh-profile", F.profile); } catch (e) {} };
 let catKeys = [];  // categorie presenti negli annunci (ogni profilo ha le sue: cyber, supporto IT, sviluppo...)
 const PALETTE = ["var(--teal)", "var(--yellow)", "var(--blue)", "var(--purple)", "var(--green)", "var(--red)"];
-const catColor = (c) => COLORS[c] || (c ? PALETTE[[...c].reduce((a, ch) => a + ch.charCodeAt(0), 0) % PALETTE.length] : "var(--dim)");
+const presetLabels = () => new Set((typeof presets !== "undefined" ? presets : []).flatMap((p) => (p.categories || []).map((c) => c.label)));
+// palette fissa per le categorie dei tipi di profilo noti, un azzurro neutro per quelle scelte dall'utente
+const catColor = (c) => COLORS[c] || (c ? (presetLabels().has(c) ? PALETTE[[...c].reduce((a, ch) => a + ch.charCodeAt(0), 0) % PALETTE.length] : "var(--muted)") : "var(--dim)");
 try { const g = JSON.parse(localStorage.getItem("jh-geo") || "null"); if (g && g.city) F.geo = g; } catch (e) {}
 const saveGeo = () => { try { localStorage.setItem("jh-geo", JSON.stringify(F.geo)); } catch (e) {} };
 const FLT0 = () => ({ company: "", where: [], mode: [], contract: [], ralMin: 0, ralUnk: true });
@@ -644,7 +654,7 @@ function renderRows() {
 }
 async function loadStats() {
   const s = await api("/api/stats?profile=" + encodeURIComponent(F.profile));
-  const keys = Object.keys(s.by_cat || {}).filter((k) => k).sort();
+  const keys = Object.keys(s.all_cats || s.by_cat || {}).filter((k) => k).sort();
   if (JSON.stringify(keys) !== JSON.stringify(catKeys)) {
     catKeys = keys;
     const a = document.activeElement;
@@ -1218,7 +1228,7 @@ async function openEditor(p) {
   const name = el("input", { type: "text", value: st.name, maxlength: 80, placeholder: "Es. Infermieri a Bari" });
   name.addEventListener("input", () => { st.name = name.value; err.textContent = ""; });
   const hintPreset = el("div", { class: "hint" });
-  const preset = el("select", { onchange: () => { st.preset = preset.value; drawPreset(); schedulePreview(); } },
+  const preset = el("select", { onchange: () => { st.preset = preset.value; drawPreset(); if (typeof onPresetChange === "function") onPresetChange(); schedulePreview(); } },
     [...presets.filter((x) => x.key !== "custom").map((x) => el("option", { value: x.key, selected: x.key === st.preset }, x.label)),
      el("option", { value: "custom", selected: st.preset === "custom" }, "Personalizzato: scrivo io i lavori che cerco")]);
   const titlesT = tagList(st.titles, schedulePreview, []);
@@ -1264,7 +1274,64 @@ async function openEditor(p) {
   const rem = el("input", { type: "checkbox", checked: st.remote }); rem.addEventListener("change", () => { st.remote = rem.checked; schedulePreview(); });
   const intern = el("input", { type: "checkbox", checked: st.internships }); intern.addEventListener("change", () => { st.internships = intern.checked; schedulePreview(); });
 
-  const body = () => ({ ...st, name: st.name.trim(), location: { city: st.location.city.trim(), radius_km: st.location.radius_km } });
+  /* categorie personali */
+  st.categories = st.categories || [];
+  const presetCats = () => ((presets.find((x) => x.key === st.preset) || {}).categories || []).map((c) => JSON.parse(JSON.stringify(c)));
+  const catErr = el("div", { class: "caterr", role: "alert", hidden: true });
+  const catList = el("div", { class: "skl" });
+  const catName = el("input", { type: "text", class: "cat-name", maxlength: 16, placeholder: "Nome (es. CUOCO)", "aria-label": "Nome della categoria", autocomplete: "off" });
+  const catWords = el("input", { type: "text", class: "cat-words", placeholder: "Parole che la riconoscono, separate da virgole", "aria-label": "Parole della categoria", autocomplete: "off" });
+  const catKnown = el("select", { "aria-label": "Aggiungi una categoria dei tipi di profilo noti" });
+  let catEdit = -1;
+  const showCatErr = (m) => { catErr.textContent = m || ""; catErr.hidden = !m; return false; };  // ritorna false: "non fatto"
+  const catWordsList = () => catWords.value.split(/[,;\n]/).map((w) => w.trim()).filter(Boolean);
+  const catBtn = el("button", { type: "button", class: "btn sm", onclick: () => addCat() }, "Aggiungi");
+  const catCancel = el("button", { type: "button", class: "btn sm", hidden: true, onclick: () => { catEdit = -1; catName.value = catWords.value = ""; drawCats(); } }, "Annulla modifica");
+  function addCat() {  // ritorna true se la categoria e' stata aggiunta/salvata
+    const label = catName.value.trim().normalize("NFKC").toUpperCase(), words = catWordsList();
+    if (!label) return showCatErr("Scrivi un nome per la categoria.");
+    if (label.length > 16) return showCatErr("Il nome puo' avere al massimo 16 caratteri.");
+    if (label === "ALTRO") return showCatErr("ALTRO e' un nome riservato: scegline un altro.");
+    if (!/^[\p{L}\p{N}][\p{L}\p{N} \-]*$/u.test(label)) return showCatErr("Il nome puo' avere solo lettere, numeri, spazi e trattini.");
+    if (!words.length) return showCatErr("Scrivi almeno una parola che riconosce la categoria.");
+    if (words.some((w) => w.length < 2 || w.length > 40)) return showCatErr("Ogni parola deve avere da 2 a 40 caratteri.");
+    if (words.length > 40 || (words.length > 20 && !(catEdit >= 0 && st.categories[catEdit].weights))) return showCatErr("Massimo 20 parole per categoria.");
+    if (st.categories.some((c, i) => c.label === label && i !== catEdit)) return showCatErr("Hai gia' una categoria con questo nome.");
+    if (catEdit < 0 && st.categories.length >= 12) return showCatErr("Massimo 12 categorie per profilo.");
+    const uniq = [...new Map(words.map((w) => [w.toLowerCase(), w])).values()];
+    const item = { label, terms: uniq };
+    if (catEdit >= 0) {  // modifica: i pesi delle parole rimaste restano (quelle nuove valgono come parole di un titolo)
+      const old = st.categories[catEdit], keep = {};
+      for (const t of uniq) if (old.weights && old.weights[t.toLowerCase()]) keep[t.toLowerCase()] = old.weights[t.toLowerCase()];
+      if (old.weights && Object.keys(keep).length) item.weights = keep;
+      st.categories[catEdit] = item;
+    } else st.categories.push(item);
+    catEdit = -1; catName.value = catWords.value = ""; showCatErr(""); drawCats(); schedulePreview();
+    return true;
+  }
+  function drawCats() {
+    catBtn.textContent = catEdit >= 0 ? "Salva la categoria" : "Aggiungi";
+    catCancel.hidden = catEdit < 0;
+    catList.replaceChildren(...st.categories.map((c, i) => el("span", { class: "skchip", title: c.terms.join(", ") }, `${c.label} (${c.terms.length})`,
+      el("button", { type: "button", title: "Modifica", "aria-label": "Modifica " + c.label, onclick: () => { catEdit = i; catName.value = c.label; catWords.value = c.terms.join(", "); showCatErr(""); drawCats(); catName.focus(); } }, "\u270e"),
+      el("button", { type: "button", title: "Elimina", "aria-label": "Elimina " + c.label, onclick: () => { st.categories.splice(i, 1); if (catEdit === i) { catEdit = -1; catName.value = catWords.value = ""; } else if (catEdit > i) catEdit--; drawCats(); schedulePreview(); } }, "\u00d7"))));
+    if (!st.categories.length) catList.replaceChildren(el("span", { class: "muted", style: "font-size:12px" }, st.preset === "custom" ? "Nessuna categoria: gli annunci si raggruppano per titolo." : "Nessuna categoria tua: valgono quelle del tipo di profilo (non modificabili finche' non le copi)."));
+    const known = presets.flatMap((pr) => (pr.categories || []).map((c) => ({ pr, c }))).filter((x) => !st.categories.some((c) => c.label === x.c.label));
+    catKnown.replaceChildren(el("option", { value: "" }, "Aggiungi una categoria dei tipi noti..."), ...known.map((x, i) => el("option", { value: String(i) }, `${x.c.label} (${x.pr.label.split(":")[0]})`)));
+    catKnown.onchange = () => { const x = known[+catKnown.value]; if (!x) return; if (st.categories.length >= 12) { showCatErr("Massimo 12 categorie per profilo."); return; } st.categories.push(JSON.parse(JSON.stringify(x.c))); showCatErr(""); drawCats(); schedulePreview(); };
+    catRestore.hidden = st.preset === "custom";
+  }
+  const catRestore = el("button", { type: "button", class: "btn sm", onclick: () => { st.categories = presetCats(); catEdit = -1; showCatErr(""); drawCats(); schedulePreview(); } }, "Ripristina quelle del preset");
+  const catBox = el("div", { class: "fl catbox" }, el("span", { class: "lab" }, "Categorie"), catList,
+    el("div", { class: "catrow" }, catKnown),
+    el("div", { class: "catrow" }, catName, catWords, catBtn, catCancel),
+    el("div", { class: "catrow" }, catRestore),
+    catErr,
+    el("div", { class: "hint" }, "Ogni categoria ha un nome e delle parole che la riconoscono (esempio: CUOCO = cuoco, chef, aiuto cuoco). Il nome compare come filtro nella lista. Una categoria non fa entrare un annuncio da sola: al piu' da' un piccolo bonus (4 punti con la parola nel titolo, 2 nel testo)."));
+  const onPresetChange = () => { if (!p && (!st.categories.length || st.categoriesFromPreset)) { st.categories = presetCats(); st.categoriesFromPreset = true; } drawCats(); };
+  if (!p && st.preset !== "custom" && !st.categories.length) { st.categories = presetCats(); st.categoriesFromPreset = true; }
+  drawCats();
+  const body = () => ({ ...st, categoriesFromPreset: undefined, name: st.name.trim(), location: { city: st.location.city.trim(), radius_km: st.location.radius_km } });
   async function showPreview() {
     const r = await postRaw("/api/profiles/preview", body());
     if (!r.ok) { prev.hidden = false; prev.replaceChildren(el("div", { class: "note" }, cap((r.data && r.data.error) || "Anteprima non disponibile"))); return; }
@@ -1291,8 +1358,13 @@ async function openEditor(p) {
   }
   const save = async () => {
     err.textContent = "";
+    if ((catName.value.trim() || catWords.value.trim()) && !addCat()) { catBox.scrollIntoView({ block: "nearest" }); return; }  // testo scritto e non confermato: conferma implicita (o errore visibile)
     const r = await postRaw(p ? "/api/profiles/" + p.id : "/api/profiles", body());
-    if (!r.ok) { err.textContent = cap((r.data && r.data.error) || "Salvataggio non riuscito"); return; }
+    if (!r.ok) {
+      const m = cap((r.data && r.data.error) || "Salvataggio non riuscito");
+      if (/^categorie/i.test(m)) { showCatErr(m); catBox.scrollIntoView({ block: "nearest" }); } else err.textContent = m;
+      return;
+    }
     toast(p ? "Profilo aggiornato" : "Profilo creato", st.name);
     box.replaceChildren(); await loadSearch(); refreshAfterProfiles();
   };
@@ -1302,6 +1374,7 @@ async function openEditor(p) {
     el("label", { class: "fl" }, el("span", { class: "lab" }, "Tipo di lavoro"), preset, hintPreset),
     el("div", { class: "fl" }, el("span", { class: "lab" }, "Lavori che cerchi"), titleInput, titlesT.box, titleHint),
     el("div", { class: "fl" }, el("span", { class: "lab" }, "Parole da escludere"), exclInput, exclT.box),
+    catBox,
     el("div", { class: "two" },
       el("label", { class: "fl" }, el("span", { class: "lab" }, "Livello"), sen),
       el("div", { class: "fl" }, el("span", { class: "lab" }, "Tipo di contratto (nessuno = tutti)"), el("div", { class: "pchips" }, contractChips))),
@@ -1511,7 +1584,7 @@ function cvBox() {
 
 /* ---- guida di primo avvio ---- */
 const OB_STEPS = ["Benvenuto", "Che lavoro cerchi", "Dove", "Fonti degli annunci", "Ultime scelte", "Il tuo CV (facoltativo)", "Riepilogo e prima ricerca"];
-const OB_FIELD_STEP = { profile: 2, titles: 2, country: 3, home: 3, radius_km: 3, adzuna: 4, jooble: 4, keys: 4, report_dir: 5, schedule: 5 };
+const OB_FIELD_STEP = { profile: 2, titles: 2, categories: 2, country: 3, home: 3, radius_km: 3, adzuna: 4, jooble: 4, keys: 4, report_dir: 5, schedule: 5 };
 const OB_LEVELS = { any: "Qualsiasi livello", junior: "Primo impiego o poca esperienza", mid: "Con qualche anno di esperienza", senior: "Esperto o con ruoli di responsabilità" };
 const OB_SRC = { adzuna: "Adzuna", jooble: "Jooble", arbeitnow: "Arbeitnow", remoteok: "RemoteOK", remotive: "Remotive", greenhouse: "Pagine carriere (Greenhouse)", lever: "Pagine carriere (Lever)" };
 const obSrcName = (n) => OB_SRC[String(n).split(/[:/ ]/)[0]] || cap(String(n));
@@ -1526,7 +1599,7 @@ async function openOnboarding(rerun, info) {
     step: 1, phase: "form", rerun: !!rerun, info, error: "", errField: "", testRes: null, est: null, estErr: "", timer: null,
     pid: null, notes: [], found: null, status: null, busy: false,
     d: {
-      preset: mp ? mp.preset : "", titles: mp ? mp.titles.join("\n") : "", seniority: mp ? mp.seniority : "any",
+      cats: obCatsPrefill(mp), preset: mp ? mp.preset : "", titles: mp ? mp.titles.join("\n") : "", seniority: mp ? mp.seniority : "any",
       internships: mp ? mp.internships : true, remote: mp ? mp.remote : true, country: mp ? mp.countries[0] : "it",
       home: rerun ? (pf.home || "") : "", radius: rerun ? (pf.radius_km || 100) : 100,
       adzId: "", adzKey: "", jooHost: pf.jooble_host || "", jooKey: "",
@@ -1667,6 +1740,10 @@ function obStep1() {
 }
 
 /* passo 2 */
+function obCatsPrefill(mp) {  // le categorie fatte dalla guida hanno una parola sola; se il profilo ne ha di piu' ricche il campo non le tocca
+  if (!mp || mp.preset !== "custom" || !(mp.categories || []).length) return "";
+  return mp.categories.every((c) => c.terms.length === 1 && !c.weights) ? mp.categories.map((c) => c.terms[0]).join(", ") : "";
+}
 function obStep2() {
   const d = OB.d;
   const opts = [...presets.filter((p) => p.key !== "custom").map((p) => [p.key, p.label, p.description]),
@@ -1681,6 +1758,8 @@ function obStep2() {
   const upd = () => { const n = obTitles().length; count.textContent = n ? `${n} su 8 lavori` : "Al massimo 8 lavori."; count.style.color = n > 8 ? "var(--red)" : ""; };
   ta.addEventListener("input", () => { d.titles = ta.value; upd(); });
   upd();
+  const catsIn = el("input", { id: "onbCats", type: "text", autocomplete: "off", spellcheck: "false", placeholder: "Per esempio: cuoco, pasticcere", value: d.cats || "" });
+  catsIn.addEventListener("input", () => { d.cats = catsIn.value; });
   const lvl = el("select", { id: "onbLevel" }, Object.entries(OB_LEVELS).map(([k, l]) => el("option", { value: k, selected: d.seniority === k }, l)));
   lvl.addEventListener("change", () => { d.seniority = lvl.value; });
   return [
@@ -1688,6 +1767,7 @@ function obStep2() {
     el("p", { class: "lead" }, "Scegli il tipo di lavoro che somiglia di più al tuo, oppure scrivi tu i lavori."),
     el("div", { class: "onb-opts", role: "radiogroup", "aria-label": "Tipo di lavoro" }, radios),
     el("div", { class: "onb-fl" }, el("label", { class: "lab", for: "onbTitles" }, d.preset && d.preset !== "custom" ? "Altri lavori da aggiungere (facoltativo)" : "I lavori che cerchi"), ta, count),
+    d.preset === "custom" ? obFl("Categorie (facoltativo)", catsIn, "Servono a filtrare gli annunci nella lista: scrivi le parole separate da virgole e ognuna diventa una categoria. Puoi cambiarle dopo, nella scheda Ricerca.", "onbCats") : null,
     obFl("Che esperienza hai?", lvl, "Serve a far salire gli annunci adatti al tuo livello. Non esclude nessun annuncio.", "onbLevel"),
     obCheck("internships", "Cerca anche stage e tirocini"),
   ];
@@ -1827,7 +1907,7 @@ function obStepCv() {
 function obPayload() {
   const d = OB.d, t = obTitles();
   const p = {
-    profile: { preset: d.preset || "custom", titles: t, seniority: d.seniority, internships: d.internships, remote: d.remote },
+    profile: { preset: d.preset || "custom", categories: (d.preset || "custom") === "custom" ? (d.cats || "") : "", titles: t, seniority: d.seniority, internships: d.internships, remote: d.remote },
     country: d.country, home: d.home.trim(), radius_km: d.radius, keys: {}, report_dir: d.reportDir.trim(),
     schedule: null,
   };

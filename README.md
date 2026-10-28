@@ -11,7 +11,7 @@ Funziona sul tuo computer, con dati e chiavi solo tuoi, senza account e senza te
 o da riga di comando.
 
 > **Non affiliato** ad Adzuna, Jooble, LinkedIn o Indeed. Leggi le [Avvertenze](#avvertenze) prima di usarlo.
-> Licenza: **MIT** (vedi [Licenza](#licenza)). Versione 0.2.0.
+> Licenza: **MIT** (vedi [Licenza](#licenza)). Versione 0.3.0.
 
 ![La lista degli annunci](docs/screenshots/01-lista.png)
 
@@ -134,6 +134,21 @@ sono mai stati salvati: per vederli serve una nuova scansione. Spegnere un profi
 **Migrazione.** Al primo avvio dopo l'aggiornamento il programma crea da solo il profilo **Cybersecurity** dal tuo `config.toml` (città di casa,
 raggio, stage) e vi associa tutti gli annunci già raccolti, con gli stessi punteggi di prima. Per il preset cybersecurity valgono ancora le
 parole chiave, la blacklist e le penalità di `config.toml`.
+
+### Categorie personali del profilo
+Ogni profilo può avere le **sue categorie**: un nome (massimo 16 caratteri, in maiuscolo) e le parole che la riconoscono (da 1 a 20, da 2 a 40 caratteri l'una;
+massimo 12 categorie per profilo). Compaiono come chip di filtro nella lista, ma solo se hanno annunci, e decidono l'etichetta di ogni annuncio.
+- **Esempio, infermiere:** `PRONTO SOCCORSO = pronto soccorso, triage, emergenza`; `REPARTO = reparto, degenza, corsia`; `TERRITORIO = assistenza domiciliare, adi`.
+- **Esempio, cuoco:** `CUCINA = cuoco, chef, aiuto cuoco`; `DOLCI = pasticcere, pasticceria`; `SALA = cameriere, barista`.
+- **Dove:** scheda Ricerca, editor del profilo, sezione "Categorie" (aggiungi, modifica con la matita, elimina con la x). "Aggiungi una categoria dei tipi noti" parte dalle categorie dei preset;
+  "Ripristina quelle del preset" le rimette. Nella guida di primo avvio, per un profilo personalizzato, il campo facoltativo "Categorie" (`cuoco, pasticcere`) crea una categoria per voce.
+  Da terminale: `./jh profiles add --category "CUCINA=cuoco,chef"` e `./jh profiles categories NOME [--add|--remove|--set|--clear|--restore-preset]`.
+- **I preset** copiano le loro categorie nel nuovo profilo (stessi termini e pesi di sempre, quindi stessi punteggi). I profili creati prima non hanno categorie e si comportano esattamente come prima.
+- **Punteggio:** il punteggio base resta quello di titoli, parole extra ed esclusioni. Una categoria personale che riconosce l'annuncio dà **al massimo +4** (parola nel titolo) o **+2** (solo nel testo), mai la somma,
+  e solo se l'annuncio è già pertinente: da sola non fa entrare niente. Senza nessuna categoria che combacia l'etichetta è `ALTRO` (nome riservato).
+- Con "Profilo: tutti" i chip e il filtro mostrano le categorie di tutti i profili attivi. Cambiando il tipo di un profilo, le categorie del tipo vecchio si sostituiscono con quelle del nuovo.
+- Salvare categorie diverse ricalcola le categorie degli annunci già salvati di quel profilo (senza toccare stato o candidature) dopo una copia di sicurezza del database in `backups/`.
+- I nomi e le parole sono solo testo: niente HTML, le parole si cercano come testo letterale (mai espressioni regolari).
 
 ## Come funziona
 
@@ -392,7 +407,7 @@ cybersecurity e sistemista. Molte di queste scelte si fanno anche dalla GUI (sch
 Ogni richiesta in uscita si presenta con un nome dichiarato, **mai come un browser**:
 
 ```
-JobsHunter/0.2.0 (+personal job search tool; contact: tu@example.org)
+JobsHunter/0.3.0 (+personal job search tool; contact: tu@example.org)
 ```
 
 Il contatto è facoltativo (un'email o l'indirizzo del progetto) e si imposta in `[net] contact` o in Impostazioni, blocco "Avanzate, rete";
@@ -589,6 +604,8 @@ JobsHunter può cercare da solo, anche con l'app chiusa, e avvisarti quando ci s
 - **Fase 4, confronto con il CV:** affinità 0-100 spiegata, tutta in locale. Vedi [Confronto con il CV](#confronto-con-il-cv).
   La guida di primo avvio ha ora sette passi (il CV è il sesto, facoltativo).
 
+- **Fase 6, categorie personali per profilo:** nome e parole per categoria, filtri nella lista, copia modificabile delle categorie dei preset, campo facoltativo nella guida,
+  comandi `./jh profiles categories`. Vedi [Categorie personali del profilo](#categorie-personali-del-profilo) e `docs/phase6_status.md`.
 - **Fase 5, rifinitura per la pubblicazione (0.2.0):** **User-Agent onesto** e configurabile, rinomina in **JobsHunter** con migrazione sicura dei dati e della
   pianificazione, pulizia dei dati personali (`scripts/check_publishable.py`), avvertenze e attribuzioni, `THIRD_PARTY_NOTICES.md`, README in inglese, screenshot,
   CI di GitHub, controllo di sicurezza finale. Vedi `CHANGELOG.md`.

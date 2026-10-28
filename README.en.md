@@ -11,7 +11,7 @@ It runs on your computer, with your own data and keys, no account and no telemet
 The interface and the messages of the program are in Italian; this document and the code structure are meant to be readable in English.
 
 > **Not affiliated** with Adzuna, Jooble, LinkedIn or Indeed. Read the [Disclaimer](#disclaimer) before using it.
-> License: **MIT** (see [License](#license)). Version 0.2.0.
+> License: **MIT** (see [License](#license)). Version 0.3.0.
 
 ![The list of postings](docs/screenshots/01-lista.png)
 
@@ -124,6 +124,21 @@ profile had found relevant were never saved: you need a new scan to see them. Tu
 
 **Migration.** At the first run after the upgrade the program creates the **Cybersecurity** profile from your `config.toml` (home city, radius, internships) and links all the postings already collected to it,
 with the same scores as before. For the cybersecurity preset the keywords, blacklist and penalties of `config.toml` still apply.
+
+### Personal categories per profile
+Every profile can have **its own categories**: a name (up to 16 characters, uppercase) and the words that recognise it (1 to 20 words of 2 to 40 characters; up to 12 categories per profile).
+They show up as filter chips in the list, only when they have postings, and decide each posting's label.
+- **Example, nurse:** `EMERGENCY = emergency room, triage`; `WARD = ward, inpatient`; `HOME CARE = home care`.
+- **Example, cook:** `KITCHEN = cook, chef, sous chef`; `PASTRY = pastry chef, patisserie`; `FLOOR = waiter, barista`.
+- **Where:** Search tab, profile editor, "Categorie" section (add, edit with the pencil, delete with the x). "Add a category from the known profile types" starts from the presets' categories;
+  "Ripristina quelle del preset" (restore the preset's) puts them back. In the first-run guide, for a custom profile, the optional "Categorie" field (`cook, pastry chef`) creates one category per entry.
+  From the terminal: `./jh profiles add --category "KITCHEN=cook,chef"` and `./jh profiles categories NAME [--add|--remove|--set|--clear|--restore-preset]`.
+- **Presets** copy their categories into the new profile (same terms and weights as before, so the same scores). Profiles created earlier have none and behave exactly as before.
+- **Scoring:** the base score stays the one from titles, extra words and exclusions. A personal category that recognises a posting adds **at most +4** (word in the title) or **+2** (text only), never the sum,
+  and only if the posting is already relevant: it never lets a posting in by itself. With no matching category the label is `ALTRO` (reserved name).
+- With "Profilo: tutti" (all profiles) the chips and the filter show the categories of every active profile. Changing a profile's type replaces the old type's categories with the new one's.
+- Saving different categories recomputes the categories of that profile's saved postings (status and applications untouched) after a safety copy of the database in `backups/`.
+- Names and words are plain text: no HTML, and words are matched literally (never as regular expressions).
 
 ## How it works
 
@@ -338,7 +353,7 @@ Important notes:
 Every outgoing request introduces itself with a declared name, **never as a browser**:
 
 ```
-JobsHunter/0.2.0 (+personal job search tool; contact: you@example.org)
+JobsHunter/0.3.0 (+personal job search tool; contact: you@example.org)
 ```
 
 The contact is optional (an email or the project address) and is set in `[net] contact` or in Settings, "Advanced, network" block; with `[net] user_agent` you replace the whole header. If a site refuses requests (HTTP 403 or 429)
@@ -499,6 +514,8 @@ JobsHunter can search on its own, even with the app closed, and tell you when th
   another testing it independently (4 rounds, 15 problems found, 14 fixed).
 - **Phase 3, first run:** guided procedure (now seven steps, with the optional CV) for non-technical users (job, area, explained Adzuna keys with key test, report folder, first scan with progress), reopenable from Settings. See [First run](#first-run).
 - **Phase 4, CV comparison:** explained 0-100 affinity, all local. See [CV comparison](#cv-comparison). The first-run guide now has seven steps (the CV is the sixth, optional).
+- **Phase 6, personal categories per profile:** name and words per category, filters in the list, editable copy of the presets' categories, optional field in the guide,
+  `./jh profiles categories` commands. See [Personal categories per profile](#personal-categories-per-profile) and `docs/phase6_status.md`.
 - **Phase 5, polish for publication (0.2.0):** **honest and configurable User-Agent**, rename to **JobsHunter** with safe migration of data and scheduling, removal of personal data (`scripts/check_publishable.py`), disclaimer and credits,
   `THIRD_PARTY_NOTICES.md`, English README, screenshots, GitHub CI, final security review. See `CHANGELOG.md`.
 
