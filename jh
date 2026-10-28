@@ -1,0 +1,13 @@
+#!/bin/sh
+# Launcher: non dipende dall'install editable (macOS puo' nascondere il .pth) ne' dalla cartella corrente,
+# e funziona anche chiamato tramite un collegamento simbolico o un alias.
+SELF="$0"
+while [ -h "$SELF" ]; do
+  LINK="$(readlink "$SELF")"
+  case "$LINK" in
+    /*) SELF="$LINK" ;;
+    *) SELF="$(dirname "$SELF")/$LINK" ;;
+  esac
+done
+DIR="$(cd "$(dirname "$SELF")" && pwd)"
+PYTHONPATH="$DIR${PYTHONPATH:+:$PYTHONPATH}" exec "$DIR/.venv/bin/python" -m jobshunter "$@"

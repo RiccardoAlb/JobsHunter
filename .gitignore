@@ -1,0 +1,39 @@
+# ambiente e cache
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.DS_Store
+
+# dati personali: mai in Git
+config.toml
+settings.json
+jobhunter.db
+jobhunter.db-journal
+jobshunter.db
+jobshunter.db-journal
+*.db
+cv.json
+skills_extra.json
+scan.lock
+webview/
+reports/
+
+# esportazioni, segreti locali e log
+*.csv
+.env
+.env.*
+*.log
+.publish-forbidden.txt
+
+# note interne di sviluppo (fasi, collaudi, bug): non fanno parte del progetto pubblico
+docs/dev-notes/
+docs/phase*_status.md
+
+# build dell'app Mac
+dist/
+build/
+*.spec

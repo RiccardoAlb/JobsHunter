@@ -1,0 +1,16 @@
+Sam Sample (synthetic test CV, invented person)
+Data Analyst
+
+Professional experience
+Jan 2021 - Present  Data Analyst at Orange Analytics Ltd (invented company)
+Built dashboards in Power BI and Tableau, wrote SQL queries on PostgreSQL and SQL Server, automated reports with Python and pandas.
+Statistics, ETL pipelines, data quality checks. Worked in an Agile team with strong communication skills and attention to detail.
+
+Jun 2019 - Dec 2020  Junior analyst at Blue Retail Ltd (invented company)
+Excel reporting with pivot tables and VBA.
+
+Education
+2015 - 2019  BSc in Statistics, Example University
+
+Languages
+English (native), Italian B2.

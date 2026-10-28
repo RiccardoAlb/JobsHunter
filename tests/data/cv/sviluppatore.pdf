@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Length 831 >>
+stream
+BT
+/F1 11 Tf
+14 TL
+50 790 Td
+(Giulia Campione \(CV di prova, persona inventata\)) Tj T*
+(Sviluppatrice full stack) Tj T*
+() Tj T*
+(Esperienza) Tj T*
+(2019 - 2024  Sviluppatrice backend presso Delta Software \(azienda inventata\)) Tj T*
+(Sviluppo di API REST in Python con Django e FastAPI, database PostgreSQL e Redis, deploy con) Tj T*
+(Docker e Kubernetes.) Tj T*
+(Frontend in React e TypeScript. Pipeline CI/CD con GitLab CI e GitHub Actions, test con) Tj T*
+(pytest, metodologia Agile e Scrum.) Tj T*
+(Cloud AWS \(EC2, S3, Lambda\) e Terraform.) Tj T*
+() Tj T*
+(Istruzione) Tj T*
+(2014 - 2019  Laurea magistrale in Ingegneria informatica) Tj T*
+() Tj T*
+(Competenze) Tj T*
+(Python, JavaScript, TypeScript, Java, SQL, Git, Linux, Docker, REST API, microservizi.) Tj T*
+() Tj T*
+(Lingue) Tj T*
+(Inglese C1, spagnolo B1.) Tj T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000212 00000 n 
+0000001094 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1220
+%%EOF

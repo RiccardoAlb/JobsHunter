@@ -1,0 +1,2 @@
+# Solo per la finestra nativa su macOS (./jh app) e per costruire l'app: .venv/bin/pip install -r requirements-mac.txt
+pywebview; sys_platform == "darwin"

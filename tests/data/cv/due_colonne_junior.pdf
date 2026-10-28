@@ -1,0 +1,55 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 1136 >>
+stream
+BT
+/F1 10 Tf
+40 800 Td (Paolo Fittizio) Tj
+0 -15 Td (Junior security analyst in transizione dalla logistica) Tj
+0 -25 Td (Competenze) Tj
+0 -15 Td (SIEM, Splunk, Wazuh, Wireshark, Nmap, Linux, Python, Bash) Tj
+0 -15 Td (Active Directory, incident response, OWASP) Tj
+270 70 Td (Istruzione) Tj
+0 -20 Td (2014 - 2019 | ISTITUTO TECNICO INDUSTRIALE DI ESEMPIO |) Tj
+0 -15 Td (Diploma di perito informatico) Tj
+0 -20 Td (2019 - 2021 | UNIVERSITA' DEGLI STUDI DI ESEMPIO |) Tj
+0 -15 Td (Laurea triennale in Informatica \(non conclusa\)) Tj
+0 -20 Td (2026 | ACADEMY DI ESEMPIO INSTITUTE OF TECHNOLOGY |) Tj
+0 -20 Td (Esperienze professionali) Tj
+0 -18 Td (| FEB. 2023 - MARZ. 2026 |) Tj
+0 -14 Td (Addetto magazzino, Logistica Esempio Srl) Tj
+0 -14 Td (Gestione ordini, uso del gestionale e lavoro di squadra) Tj
+-270 56 Td (Corsi e certificazioni) Tj
+0 -15 Td (Agosto 2026 | Certificazione di esempio junior penetration tester |) Tj
+0 -15 Td (Maggio 2026 | Introduzione alla sicurezza informatica \(corso online\) |) Tj
+0 -15 Td (Giugno 2025 | Corso di Linux di base |) Tj
+0 -25 Td (Lingue) Tj
+0 -15 Td (Italiano madrelingua, Inglese B2) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001429 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1526
+%%EOF

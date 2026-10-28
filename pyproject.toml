@@ -1,0 +1,52 @@
+[project]
+name = "jobshunter"
+version = "0.2.0"
+description = "Personal job-search radar for macOS: collects postings from several sources, scores them, removes duplicates and checks they are still open. Local-first, no telemetry."
+readme = "README.en.md"
+requires-python = ">=3.11"
+keywords = ["job search", "job board", "adzuna", "jooble", "local-first", "macos"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Natural Language :: Italian",
+    "Natural Language :: English",
+    "Topic :: Office/Business",
+]
+dependencies = ["rich", "click", "httpx", "beautifulsoup4", "lxml", "flask", "geonamescache", "pypdf", "cryptography"]
+license = { file = "LICENSE" }
+
+[project.urls]
+Homepage = "https://github.com/RiccardoAlbanese/JobsHunter"
+Repository = "https://github.com/RiccardoAlbanese/JobsHunter"
+Issues = "https://github.com/RiccardoAlbanese/JobsHunter/issues"
+Changelog = "https://github.com/RiccardoAlbanese/JobsHunter/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+branding = ["pillow"]
+mac = ["pywebview; sys_platform == 'darwin'"]  # finestra nativa (./jh app e build dell'app Mac)
+dev = ["pytest"]
+
+[project.scripts]
+jobshunter = "jobshunter.cli:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["jobshunter", "jobshunter.sources", "jobshunter.gui"]
+
+[tool.setuptools.package-data]
+"jobshunter.gui" = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["slow: lenti (prestazioni)", "phase2: scritto contro la specifica della fase 2"]

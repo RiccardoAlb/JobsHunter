@@ -1,0 +1,21 @@
+Marco Esempio (CV di prova, persona inventata)
+Analista SOC junior
+
+Profilo
+Neolaureato in informatica con stage in un SOC. Cerco il primo impiego come analista di sicurezza (Blue Team).
+
+Esperienza
+03/2024 - 09/2024  Stage Security Analyst presso Acme Security Srl (azienda inventata)
+Triage degli alert su SIEM Splunk e Wazuh, analisi dei log, gestione di ticket di incident response, report settimanali.
+Uso di Wireshark e Nmap per analisi del traffico e vulnerability assessment di base.
+
+Istruzione
+2020 - 2023  Laurea triennale in Informatica, Universita' di Esempio
+2015 - 2020  Diploma di perito informatico
+
+Competenze
+SIEM, Splunk, Wazuh, EDR, MITRE ATT&CK, Wireshark, Nmap, Kali Linux, Metasploit, Active Directory, Linux, Windows, Python, Bash, SQL, Git.
+Cybersecurity, penetration testing, OWASP Top 10, CTF su TryHackMe e HackTheBox. Certificazione eJPT.
+
+Lingue
+Italiano madrelingua. Inglese B2 (scritto e parlato).

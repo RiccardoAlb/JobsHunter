@@ -1,0 +1,1968 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JobsHunter</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png?v=3">
+<link rel="icon" type="image/png" sizes="64x64" href="/assets/favicon-64.png?v=3">
+<link rel="shortcut icon" href="/favicon.ico?v=3">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=3">
+<script>try { var t = localStorage.getItem("jh-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<style>
+  :root {
+    --bg: #0b0b0c; --panel: #111113; --raised: #17171a; --line: #232327;
+    --text: #e6e6e8; --muted: #8c8c95; --dim: #5b5b63;
+    --red: #c4574d; --blue: #5b8fd1; --purple: #9a7bd0; --yellow: #c9a24e; --teal: #6fb3a6; --green: #6fae7a;
+    --line2: #34343a; --line3: #4a4a52; --hover: #101012; --rowline: #161619; --body: #c9c9ce;
+    --stopline: #3b2422; --stopline2: #5a312d; --stopbg: #1d1211; --okline: #2c3a2f; --sel: #3a3a42; --primhover: #fff;
+    color-scheme: dark;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f6f7; --panel: #ffffff; --raised: #efeff2; --line: #e1e1e6;
+    --text: #17171a; --muted: #5f5f69; --dim: #9a9aa4;
+    --red: #b8433a; --blue: #2f6fc0; --purple: #7a56c0; --yellow: #9c7416; --teal: #2a8576; --green: #2f8a45;
+    --line2: #cfcfd7; --line3: #a8a8b2; --hover: #f1f1f4; --rowline: #ececf0; --body: #2b2b31;
+    --stopline: #e4c2be; --stopline2: #d29790; --stopbg: #fbeeed; --okline: #b7d8bf; --sel: #d8d8e0; --primhover: #000;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 var(--sans); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  ::selection { background: var(--sel); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 2px solid var(--bg); }
+
+  .app { display: flex; flex-direction: column; height: 100%; max-width: 1560px; margin: 0 auto; }
+
+  /* header */
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
+  .brand { font: 600 13px var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+  .brand span { color: var(--dim); }
+  .stats { display: flex; gap: 18px; margin-left: 8px; color: var(--muted); font: 12px var(--mono); }
+  .stats b { color: var(--text); font-weight: 500; }
+  .spacer { flex: 1; }
+  .btn { background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 7px 14px; font-size: 13px; transition: .12s; }
+  .btn:hover:not(:disabled) { background: var(--raised); border-color: var(--line2); }
+  .btn:disabled { opacity: .35; cursor: default; }
+  .btn.primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+  .btn.primary:hover:not(:disabled) { background: var(--primhover); }
+  .btn.stop { color: var(--red); border-color: var(--stopline); }
+  .btn.stop:hover:not(:disabled) { background: var(--stopbg); border-color: var(--stopline2); }
+
+  /* toolbar */
+  .toolbar { display: flex; align-items: center; gap: 8px; padding: 12px 24px; flex-wrap: wrap; }
+  .chip { background: transparent; border: 1px solid var(--line); color: var(--muted); border-radius: 999px; padding: 4px 12px; font-size: 12px; transition: .12s; }
+  .chip:hover { color: var(--text); border-color: var(--line2); }
+  .chip.on { background: var(--raised); color: var(--text); border-color: var(--line2); }
+  .chip i { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .sep { width: 1px; height: 18px; background: var(--line); margin: 0 6px; }
+  input[type=search], select { background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 13px; outline: none; }
+  input[type=search]:focus, select:focus { border-color: var(--line2); }
+  input[type=search] { width: 200px; }
+
+  /* scan panel */
+  .scan { margin: 0 24px 4px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 12px 16px; display: none; }
+  .scan.show { display: block; }
+  .scan-head { display: flex; align-items: center; gap: 12px; font: 12px var(--mono); color: var(--muted); margin-bottom: 8px; }
+  .scan-head b { color: var(--text); font-weight: 500; }
+  .bar { height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; flex: 1; }
+  .bar > div { height: 100%; background: var(--text); width: 0; transition: width .4s; }
+  .src { display: flex; gap: 12px; font: 12px var(--mono); padding: 2px 0; color: var(--muted); }
+  .src .n { width: 96px; color: var(--text); }
+  .src .s { width: 74px; }
+  .src .s.running { color: var(--yellow); } .src .s.done { color: var(--green); } .src .s.error { color: var(--red); } .src .s.stopped { color: var(--dim); }
+
+  /* main */
+  main { flex: 1; display: flex; min-height: 0; }
+  .list { flex: 1; overflow: auto; padding: 0 24px 24px; min-width: 0; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); padding: 8px 10px; position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); z-index: 1; }
+  td { padding: 10px; border-bottom: 1px solid var(--rowline); vertical-align: middle; }
+  tr.row { cursor: pointer; }
+  tr.row:hover td { background: var(--hover); }
+  tr.row.sel td { background: var(--raised); }
+  tr.row.dim td { opacity: .45; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+  .cat { font: 500 11px var(--mono); letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
+  .cat .dot { margin-right: 7px; }
+  .score { font: 12px var(--mono); color: var(--text); white-space: nowrap; }
+  .score .sb { display: inline-block; width: 36px; height: 2px; background: var(--line); margin-left: 8px; vertical-align: middle; border-radius: 2px; overflow: hidden; }
+  .score .sb i { display: block; height: 100%; background: var(--muted); }
+  .t-title { color: var(--text); }
+  .t-sub { color: var(--muted); font-size: 12px; margin-top: 1px; }
+  .muted { color: var(--muted); }
+  .st { font: 13px var(--mono); text-align: center; width: 28px; }
+  .empty { text-align: center; color: var(--dim); padding: 80px 0; font: 13px var(--mono); }
+
+  /* drawer */
+  aside { width: 0; border-left: 1px solid transparent; overflow: hidden; transition: width .18s ease; background: var(--panel); flex: none; }
+  aside.open { width: 480px; border-left-color: var(--line); }
+  .drawer { width: 480px; height: 100%; overflow: auto; padding: 22px 24px 40px; }
+  .d-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .x { background: none; border: none; color: var(--dim); font-size: 20px; padding: 0 4px; line-height: 1; }
+  .x:hover { color: var(--text); }
+  .d-title { font-size: 18px; font-weight: 600; line-height: 1.3; margin: 0 0 4px; }
+  .d-co { color: var(--muted); margin-bottom: 18px; }
+  .meta { display: grid; grid-template-columns: 92px 1fr; gap: 6px 12px; font-size: 13px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .meta dt { color: var(--dim); font: 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding-top: 2px; }
+  .meta dd { margin: 0; }
+  .kw { display: flex; flex-wrap: wrap; gap: 6px; }
+  .kw span { font: 11px var(--mono); border: 1px solid var(--line); color: var(--muted); border-radius: 4px; padding: 1px 6px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  a.btn { text-decoration: none; display: inline-block; }
+  .body { white-space: pre-wrap; word-wrap: break-word; color: var(--body); font-size: 13px; line-height: 1.6; }
+  .loading { color: var(--dim); font: 12px var(--mono); padding: 12px 0; }
+
+
+  [hidden] { display: none !important; }
+  .tabs { display: flex; gap: 2px; margin-left: 10px; }
+  .tab { background: none; border: none; color: var(--muted); padding: 6px 12px; border-radius: 6px; font-size: 13px; }
+  .tab:hover { color: var(--text); }
+  .tab.on { color: var(--text); background: var(--raised); }
+  .pill.soft { background: var(--raised); color: var(--muted); border: 1px solid var(--line); }
+  .jnote { margin: 0 24px 8px; padding: 10px 14px; border: 1px dashed var(--line2); border-radius: 8px; color: var(--muted); font-size: 12.5px; }
+  .jnote b { color: var(--text); font-weight: 500; }
+  .pill { display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 6px; border-radius: 9px; background: var(--text); color: var(--bg); font: 600 11px var(--mono); text-align: center; }
+
+  /* duplicati */
+  .dups { flex: 1; overflow: auto; padding: 4px 24px 40px; }
+  .dup-intro { color: var(--muted); font-size: 13px; max-width: 720px; margin: 14px 0 14px; }
+  .dup-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .dcard { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin-bottom: 14px; overflow: hidden; }
+  .dcard.confirmed { border-color: var(--okline); }
+  .dhead { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+  .dpct { font: 600 22px var(--mono); letter-spacing: -.02em; }
+  .dpct small { display: block; font: 11px var(--mono); color: var(--dim); letter-spacing: .06em; text-transform: uppercase; }
+  .dbar { flex: 1; max-width: 160px; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .dbar i { display: block; height: 100%; background: var(--text); }
+  .dpair { display: grid; grid-template-columns: 1fr 1fr; }
+  .dside { padding: 16px 18px; min-width: 0; }
+  .dside + .dside { border-left: 1px solid var(--line); }
+  .dtag { display: inline-block; font: 600 10px var(--mono); letter-spacing: .1em; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); margin-bottom: 8px; }
+  .dtag.keep { color: var(--green); border-color: var(--okline); }
+  .dtag.hide { color: var(--dim); }
+  .dtitle { font-weight: 600; margin-bottom: 2px; }
+  .dmeta { color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+  .dmeta a { color: var(--muted); }
+  .dmeta a:hover { color: var(--text); }
+  .dact { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .chk { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; font-size: 13px; }
+  .chk input { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; border: 1px solid var(--line3); border-radius: 5px; background: transparent; cursor: pointer; display: grid; place-items: center; transition: .12s; margin: 0; }
+  .chk input:hover { border-color: var(--text); }
+  .chk input:checked { background: var(--text); border-color: var(--text); }
+  .chk input:checked::after { content: ""; width: 5px; height: 10px; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px, -1px); }
+  .dnote { color: var(--dim); font: 11.5px var(--mono); margin-left: auto; }
+  @media (max-width: 900px) { .dpair { grid-template-columns: 1fr; } .dside + .dside { border-left: none; border-top: 1px solid var(--line); } .dups { padding: 4px 16px 40px; } }
+
+  .chipx { background: none; border: none; color: var(--dim); margin-left: 6px; cursor: pointer; padding: 0 2px; font-size: 14px; line-height: 1; }
+  .chipx:hover { color: var(--text); }
+  .km { color: var(--dim); font: 11.5px var(--mono); margin-left: 6px; }
+  .pop { position: fixed; z-index: 20; width: 320px; background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.35); }
+  .pop h4 { margin: 0 0 12px; font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .pop label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 6px; }
+  .pop input[type=text] { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 8px 10px; font: inherit; font-size: 13px; outline: none; }
+  .pop input[type=text]:focus { border-color: var(--line2); }
+  .pop .row { display: flex; align-items: center; gap: 12px; }
+  .pop input[type=range] { flex: 1; accent-color: var(--text); }
+  .pop .row b { min-width: 64px; text-align: right; font: 500 13px var(--mono); }
+  .pop label.chk { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+  .pop .acts { display: flex; gap: 8px; margin-top: 16px; }
+  .pop .note { margin-top: 12px; color: var(--dim); font-size: 11.5px; line-height: 1.5; }
+
+  /* candidature */
+  .apps { flex: 1; overflow: auto; padding: 14px 24px 40px; }
+  .btn.sm { padding: 4px 10px; font-size: 12px; }
+  .btn.danger { color: var(--red); border-color: var(--stopline); }
+  .acard { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin-bottom: 12px; }
+  .acard.closed { opacity: .72; }
+  .ahead { display: flex; align-items: flex-start; gap: 24px; padding: 16px 18px 12px; flex-wrap: wrap; }
+  .atitle { flex: 1 1 260px; min-width: 0; }
+  .aco { font-weight: 600; font-size: 15px; }
+  .arole { color: var(--body); margin-top: 1px; }
+  .ameta { color: var(--muted); font-size: 12.5px; margin-top: 6px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .atag { font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line2); border-radius: 999px; padding: 2px 9px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .atag.late { color: var(--red); border-color: var(--stopline2); }
+  .astage { flex: 1 1 320px; max-width: 520px; padding-top: 4px; }
+  input.stage { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 0; cursor: pointer; }
+  input.stage:disabled { cursor: default; }
+  input.stage::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: linear-gradient(to right, var(--text) var(--p, 0%), var(--line2) var(--p, 0%)); }
+  input.stage::-moz-range-track { height: 3px; border-radius: 2px; background: var(--line2); }
+  input.stage::-moz-range-progress { height: 3px; border-radius: 2px; background: var(--text); }
+  input.stage::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--text); border: 4px solid var(--panel); box-shadow: 0 0 0 1px var(--line3); margin-top: -7.5px; }
+  input.stage::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--text); border: 4px solid var(--panel); }
+  input.stage:disabled::-webkit-slider-thumb { background: var(--dim); }
+  .stagelabels { display: flex; justify-content: space-between; margin-top: 2px; }
+  .sl { background: none; border: none; color: var(--dim); font: 12px var(--sans); padding: 2px 0; cursor: pointer; }
+  .sl:hover:not(:disabled) { color: var(--text); }
+  .sl.done { color: var(--muted); } .sl.on { color: var(--text); font-weight: 600; }
+  .sl:disabled { cursor: default; }
+  .aacts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 0 18px 14px; }
+  .aacts .grow { flex: 1; }
+  .adet { border-top: 1px solid var(--line); padding: 16px 18px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .adet h5 { margin: 0 0 10px; font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .fl { display: block; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .fl input, .fl textarea, .aform input, .aform textarea { display: block; width: 100%; margin-top: 4px; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; outline: none; }
+  .fl input:focus, .fl textarea:focus, .aform input:focus, .aform textarea:focus { border-color: var(--line2); }
+  textarea { resize: vertical; min-height: 84px; }
+  .tl { list-style: none; margin: 0; padding: 0; }
+  .tl li { display: flex; gap: 12px; font-size: 13px; padding: 5px 0; border-bottom: 1px solid var(--rowline); }
+  .tl li time { color: var(--dim); font: 12px var(--mono); min-width: 84px; }
+  .aform { border: 1px solid var(--line2); border-radius: 10px; background: var(--panel); padding: 16px 18px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 16px; }
+  .aform .full { grid-column: 1 / -1; }
+  .aform .fl { margin: 0; }
+  @media (max-width: 900px) { .adet, .aform { grid-template-columns: 1fr; } .apps { padding: 14px 16px 40px; } }
+
+  /* impostazioni */
+  .sgroup { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 16px 18px 8px; margin-bottom: 14px; max-width: 900px; }
+  .sgroup h4 { margin: 0 0 14px; font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .srow { display: grid; grid-template-columns: 250px 1fr auto; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .srow > label { font-size: 13px; color: var(--muted); }
+  .srow input[type=text], .srow input[type=password], .srow input[type=number] { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; outline: none; }
+  .srow input:focus { border-color: var(--line2); }
+  .shint { color: var(--dim); font-size: 12px; margin: -4px 0 12px; line-height: 1.5; }
+  .sfoot { color: var(--dim); font: 12px var(--mono); max-width: 900px; line-height: 1.8; margin-top: 18px; word-break: break-all; }
+  .sfoot b { color: var(--muted); font-weight: 500; }
+  .sbar { max-width: 900px; display: flex; gap: 8px; align-items: center; margin: 4px 0 16px; }
+  @media (max-width: 900px) { .srow { grid-template-columns: 1fr; } }
+
+  .pop.wide { width: 390px; max-height: 80vh; overflow: auto; }
+  .pchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pop .sub { font-size: 11.5px; color: var(--dim); margin: 6px 0 0; }
+
+  .av { font: 11px var(--mono); margin-left: 8px; }
+  .av.open { color: var(--green); } .av.closed { color: var(--red); }
+  tr.row.gone td { opacity: .5; }
+  .abox { border: 1px solid var(--line2); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-size: 13px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .abox .grow { flex: 1; min-width: 160px; line-height: 1.45; }
+  .abox small { display: block; color: var(--muted); font-size: 12px; }
+  .abox.open { border-color: var(--okline); }
+  .abox.open b { color: var(--green); font-weight: 600; }
+  .abox.closed { border-color: var(--stopline2); background: var(--stopbg); }
+  .abox.closed b { color: var(--red); font-weight: 600; }
+
+  .shist { font: 12px var(--mono); color: var(--muted); line-height: 1.9; margin: 2px 0 10px; }
+  .shist b { color: var(--text); font-weight: 500; }
+  .srow .inl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .srow .inl select, .srow .inl input[type=text] { width: auto; min-width: 150px; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; }
+  .sstatus { font-size: 13px; margin: 0 0 12px; }
+  .sstatus b { font-weight: 600; } .sstatus .on { color: var(--green); }
+
+  /* ricerca: profili */
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; max-width: 1100px; margin-bottom: 18px; }
+  .pcard { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .pcard.off { opacity: .6; }
+  .pname { font-weight: 600; font-size: 15px; word-break: break-word; }
+  .psub { color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+  .pcount { font: 12px var(--mono); color: var(--muted); }
+  .pcount button { background: none; border: none; color: var(--text); text-decoration: underline; padding: 0; font: inherit; cursor: pointer; }
+  .pacts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+  .editor { border: 1px solid var(--line2); border-radius: 10px; background: var(--panel); padding: 18px 20px 20px; max-width: 900px; margin-bottom: 20px; }
+  .editor h3 { margin: 0 0 14px; font-size: 16px; }
+  .editor .fl { margin-bottom: 14px; }
+  .editor .fl > span.lab { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .editor input[type=text], .editor select { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 7px 10px; font: inherit; font-size: 13px; outline: none; }
+  .editor input[type=text]:focus, .editor select:focus { border-color: var(--line2); }
+  .editor .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+  .editor .hint { color: var(--dim); font-size: 12px; margin-top: 4px; line-height: 1.5; }
+  .editor .err { color: var(--red); font-size: 13px; margin: 8px 0; min-height: 18px; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .tag { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; border: 1px solid var(--line2); border-radius: 999px; padding: 2px 4px 2px 10px; color: var(--text); background: var(--raised); }
+  .tag button { background: none; border: none; color: var(--dim); font-size: 14px; line-height: 1; padding: 0 5px; cursor: pointer; }
+  .tag button:hover { color: var(--text); }
+  .tag.sug { border-style: dashed; color: var(--muted); padding: 2px 10px; background: transparent; cursor: pointer; }
+  .tag.sug:hover { color: var(--text); }
+  .editor .row2 { display: flex; gap: 20px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+  .prev { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 14px; font-size: 13px; color: var(--body); }
+  .prev h5 { margin: 12px 0 6px; font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .prev ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+  .prev .note { color: var(--yellow); font-size: 12.5px; margin: 4px 0; }
+  .sel-prof { max-width: 190px; }
+  @media (max-width: 900px) { .editor .two { grid-template-columns: 1fr; } }
+
+  /* guida di primo avvio */
+  .onb { position: fixed; inset: 0; z-index: 60; background: var(--bg); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .onb-card { max-width: 700px; min-height: 100%; margin: 0 auto; padding: 22px 24px 0; display: flex; flex-direction: column; }
+  .onb-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 26px; }
+  .onb-brand { font: 600 13px var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+  .onb-brand span { color: var(--dim); }
+  .onb-linkbtn { background: none; border: none; color: var(--muted); text-decoration: underline; padding: 6px 2px; font-size: 13px; margin-left: auto; }
+  .onb-linkbtn:hover { color: var(--text); }
+  .onb-prog { margin-bottom: 26px; }
+  .onb-segs { display: flex; gap: 5px; margin-bottom: 8px; }
+  .onb-seg { flex: 1; height: 3px; border-radius: 2px; background: var(--line2); }
+  .onb-seg.done, .onb-seg.on { background: var(--text); }
+  .onb-seg.on { background: var(--blue); }
+  .onb-stepname { font: 12px var(--mono); color: var(--muted); letter-spacing: .04em; }
+  .onb-body { flex: 1; padding-bottom: 28px; }
+  .onb-body h2 { font-size: 24px; line-height: 1.25; margin: 0 0 10px; font-weight: 600; outline: none; letter-spacing: -.01em; }
+  .onb-body h3 { font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 26px 0 10px; }
+  .onb-body p { color: var(--body); font-size: 15px; line-height: 1.6; margin: 0 0 12px; }
+  .onb-body .lead { color: var(--muted); font-size: 15px; margin-bottom: 20px; }
+  .onb-body ul.plain, .onb-body ol.plain { margin: 0 0 14px; padding-left: 22px; color: var(--body); font-size: 14px; line-height: 1.7; }
+  .onb-body ol.plain li { padding-left: 4px; margin-bottom: 4px; }
+  .onb-body ul.plain b { color: var(--text); font-weight: 600; }
+  .onb-fl { display: block; margin: 0 0 16px; }
+  .onb-fl > .lab { display: block; font-size: 13px; color: var(--text); font-weight: 500; margin-bottom: 6px; }
+  .onb-fl .hint { display: block; color: var(--dim); font-size: 12.5px; margin-top: 5px; line-height: 1.5; }
+  .onb input[type=text], .onb input[type=password], .onb select, .onb textarea { width: 100%; background: var(--panel); border: 1px solid var(--line2); color: var(--text); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: 15px; outline: none; }
+  .onb textarea { min-height: 112px; resize: vertical; line-height: 1.5; }
+  .onb input:focus, .onb select:focus, .onb textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 22%, transparent); }
+  .onb button:focus-visible, .onb a:focus-visible, .onb summary:focus-visible, .onb-opt:has(input:focus-visible) { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .onb-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .onb-row > .grow { flex: 1 1 200px; min-width: 0; }
+  .onb-opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .onb-opt { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--line2); border-radius: 10px; background: var(--panel); padding: 12px 14px; cursor: pointer; }
+  .onb-opt:hover { border-color: var(--line3); }
+  .onb-opt:has(input:checked) { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 9%, var(--panel)); }
+  .onb-opt input { margin: 3px 0 0; accent-color: var(--blue); flex: none; width: 17px; height: 17px; }
+  .onb-opt b { display: block; font-weight: 600; font-size: 14px; }
+  .onb-opt small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.5; margin-top: 2px; }
+  .onb-err { color: var(--red); font-size: 14px; background: var(--stopbg); border: 1px solid var(--stopline2); border-radius: 8px; padding: 10px 14px; margin: 16px 0 0; line-height: 1.5; }
+  .onb-box { border: 1px solid var(--line2); border-radius: 10px; background: var(--panel); padding: 16px 18px; margin: 0 0 16px; }
+  .onb-box h4 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+  .onb-box p { font-size: 14px; }
+  .onb-note { color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .onb-res { border: 1px solid var(--line2); border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 14px; line-height: 1.5; }
+  .onb-res.ok { border-color: var(--okline); color: var(--green); }
+  .onb-res.bad { border-color: var(--stopline2); background: var(--stopbg); color: var(--red); }
+  .onb-res.warn { border-color: var(--yellow); color: var(--yellow); }
+  .onb details { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 12px 16px; margin-bottom: 16px; }
+  .onb summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+  .onb details[open] summary { margin-bottom: 12px; }
+  .onb-sum { display: grid; grid-template-columns: 150px 1fr; gap: 8px 16px; font-size: 14px; margin: 0 0 18px; }
+  .onb-sum dt { color: var(--dim); }
+  .onb-sum dd { margin: 0; color: var(--text); word-break: break-word; }
+  .onb-foot { position: sticky; bottom: 0; background: var(--bg); border-top: 1px solid var(--line); padding: 14px 0 max(14px, env(safe-area-inset-bottom)); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .onb-foot .grow { flex: 1; }
+  .onb a.btn { color: var(--text); }
+  .onb .btn { padding: 10px 18px; font-size: 14px; }
+  .onb .btn.sm { padding: 6px 12px; font-size: 13px; }
+  .onb-bar { height: 4px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 14px 0 18px; }
+  .onb-bar > div { height: 100%; background: var(--blue); width: 0; transition: width .4s; }
+  .onb-srcs { font: 13px var(--mono); color: var(--muted); line-height: 2; }
+  .onb-srcs .s.done { color: var(--green); } .onb-srcs .s.running { color: var(--yellow); } .onb-srcs .s.error { color: var(--red); }
+  .onb-big { font-size: 40px; font-weight: 600; letter-spacing: -.02em; margin: 6px 0 4px; }
+  @media (max-width: 600px) {
+    .onb-card { padding: 16px 16px 0; }
+    .onb-body h2 { font-size: 21px; }
+    .onb-opts { grid-template-columns: 1fr; }
+    .onb-sum { grid-template-columns: 1fr; gap: 0; }
+    .onb-sum dt { margin-top: 10px; font-size: 12px; }
+    .onb-foot .btn { flex: 1 1 auto; }
+    .onb-foot .grow { display: none; }
+    .onb-foot .btn.primary { order: -1; flex-basis: 100%; }
+  }
+
+  /* attribuzione Adzuna: almeno 116x23 px, sempre con link al sito */
+  a.adz { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 116px; min-height: 23px; padding: 0 8px; border: 1px solid var(--line2); border-radius: 4px; background: var(--panel); color: var(--muted); font: 12px/1 var(--sans); text-decoration: none; white-space: nowrap; vertical-align: middle; }
+  a.adz b { color: var(--blue); font-weight: 700; margin-left: 3px; }
+  a.adz:hover { border-color: var(--line3); color: var(--text); }
+  .t-sub .adz { margin-left: 8px; }
+  /* il tuo CV */
+  .cvs { font: 12px var(--mono); white-space: nowrap; }
+  .cvs.hi { color: var(--green); } .cvs.lo { color: var(--dim); }
+  th.cvh { cursor: pointer; }
+  .cvx { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 14px 0; }
+  .cvx h4 { margin: 0 0 8px; font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .cvx-top { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+  .cvx-score { font-size: 26px; font-weight: 600; }
+  .cvx-l { font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  .cvk.ok span { border-color: var(--okline); color: var(--green); }
+  .cvk.no span { color: var(--dim); }
+  .cvx ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+  .cvbox .skl { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+  .skchip { display: inline-flex; align-items: center; font: 11px var(--mono); border: 1px solid var(--line); border-radius: 999px; padding: 2px 4px 2px 10px; color: var(--muted); }
+  .skchip button { background: none; border: 0; color: var(--dim); padding: 0 6px; font-size: 14px; line-height: 1; }
+  .cvbox textarea { width: 100%; min-height: 90px; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 8px 10px; font: inherit; }
+  .cvbox input[type=text] { background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 7px 10px; font: inherit; min-width: 0; }
+  .cvbox .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+  .cverr { color: var(--red); font-size: 13px; margin: 6px 0; }
+
+  /* toast */
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translate(-50%, 20px); background: var(--raised); border: 1px solid var(--line2); border-radius: 8px; padding: 10px 16px; font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; max-width: 80vw; }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast small { display: block; color: var(--muted); font: 11px var(--mono); margin-top: 2px; word-break: break-all; }
+
+  @media (max-width: 900px) {
+    aside.open { position: fixed; inset: 0; width: 100%; z-index: 5; }
+    .drawer { width: 100%; }
+    .stats, .hide-sm { display: none; }
+    header, .toolbar { padding-left: 16px; padding-right: 16px; }
+    header { flex-wrap: wrap; row-gap: 8px; gap: 8px; }
+    .tabs { order: 5; width: 100%; margin-left: 0; overflow-x: auto; }
+    .tab { white-space: nowrap; }
+    .pgrid { grid-template-columns: 1fr; }
+    .list { padding: 0 16px 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">Jobs<span>/</span>Hunter</div>
+    <nav class="tabs">
+      <button class="tab on" data-v="jobs">Annunci</button>
+      <button class="tab" data-v="search" title="Cosa cerchi: profili di ricerca, paesi e luoghi">Ricerca</button>
+      <button class="tab" data-v="jooble" title="Annunci Jooble: solo anteprima, testo completo sul sito">Jooble<span class="pill soft" id="jooBadge" hidden></span></button>
+      <button class="tab" data-v="apps">Candidature<span class="pill soft" id="appBadge" hidden></span></button>
+      <button class="tab" data-v="dups">Duplicati<span class="pill" id="dupBadge" hidden></span></button>
+      <button class="tab" data-v="settings">Impostazioni</button>
+    </nav>
+    <div class="stats" id="stats"></div>
+    <div class="spacer"></div>
+    <button class="btn" id="btnTheme" title="Cambia tema (chiaro/scuro)">☀ Chiaro</button>
+    <button class="btn" id="btnReport" title="Genera un report Markdown con i filtri attuali">Genera report</button>
+    <button class="btn stop" id="btnStop" disabled>Stop</button>
+    <button class="btn primary" id="btnScan">Scan</button>
+  </header>
+
+  <div class="toolbar" id="toolbar"></div>
+
+  <div class="jnote" id="jnote" hidden><b>Sezione Jooble.</b> Qui c'è solo l'anteprima di ogni annuncio: il testo completo si legge sul sito (pulsante "Apri e candidati"). Gli annunci doppi con Adzuna sono già nascosti.</div>
+
+  <div class="jnote" id="setupnote" hidden></div>
+  <div class="jnote" id="newsnote" hidden></div>
+  <div class="jnote" id="jnear" hidden></div>
+
+  <div class="scan" id="scan"></div>
+
+  <section class="apps" id="appview" hidden>
+    <div class="dup-bar" id="appbar"></div>
+    <div id="appform"></div>
+    <div id="applist"></div>
+  </section>
+
+  <section class="apps" id="searchview" hidden>
+    <div id="searchcontent"></div>
+  </section>
+
+  <section class="apps" id="setview" hidden>
+    <div id="setcontent"></div>
+  </section>
+
+  <section class="dups" id="dupview" hidden>
+    <p class="dup-intro">L'app propone le coppie che sembrano lo stesso annuncio, con una percentuale di somiglianza. Decidi tu: spunta la casella per confermare un duplicato (quello nascosto sparisce da lista e report) oppure scegli "Non è duplicato". Le decisioni restano salvate.</p>
+    <div class="dup-bar" id="dupbar"></div>
+    <div id="duplist"></div>
+  </section>
+
+  <main>
+    <div class="list">
+      <table>
+        <thead><tr>
+          <th></th><th>Tipo</th><th>Score</th><th>Ruolo</th><th class="hide-sm">Sede</th><th class="hide-sm">Stipendio</th><th class="cvh" id="thCv" title="Affinità col tuo CV: clicca per ordinare" hidden>CV</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>Nessun annuncio. Premi Scan.</div>
+    </div>
+    <aside id="aside"><div class="drawer" id="drawer"></div></aside>
+  </main>
+</div>
+<div class="onb" id="onb" role="dialog" aria-modal="true" aria-label="Guida di primo avvio" hidden>
+  <div class="onb-card">
+    <div class="onb-top"><div class="onb-brand">Jobs<span>/</span>Hunter</div><button class="onb-linkbtn" id="onbSkip" type="button">Salta la guida</button></div>
+    <div class="onb-prog" id="onbProg"></div>
+    <div class="onb-body" id="onbBody"></div>
+    <div class="onb-foot" id="onbFoot"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const COLORS = { RED: "var(--red)", BLUE: "var(--blue)", PURPLE: "var(--purple)", SYSADM: "var(--yellow)", SEC: "var(--teal)" };
+const CATS = ["BLUE", "RED", "SYSADM", "SEC", "PURPLE"];
+const F = { cat: "", near: false, only_new: false, q: "", min: 0, group: "main", geo: null, profile: "all" };
+try { const g = localStorage.getItem("jh-profile"); if (g) F.profile = g; } catch (e) {}
+const saveProfile = () => { try { localStorage.setItem("jh-profile", F.profile); } catch (e) {} };
+let catKeys = [];  // categorie presenti nella lista (i profili non cyber hanno le loro)
+const PALETTE = ["var(--teal)", "var(--yellow)", "var(--blue)", "var(--purple)", "var(--green)", "var(--red)"];
+const catColor = (c) => COLORS[c] || (c ? PALETTE[[...c].reduce((a, ch) => a + ch.charCodeAt(0), 0) % PALETTE.length] : "var(--dim)");
+try { const g = JSON.parse(localStorage.getItem("jh-geo") || "null"); if (g && g.city) F.geo = g; } catch (e) {}
+const saveGeo = () => { try { localStorage.setItem("jh-geo", JSON.stringify(F.geo)); } catch (e) {} };
+const FLT0 = () => ({ company: "", where: [], mode: [], contract: [], ralMin: 0, ralUnk: true });
+F.flt = FLT0();
+F.closed = false;  // mostra anche gli annunci verificati come chiusi
+let closedCount = 0, checking = false, lastCheck = null;
+try { const g = JSON.parse(localStorage.getItem("jh-flt") || "null"); if (g) F.flt = { ...FLT0(), ...g }; } catch (e) {}
+const saveFlt = () => { try { localStorage.setItem("jh-flt", JSON.stringify(F.flt)); } catch (e) {} };
+const AV_LABEL = { open: "aperto", closed: "chiuso" };
+const fltCount = () => (F.flt.company ? 1 : 0) + (F.flt.where.length ? 1 : 0) + (F.flt.mode.length ? 1 : 0) + (F.flt.contract.length ? 1 : 0) + (F.flt.ralMin > 0 ? 1 : 0);
+const fltBody = () => ({ company: F.flt.company, where: F.flt.where, mode: F.flt.mode, contract: F.flt.contract, ral_min: F.flt.ralMin, ral_unk: F.flt.ralUnk ? "1" : "0" });
+const MODE_LABEL = { remote: "Remoto", hybrid: "Ibrido", onsite: "In presenza", unknown: "Non indicato" };
+const CONTRACT_LABEL = { internship: "Stage/tirocinio", apprenticeship: "Apprendistato", fixed: "Determinato", permanent: "Indeterminato", other: "Altro", unknown: "Non indicato" };
+const CONTRACT_SHORT = { internship: "stage", apprenticeship: "apprendistato", fixed: "determinato", permanent: "indeterminato", other: "somm./P.IVA" };
+const MODE_SHORT = { remote: "remoto", hybrid: "ibrido", onsite: "in sede" };
+let CV = { present: false };
+F.cvMin = 0; F.sortCv = false;
+let jobs = [], selected = null, polling = null, scanWasRunning = false;
+
+/* ---- piccolo helper DOM: tutto il testo passa da textContent (niente HTML da fonti esterne) ---- */
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === "class") e.className = v;
+    else if (k === "style") e.style.cssText = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null) e.append(c.nodeType ? c : document.createTextNode(c));
+  return e;
+}
+const $ = (id) => document.getElementById(id);
+const api = async (path, opts) => {
+  const r = await fetch(path, opts);
+  if (!r.ok && r.status !== 404 && r.status !== 409) throw new Error(r.status);
+  return r.json();
+};
+const postRaw = async (path, body) => {  // come post, ma restituisce anche gli errori di validazione (400)
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+  let data = {}; try { data = await r.json(); } catch (e) {}
+  return { ok: r.ok, status: r.status, data };
+};
+const post = (path, body) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+const ADZUNA_URL = "https://www.adzuna.co.uk";
+const adzunaBadge = () => el("a", { class: "adz", href: ADZUNA_URL, target: "_blank", rel: "noopener noreferrer", title: "Annunci forniti da Adzuna", onclick: (e) => e.stopPropagation() }, "Jobs by", el("b", {}, "Adzuna"));
+const safeUrl = (u) => /^https?:\/\//i.test(u) ? u : "#";
+
+function toast(msg, sub) {
+  const t = $("toast");
+  t.replaceChildren(msg, sub ? el("small", {}, sub) : "");
+  t.classList.add("show");
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.classList.remove("show"), 5000);
+}
+
+const fmtDate = (iso, time) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? "" : d.toLocaleString("it-IT", time ? { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit", year: "numeric" });
+};
+
+/* ---- tema ---- */
+let theme = "dark";
+try { theme = localStorage.getItem("jh-theme") || "dark"; } catch (e) {}
+function applyTheme(t) { document.documentElement.dataset.theme = t; $("btnTheme").textContent = t === "light" ? "☾ Scuro" : "☀ Chiaro"; }
+applyTheme(theme);
+$("thCv").onclick = () => { F.sortCv = !F.sortCv; refresh(); };
+$("btnTheme").onclick = () => { theme = theme === "light" ? "dark" : "light"; applyTheme(theme); try { localStorage.setItem("jh-theme", theme); } catch (e) {} };
+
+/* ---- toolbar ---- */
+function renderToolbar() {
+  const tb = $("toolbar");
+  const chip = (label, on, fn, dot) => el("button", { class: "chip" + (on ? " on" : ""), onclick: fn },
+    dot ? el("i", { style: `background:${dot}` }) : null, label);
+  const search = el("input", { type: "search", placeholder: "Cerca ruolo o azienda", value: F.q });
+  let t; search.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { F.q = search.value.trim(); loadJobs(); }, 250); });
+  const min = el("select", { onchange: (e) => { F.min = +e.target.value; loadJobs(); } },
+    [[0, "Score: tutti"], [20, "Score 20+"], [40, "Score 40+"], [60, "Score 60+"]].map(([v, l]) => el("option", { value: v, selected: F.min === v }, l)));
+  const profSel = profiles.length > 1 ? el("select", { class: "sel-prof", title: "Mostra gli annunci di un solo profilo di ricerca", onchange: (e) => { F.profile = e.target.value; saveProfile(); F.cat = ""; refresh(); } },
+    el("option", { value: "all", selected: F.profile === "all" }, "Profilo: tutti"),
+    profiles.map((p) => el("option", { value: String(p.id), selected: String(p.id) === String(F.profile) }, p.name + (p.active ? "" : " (spento)")))) : null;
+  const shownCats = [...(F.profile === "all" || cyberSelected() ? CATS : []), ...catKeys.filter((c) => !CATS.includes(c))];
+  tb.replaceChildren(...[
+    profSel,
+    chip("Tutti", !F.cat, () => { F.cat = ""; refresh(); }),
+    shownCats.map((c) => chip(c, F.cat === c, () => { F.cat = F.cat === c ? "" : c; refresh(); }, catColor(c))),
+    el("div", { class: "sep" }),
+    chip("📍 Vicino a casa", F.near, () => { F.near = !F.near; refresh(); }),
+    chip("Solo nuovi", F.only_new, () => { F.only_new = !F.only_new; refresh(); }),
+    chip("🎓 Solo stage", F.flt.contract.length === 1 && F.flt.contract[0] === "internship",
+      () => { const on = F.flt.contract.length === 1 && F.flt.contract[0] === "internship"; F.flt.contract = on ? [] : ["internship"]; saveFlt(); refresh(); }),
+    F.geo
+      ? el("span", { class: "chip on", "data-geo-chip": "" },
+          el("span", { style: "cursor:pointer", onclick: (e) => openGeo(e.currentTarget.parentNode) }, `🎯 ${F.geo.city} · ${F.geo.km} km`),
+          el("button", { class: "chipx", title: "Rimuovi il raggio", onclick: () => { F.geo = null; saveGeo(); refresh(); } }, "×"))
+      : el("button", { class: "chip", "data-geo-chip": "", onclick: (e) => openGeo(e.currentTarget) }, "🎯 Raggio…"),
+    fltCount()
+      ? el("span", { class: "chip on", "data-flt-chip": "" },
+          el("span", { style: "cursor:pointer", onclick: (e) => openFlt(e.currentTarget.parentNode) }, `🎚 Filtri · ${fltCount()}`),
+          el("button", { class: "chipx", title: "Azzera i filtri", onclick: () => { F.flt = FLT0(); saveFlt(); refresh(); } }, "×"))
+      : el("button", { class: "chip", "data-flt-chip": "", onclick: (e) => openFlt(e.currentTarget) }, "🎚 Filtri…"),
+    CV.present ? el("select", { title: "Mostra solo gli annunci più affini al tuo CV", onchange: (e) => { F.cvMin = +e.target.value; loadJobs(); } },
+      [[0, "Affinità CV: tutte"], [40, "CV 40+"], [60, "CV 60+"], [80, "CV 80+"]].map(([v, l]) => el("option", { value: v, selected: F.cvMin === v }, l))) : null,
+    CV.present ? chip("Ordina per CV", F.sortCv, () => { F.sortCv = !F.sortCv; refresh(); }) : null,
+    closedCount > 0 ? chip(`Chiusi (${closedCount})`, F.closed, () => { F.closed = !F.closed; refresh(); }) : null,
+    el("div", { class: "spacer" }),
+    view === "jooble" ? null : el("button", { class: "btn sm", id: "btnCheck", title: "Controlla che gli annunci in lista siano ancora aperti (uno ogni 2 secondi)", onclick: toggleCheck }, checking ? checkLabel(lastCheck) : "Verifica annunci"),
+    min, search].flat().filter(Boolean));
+}
+function cyberSelected() { const p = profiles.find((x) => String(x.id) === String(F.profile)); return !!p && p.preset === "cybersecurity"; }
+function refresh() { renderToolbar(); loadJobs(); }
+
+/* ---- lista ---- */
+function qs() {
+  const p = new URLSearchParams({ min: F.min, limit: 300, group: F.group });
+  if (F.cat) p.set("cat", F.cat);
+  if (F.profile !== "all") p.set("profile", F.profile);
+  if (F.near) p.set("near", "1");
+  if (F.only_new) p.set("new", "1");
+  if (F.q) p.set("q", F.q);
+  if (F.closed) p.set("closed", "1");
+  if (CV.present && F.cvMin) p.set("cv_min", F.cvMin);
+  if (CV.present && F.sortCv) p.set("sort", "cv");
+  if (F.geo) { p.set("city", F.geo.city); p.set("km", F.geo.km); p.set("unk", F.geo.unk ? "1" : "0"); }
+  const fl = F.flt;
+  if (fl.company) p.set("company", fl.company);
+  fl.where.forEach((w) => p.append("where", w));
+  fl.mode.forEach((m) => p.append("mode", m));
+  fl.contract.forEach((c) => p.append("contract", c));
+  if (fl.ralMin > 0) { p.set("ral_min", fl.ralMin); p.set("ral_unk", fl.ralUnk ? "1" : "0"); }
+  return p;
+}
+async function loadJobs() {
+  jobs = await api("/api/jobs?" + qs());
+  renderRows();
+  loadStats();
+}
+const STATUS_GLYPH = { new: ["●", "var(--text)"], seen: ["○", "var(--dim)"], applied: ["✓", "var(--green)"], discarded: ["✕", "var(--red)"] };
+function cvCell(j) {
+  if (j.cv == null) return el("span", { class: "cvs lo" }, "-");
+  return el("span", { class: "cvs " + (j.cv >= 60 ? "hi" : j.cv < 30 ? "lo" : ""), title: j.cv_base === "anteprima" ? "Basato su anteprima: punteggio prudente" : "Affinità col tuo CV" }, `CV ${j.cv}` + (j.cv_base === "anteprima" ? "~" : ""));
+}
+function renderRows() {
+  const body = $("rows");
+  $("thCv").hidden = !CV.present;
+  $("empty").hidden = jobs.length > 0;
+  body.replaceChildren(...jobs.map((j) => {
+    const [g, c] = STATUS_GLYPH[j.status] || ["", ""];
+    const loc = (j.location || "-").split(",")[0];
+    return el("tr", { class: "row" + (selected === j.uid ? " sel" : "") + (j.status === "applied" ? " dim" : "") + (j.avail === "closed" ? " gone" : ""), "data-uid": j.uid, onclick: () => openJob(j.uid) },
+      el("td", { class: "st", style: `color:${c}` }, g),
+      el("td", {}, el("span", { class: "cat" }, el("span", { class: "dot", style: `background:${catColor(j.category)}` }), j.category)),
+      el("td", {}, el("span", { class: "score" }, j.score, el("span", { class: "sb" }, el("i", { style: `width:${Math.min(j.score, 100)}%` })))),
+      el("td", {}, el("div", { class: "t-title" }, j.title), el("div", { class: "t-sub" }, j.company, AV_LABEL[j.avail] ? el("span", { class: "av " + j.avail }, j.avail === "open" ? "✓ aperto" : "✕ chiuso") : null, j.adzuna ? adzunaBadge() : null)),
+      el("td", { class: "muted hide-sm" }, loc, j.near ? " 📍" : "", j.km != null ? el("span", { class: "km" }, `${j.km} km`) : null, MODE_SHORT[j.mode] ? el("span", { class: "km" }, MODE_SHORT[j.mode]) : null, CONTRACT_SHORT[j.contract] ? el("span", { class: "km" }, CONTRACT_SHORT[j.contract]) : null),
+      el("td", { class: "muted hide-sm" }, j.salary || "-"),
+      CV.present ? el("td", {}, cvCell(j)) : null);
+  }));
+}
+async function loadStats() {
+  const s = await api("/api/stats?profile=" + encodeURIComponent(F.profile));
+  const keys = Object.keys(s.by_cat || {}).filter((k) => k && !CATS.includes(k)).sort();
+  if (JSON.stringify(keys) !== JSON.stringify(catKeys)) {
+    catKeys = keys;
+    const a = document.activeElement;
+    if ((view === "jobs" || view === "jooble") && !(a && a.tagName === "INPUT")) renderToolbar();
+  }
+  $("stats").replaceChildren(
+    el("span", {}, el("b", {}, s.total), " annunci"),
+    el("span", {}, el("b", {}, s.new), " nuovi"),
+    el("span", {}, el("b", {}, s.near), " vicini"));
+  setBadge(s.dups_pending);
+  setAppBadge(s.app_counts ? s.app_counts.active : 0);
+  if ((s.closed || 0) !== closedCount) { closedCount = s.closed || 0; if (view === "jobs" || view === "jooble") renderToolbar(); }
+  loadNews();
+  const sn = $("setupnote");
+  if (view === "jobs" && s.needs_setup) {
+    sn.replaceChildren("Per cercare annunci servono le chiavi di Adzuna o Jooble. ", el("button", { class: "chip", onclick: () => setView("settings") }, "Apri Impostazioni"));
+    sn.hidden = false;
+  } else sn.hidden = true;
+  const jn = $("jnear");
+  if (view === "jobs" && s.jooble_near_new) {
+    jn.replaceChildren(`📍 ${s.jooble_near_new} annunci Jooble vicino a casa non ancora visti. `,
+      el("button", { class: "chip", onclick: () => { F.near = true; renderToolbar(); setView("jooble"); } }, "Vedi"));
+    jn.hidden = false;
+  } else jn.hidden = true;
+  const jb = $("jooBadge"); jb.hidden = !s.jooble; jb.textContent = s.jooble || "";
+}
+
+/* ---- drawer ---- */
+async function openJob(uid) {
+  selected = uid;
+  document.querySelectorAll("tr.row").forEach((r) => r.classList.toggle("sel", r.dataset.uid === uid));
+  $("aside").classList.add("open");
+  const d = $("drawer");
+  d.replaceChildren(el("div", { class: "loading" }, "Carico l'annuncio completo..."));
+  const j = await api("/api/job/" + uid);
+  if (selected !== uid) return;
+  if (j.status === "new") { post(`/api/job/${uid}/status`, { status: "seen" }); setLocal(uid, "seen"); }
+  const inList = jobs.find((x) => x.uid === uid);
+  if (inList && inList.avail !== j.avail) {
+    inList.avail = j.avail;
+    if (j.avail === "closed") { toast("Questo annuncio risulta chiuso", j.avail_note); loadStats(); if (!F.closed) { jobs = jobs.filter((x) => x.uid !== uid); renderRows(); } else renderRows(); }
+    else renderRows();
+  }
+  const act = (label, status, cls = "") => el("button", { class: "btn " + cls, onclick: async () => { await post(`/api/job/${uid}/status`, { status }); setLocal(uid, status); toast(status === "applied" ? "Aggiunto in Candidature" : label); loadStats(); } }, label);
+  const recheck = el("button", { class: "btn sm", onclick: async () => {
+    const r = await post(`/api/job/${uid}/check`);
+    if (!r.ok) { toast(r.blocked ? "Il sito sta limitando le richieste" : "Verifica non riuscita", r.error); return; }
+    toast(r.job.avail === "closed" ? "Annuncio chiuso" : "Verifica completata"); await loadJobs(); openJob(uid);
+  } }, j.avail === "unknown" ? "Verifica ora" : "Riverifica");
+  const when = (j.avail_checked || "").slice(0, 10);
+  const abox = j.avail === "closed"
+    ? el("div", { class: "abox closed" }, el("div", { class: "grow" }, el("b", {}, "Annuncio chiuso"), el("small", {}, `${j.avail_note || ""} · non è più possibile candidarsi`)), recheck)
+    : j.avail === "open"
+    ? el("div", { class: "abox open" }, el("div", { class: "grow" }, el("b", {}, "✓ Annuncio aperto"), el("small", {}, `verificato il ${fmtDate(when)}` + (j.valid_until ? ` · scadenza indicata dal sito: ${fmtDate(j.valid_until)}` : ""))), recheck)
+    : el("div", { class: "abox" }, el("div", { class: "grow" }, el("b", {}, "Disponibilità non verificata"),
+        el("small", {}, j.source.startsWith("jooble") ? "Le pagine di Jooble non si possono controllare da qui: guarda l'annuncio sul sito." : (j.check_blocked ? "Il sito sta limitando le richieste: riprova tra qualche minuto." : (j.avail_note || "Non ancora controllato.")))),
+        j.source.startsWith("jooble") ? null : recheck);
+  const dl = el("dl", { class: "meta" },
+    el("dt", {}, "Sede"), el("dd", {}, (j.location || "-") + (j.near ? " 📍" : "") + (kmFromList(uid) != null ? ` · ${kmFromList(uid)} km da ${F.geo.city}` : "")),
+    el("dt", {}, "Stipendio"), el("dd", {}, j.salary || "non indicato"),
+    el("dt", {}, "Modalità"), el("dd", {}, MODE_LABEL[j.mode] && j.mode !== "unknown" ? MODE_LABEL[j.mode] : "non indicata"),
+    el("dt", {}, "Contratto"), el("dd", {}, CONTRACT_LABEL[j.contract] && j.contract !== "unknown" ? CONTRACT_LABEL[j.contract] : "non indicato"),
+    el("dt", {}, "Score"), el("dd", {}, `${j.score} · ${j.category}`),
+    (j.profiles || []).length ? el("dt", {}, "Profili") : null, (j.profiles || []).length ? el("dd", { class: "kw" }, j.profiles.map((x) => el("span", {}, `${x.name} · ${x.score}`))) : null,
+    el("dt", {}, "Pubblicato"), el("dd", {}, fmtDate(j.posted_at) || "n/d"),
+    el("dt", {}, "Fonte"), el("dd", {}, j.source + (j.country ? ` · ${j.country.toUpperCase()}` : "")),
+    el("dt", {}, "Match"), el("dd", { class: "kw" }, j.matched.map((m) => el("span", {}, m))));
+  d.replaceChildren(...[
+    el("div", { class: "d-top" }, el("span", { class: "cat" }, el("span", { class: "dot", style: `background:${catColor(j.category)}` }), j.category, " · ", j.id), el("button", { class: "x", onclick: closeDrawer, title: "Chiudi (Esc)" }, "×")),
+    el("h2", { class: "d-title" }, j.title),
+    el("div", { class: "d-co" }, j.company),
+    j.adzuna ? el("div", { style: "margin: -8px 0 14px" }, adzunaBadge()) : null,
+    abox,
+    dl,
+    cvExplain(j),
+    el("div", { class: "actions" },
+      el("a", { class: "btn primary", href: safeUrl(j.url), target: "_blank", rel: "noopener noreferrer" }, "Apri e candidati ↗"),
+      act("Segna candidato", "applied"), act("Scarta", "discarded"), act("Rimetti in nuovi", "new")),
+    j.source.startsWith("jooble") ? el("div", { class: "jnote", style: "margin:0 0 14px" }, "Anteprima Jooble: il testo completo è sul sito. Usa \"Apri e candidati\".") : null,
+    el("div", { class: "body" }, j.text || "Testo non disponibile.")].filter(Boolean));
+}
+function cvExplain(j) {
+  const e = j.cv_explain;
+  if (!CV.present || !e) return null;
+  const chips = (arr, cls) => el("div", { class: "kw cvk " + cls }, arr.map((x) => el("span", {}, x)));
+  const lv = e.livello || {};
+  const notes = [...(e.note || [])];
+  if (lv.etichetta) notes.unshift(`Livello dell'annuncio: ${lv.etichetta}` + (lv.anni_richiesti ? `, circa ${lv.anni_richiesti} ${lv.anni_richiesti === 1 ? "anno" : "anni"}` : "") + (lv.anni_cv != null ? `. Nel tuo CV: circa ${lv.anni_cv} ${lv.anni_cv === 1 ? "anno" : "anni"}.` : "."));
+  return el("div", { class: "cvx" },
+    el("h4", {}, "Perché questo punteggio"),
+    el("div", { class: "cvx-top" }, el("span", { class: "cvx-score" }, String(j.cv)), el("span", { class: "muted" }, "/100 di affinità col tuo CV" + (e.base === "anteprima" ? " (basato su anteprima)" : ""))),
+    e.in_comune.length ? [el("div", { class: "cvx-l" }, "In comune con il tuo CV"), chips(e.in_comune, "ok")] : el("div", { class: "cvx-l" }, "Nessuna competenza in comune."),
+    e.mancanti.length ? [el("div", { class: "cvx-l" }, "Richieste e non trovate nel CV"), chips(e.mancanti, "no")] : null,
+    notes.length ? el("ul", {}, notes.map((n) => el("li", {}, n))) : null,
+    el("div", { class: "cvx-l" }, "Confidenza: " + (e.confidenza || "-")));
+}
+function kmFromList(uid) { const j = jobs.find((x) => x.uid === uid); return F.geo && j ? j.km : null; }
+function setLocal(uid, status) {
+  const j = jobs.find((x) => x.uid === uid); if (j) j.status = status;
+  const row = document.querySelector(`tr.row[data-uid="${uid}"]`);
+  if (row) { const [g, c] = STATUS_GLYPH[status]; const st = row.querySelector(".st"); st.textContent = g; st.style.color = c; row.classList.toggle("dim", status === "applied"); }
+}
+function closeDrawer() { selected = null; $("aside").classList.remove("open"); document.querySelectorAll("tr.row.sel").forEach((r) => r.classList.remove("sel")); }
+
+/* ---- raggio da una città ---- */
+function closeGeo() { const p = $("geoPop"); if (p) p.remove(); document.removeEventListener("mousedown", outsideGeo, true); }
+function outsideGeo(e) { const p = $("geoPop"); if (p && !p.contains(e.target) && !e.target.closest("[data-geo-chip]")) closeGeo(); }
+function openGeo(anchor) {
+  closeGeo(); closeFlt();
+  const cur = F.geo || { city: "", km: 100, unk: true };
+  const city = el("input", { type: "text", placeholder: "Es. Milano", value: cur.city, list: "geoList", autocomplete: "off" });
+  const list = el("datalist", { id: "geoList" });
+  let t;
+  city.addEventListener("input", () => { clearTimeout(t); t = setTimeout(async () => {
+    const r = await api("/api/geo/suggest?q=" + encodeURIComponent(city.value));
+    list.replaceChildren(...r.map((x) => el("option", { value: x.label }, x.country === "IT" ? "" : x.country)));
+  }, 180); });
+  const val = el("b", {}, cur.km + " km");
+  const km = el("input", { type: "range", min: 10, max: 1000, step: 10, value: cur.km });
+  km.addEventListener("input", () => { val.textContent = km.value + " km"; });
+  const unk = el("input", { type: "checkbox", checked: cur.unk });
+  const apply = async () => {
+    const q = city.value.trim(); if (!q) return;
+    const r = await api("/api/geo/resolve?q=" + encodeURIComponent(q));
+    if (!r.ok) { toast("Città non trovata", "Prova con una città più grande della zona"); return; }
+    F.geo = { city: q, km: +km.value, unk: unk.checked }; saveGeo(); closeGeo(); refresh();
+  };
+  city.addEventListener("keydown", (e) => { if (e.key === "Enter") apply(); if (e.key === "Escape") closeGeo(); });
+  const pop = el("div", { class: "pop", id: "geoPop" },
+    el("h4", {}, "Raggio di ricerca"),
+    el("label", {}, "Città di riferimento"), city, list,
+    el("label", {}, "Distanza (in linea d'aria)"), el("div", { class: "row" }, km, val),
+    el("label", { class: "chk" }, unk, "Includi sede generica o remoto (Italia, Remote)"),
+    el("div", { class: "acts" },
+      el("button", { class: "btn primary", onclick: apply }, "Applica"),
+      el("button", { class: "btn", onclick: () => { F.geo = null; saveGeo(); closeGeo(); refresh(); } }, "Azzera")),
+    el("div", { class: "note" }, "Filtra gli annunci già raccolti dallo scan. Gli annunci senza una città precisa (es. \"Italia\") non hanno distanza."));
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - 336)) + "px"; pop.style.top = (r.bottom + 8) + "px";
+  document.body.append(pop);
+  document.addEventListener("mousedown", outsideGeo, true);
+  city.focus(); city.select();
+}
+
+/* ---- filtri: modalità, città, azienda, RAL ---- */
+function closeFlt() { const p = $("fltPop"); if (p) p.remove(); document.removeEventListener("mousedown", outsideFlt, true); }
+function outsideFlt(e) { const p = $("fltPop"); if (p && !p.contains(e.target) && !e.target.closest("[data-flt-chip]")) closeFlt(); }
+async function openFlt(anchor) {
+  closeFlt(); closeGeo();
+  const fx = await api("/api/facets?group=" + F.group + "&profile=" + encodeURIComponent(F.profile));
+  const cur = JSON.parse(JSON.stringify(F.flt));
+  const toggle = (arr, v) => { const i = arr.indexOf(v); i >= 0 ? arr.splice(i, 1) : arr.push(v); };
+  const chip = (arr, v, label) => {
+    const b = el("button", { class: "chip" + (arr.includes(v) ? " on" : ""), onclick: () => { toggle(arr, v); b.classList.toggle("on", arr.includes(v)); } }, label);
+    return b;
+  };
+  const modes = ["remote", "hybrid", "onsite", "unknown"].map((m) => chip(cur.mode, m, `${MODE_LABEL[m]} (${fx.modes[m] || 0})`));
+  const contracts = ["internship", "apprenticeship", "fixed", "permanent", "other", "unknown"].map((c) => chip(cur.contract, c, `${CONTRACT_LABEL[c]} (${(fx.contracts || {})[c] || 0})`));
+  const cities = [...fx.cities.slice(0, 14).map((c) => chip(cur.where, c.name, `${c.name} (${c.n})`)), chip(cur.where, "~generica", `Sede generica (${fx.generic})`)];
+  const list = el("datalist", { id: "fltCompanies" }, fx.companies.map((c) => el("option", { value: c.name }, `${c.n} annunci`)));
+  const company = el("input", { type: "text", placeholder: "Es. Acme, Globex...", value: cur.company, list: "fltCompanies", autocomplete: "off" });
+  const top = Math.min(200000, Math.max(60000, Math.ceil((fx.salary.max || 0) / 10000) * 10000));
+  const ral = el("input", { type: "range", min: 0, max: top, step: 1000, value: Math.min(cur.ralMin, top) });
+  const val = el("b", {}, "");
+  const showRal = () => { val.textContent = +ral.value > 0 ? `≥ ${(+ral.value).toLocaleString("it-IT")} €` : "qualsiasi"; };
+  showRal(); ral.addEventListener("input", showRal);
+  const unk = el("input", { type: "checkbox", checked: cur.ralUnk });
+  const apply = () => {
+    F.flt = { company: company.value.trim(), where: cur.where, mode: cur.mode, contract: cur.contract, ralMin: +ral.value, ralUnk: unk.checked };
+    saveFlt(); closeFlt(); refresh();
+  };
+  company.addEventListener("keydown", (e) => { if (e.key === "Enter") apply(); if (e.key === "Escape") closeFlt(); });
+  const pop = el("div", { class: "pop wide", id: "fltPop" },
+    el("h4", {}, "Filtri"),
+    el("label", {}, "Modalità di lavoro"), el("div", { class: "pchips" }, modes),
+    el("div", { class: "sub" }, "Spesso l'annuncio non la dice: dove manca è \"non indicato\", ricavata dal testo quando c'è."),
+    el("label", {}, "Tipo di contratto"), el("div", { class: "pchips" }, contracts),
+    el("div", { class: "sub" }, "Di rado l'annuncio lo dichiara. Gli stage si riconoscono soprattutto dal titolo."),
+    el("label", {}, "Città"), el("div", { class: "pchips" }, cities),
+    el("label", {}, "Azienda"), company, list,
+    el("label", {}, `RAL minima (nota per ${fx.salary.known} annunci su ${fx.salary.total})`),
+    el("div", { class: "row" }, ral, val),
+    el("label", { class: "chk" }, unk, "Includi gli annunci senza RAL indicata"),
+    el("div", { class: "acts" },
+      el("button", { class: "btn primary", onclick: apply }, "Applica"),
+      el("button", { class: "btn", onclick: () => { F.flt = FLT0(); saveFlt(); closeFlt(); refresh(); } }, "Azzera")));
+  const r = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - 406)) + "px"; pop.style.top = (r.bottom + 8) + "px";
+  document.body.append(pop);
+  document.addEventListener("mousedown", outsideFlt, true);
+}
+
+/* ---- verifica in blocco: annunci ancora aperti? ---- */
+const checkLabel = (st) => st ? `Verifico ${st.done}/${st.total} · Stop` : "Verifico... · Stop";
+async function toggleCheck() {
+  if (checking) { await post("/api/check/stop"); return; }
+  const uids = jobs.filter((j) => !j.source.startsWith("jooble") && j.avail !== "closed").map((j) => j.uid).slice(0, 60);
+  if (!uids.length) { toast("Niente da verificare", "In questa lista non ci sono annunci verificabili"); return; }
+  const r = await post("/api/check/start", { uids });
+  if (!r.ok) { toast(r.blocked ? "Il sito sta limitando le richieste" : "Verifica non avviata", r.error); return; }
+  checking = true; lastCheck = null; renderToolbar(); pollCheck();
+}
+async function pollCheck() {
+  const st = await api("/api/check/status");
+  lastCheck = st;
+  const b = $("btnCheck"); if (b) b.textContent = st.running ? checkLabel(st) : "Verifica annunci";
+  if (st.running) { setTimeout(pollCheck, 1000); return; }
+  checking = false; renderToolbar();
+  const parts = [`${st.closed} chiusi`, `${st.open} aperti`].concat(st.unknown ? [`${st.unknown} non verificati`] : []);
+  toast(st.blocked ? "Controllo fermato: il sito limita le richieste" : `Verificati ${st.done} annunci`, st.blocked ? `Fatti ${st.done}: ` + parts.join(", ") + ". Riprova tra un po'." : parts.join(", "));
+  loadJobs();
+}
+
+/* ---- scan ---- */
+const SRC_LABEL = { queued: "in coda", running: "in corso", done: "ok", error: "errore", stopped: "fermato" };
+function renderScan(s) {
+  const box = $("scan");
+  const names = s.order || [];
+  if (!names.length && !s.running) { box.classList.remove("show"); return; }
+  box.classList.add("show");
+  const done = names.filter((n) => ["done", "error", "stopped"].includes(s.sources[n].status)).length;
+  const pct = names.length ? (done / names.length) * 100 : 0;
+  const head = el("div", { class: "scan-head" },
+    s.running ? el("b", {}, "Scan in corso") : el("b", {}, s.summary && s.summary.cancelled ? "Scan interrotto" : "Scan completato"),
+    el("div", { class: "bar" }, el("div", { style: `width:${pct}%` })),
+    s.running ? `${Math.round(s.elapsed || 0)}s / max ${s.max_seconds}s` : (s.summary ? `${s.summary.read} letti · ${s.summary.kept} rilevanti · ${s.summary.new} nuovi` : ""),
+    s.message ? el("span", {}, " · " + s.message) : null);
+  const rows = names.map((n) => {
+    const v = s.sources[n];
+    const info = v.status === "done" ? `${v.read} letti · ${v.kept} rilevanti · ${v.new} nuovi` : (v.msg || "");
+    return el("div", { class: "src" }, el("span", { class: "n" }, n), el("span", { class: "s " + v.status }, SRC_LABEL[v.status] || v.status), el("span", {}, info));
+  });
+  box.replaceChildren(head, ...rows);
+}
+function setRunning(r) {
+  $("btnScan").disabled = r; $("btnStop").disabled = !r;
+  $("btnScan").textContent = r ? "Scan in corso..." : "Scan";
+}
+async function pollStatus() {
+  const s = await api("/api/status");
+  setRunning(s.running);
+  renderScan(s);
+  if (s.running) { scanWasRunning = true; if (!polling) polling = setInterval(pollStatus, 1000); }
+  else {
+    if (polling) { clearInterval(polling); polling = null; }
+    if (scanWasRunning) { scanWasRunning = false; loadJobs(); if (s.summary) toast(s.summary.cancelled ? "Scan interrotto" : "Scan completato", `${s.summary.new} nuovi annunci` + (s.summary.dups_new ? ` · ${s.summary.dups_new} possibili duplicati da rivedere` : "") + (s.summary.closed_found ? ` · ${s.summary.closed_found} annunci chiusi` : "") + (s.summary.check_blocked ? " · verifica fermata: il sito limita le richieste" : "")); }
+  }
+}
+$("btnScan").onclick = async () => { await post("/api/scan/start"); scanWasRunning = true; pollStatus(); };
+$("btnStop").onclick = async () => { $("btnStop").disabled = true; await post("/api/scan/stop"); pollStatus(); };
+
+/* ---- report ---- */
+$("btnReport").onclick = async () => {
+  const b = $("btnReport"); b.disabled = true; const old = b.textContent; b.textContent = "Genero...";
+  try {
+    const r = await post("/api/report", { ...(F.profile !== "all" ? { profile: F.profile } : {}), cat: F.cat, near: F.near, new: F.only_new, min: F.min || 30, limit: 20, group: F.group, ...(F.geo ? { city: F.geo.city, km: F.geo.km, unk: F.geo.unk ? "1" : "0" } : {}), ...fltBody() });
+    r.ok ? toast(`Report creato: ${r.n} annunci (${r.full} con testo completo)` + (r.closed ? ` · ${r.closed} chiusi esclusi` : "") + (r.blocked ? " · alcuni non verificati (sito in limitazione)" : ""), r.path) : toast(r.error || "Nessun annuncio con questi filtri");
+  } catch { toast("Errore nella generazione del report"); }
+  b.disabled = false; b.textContent = old;
+};
+
+
+/* ---- duplicati ---- */
+let view = "jobs", dupFilter = "pending", dupCounts = {};
+const DUP_LABEL = { pending: "Da rivedere", confirmed: "Confermati", rejected: "Rifiutati" };
+function setView(v) {
+  view = v;
+  const listView = v === "jobs" || v === "jooble";
+  F.group = v === "jooble" ? "jooble" : "main";
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+  $("toolbar").hidden = !listView; document.querySelector("main").hidden = !listView; $("dupview").hidden = v !== "dups"; $("appview").hidden = v !== "apps"; $("setview").hidden = v !== "settings"; $("searchview").hidden = v !== "search";
+  $("jnote").hidden = v !== "jooble";
+  if (v !== "jobs") { $("jnear").hidden = true; $("setupnote").hidden = true; $("newsnote").hidden = true; }  // l'avviso Jooble vale solo nella lista principale
+  closeDrawer();
+  closeFlt(); closeGeo();  // i pannelli Filtri e Raggio non devono restare aperti sopra le altre schede
+  if (listView) renderToolbar();  // il selettore Profilo può essere cambiato (profilo eliminato) mentre eri in un'altra scheda
+  v === "dups" ? loadDups() : v === "apps" ? loadApps() : v === "settings" ? loadSettings() : v === "search" ? loadSearch() : loadJobs();
+}
+document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => setView(b.dataset.v)));
+
+function dupSide(j, pairStatus) {
+  const tag = j.keep ? "TENUTO" : (pairStatus === "confirmed" ? "NASCOSTO" : "SARÀ NASCOSTO");
+  return el("div", { class: "dside" },
+    el("span", { class: "dtag " + (j.keep ? "keep" : "hide") }, tag),
+    el("div", { class: "dtitle" }, j.title),
+    el("div", { class: "dmeta" },
+      el("span", { class: "cat" }, el("span", { class: "dot", style: `background:${catColor(j.category)}` }), j.category), " · ", j.company, el("br"),
+      (j.location || "-"), el("br"),
+      "Stipendio: ", j.salary || "n/d", " · Score ", j.score, el("br"),
+      "Fonte: ", j.source, j.status === "applied" ? " · ✓ già candidato" : "", el("br"),
+      el("a", { href: safeUrl(j.url), target: "_blank", rel: "noopener noreferrer" }, "apri annuncio ↗")));
+}
+async function decide(id, status, swap) {
+  await post("/api/dups/" + id, { status, swap: !!swap });
+  await loadDups();
+}
+function dupCard(p) {
+  const confirmed = p.status === "confirmed";
+  const chk = el("input", { type: "checkbox", checked: confirmed });
+  chk.addEventListener("change", async () => {
+    const hidden = (p.a.keep ? p.b : p.a).title;
+    await decide(p.id, chk.checked ? "confirmed" : "pending");
+    if (chk.checked) toast("Segnato come duplicato", "Nascosto: " + hidden);
+  });
+  const when = fmtDate(p.decided_at, true);
+  const acts = [el("label", { class: "chk" }, chk, confirmed ? "Duplicato confermato" : "Conferma: è un duplicato")];
+  if (p.status !== "rejected") acts.push(el("button", { class: "btn", onclick: () => decide(p.id, "rejected") }, "Non è duplicato"));
+  else acts.push(el("button", { class: "btn", onclick: () => decide(p.id, "pending") }, "Rimetti in revisione"));
+  acts.push(el("button", { class: "btn", title: "Scambia quale annuncio tenere", onclick: () => decide(p.id, p.status, true) }, "Inverti"));
+  const note = p.status === "pending" ? "" : (p.auto ? "confermato in automatico (100%)" : `${DUP_LABEL[p.status].toLowerCase().slice(0, -1)}o il ${when}`);
+  acts.push(el("span", { class: "dnote" }, note));
+  return el("div", { class: "dcard " + p.status },
+    el("div", { class: "dhead" }, el("div", { class: "dpct" }, p.pct + "%", el("small", {}, "somiglianza")), el("div", { class: "dbar" }, el("i", { style: `width:${p.pct}%` }))),
+    el("div", { class: "dpair" }, dupSide(p.a, p.status), dupSide(p.b, p.status)),
+    el("div", { class: "dact" }, acts));
+}
+async function loadDups() {
+  const [list, st] = await Promise.all([api("/api/dups?status=" + dupFilter), api("/api/stats")]);
+  dupCounts = st.dup_counts || {};
+  setBadge(st.dups_pending);
+  $("dupbar").replaceChildren(
+    ...["pending", "confirmed", "rejected"].map((k) => el("button", { class: "chip" + (dupFilter === k ? " on" : ""), onclick: () => { dupFilter = k; loadDups(); } }, `${DUP_LABEL[k]} (${dupCounts[k] || 0})`)),
+    el("div", { class: "spacer" }),
+    el("button", { class: "btn", onclick: async () => { const r = await post("/api/dups/rescan"); toast(r.new ? `${r.new} nuove coppie da rivedere` : "Nessuna nuova coppia"); loadDups(); } }, "Ricontrolla"));
+  $("duplist").replaceChildren(...(list.length ? list.map(dupCard) : [el("div", { class: "empty" }, dupFilter === "pending" ? "Niente da rivedere." : "Nessuna coppia in questa sezione.")]));
+}
+function setBadge(n) { const b = $("dupBadge"); b.hidden = !n; b.textContent = n || ""; }
+
+/* ---- candidature ---- */
+let appFilter = "active", appOpen = null, appFormOpen = false, appsData = [], appCounts = { active: 0, closed: 0 };
+const APP_STAGES = [["sent", "Inviata"], ["hr", "Colloquio HR"], ["tech", "Colloquio tecnico"], ["offer", "Proposta"]];
+const APP_OUTCOME = { active: "In corso", accepted: "Accettata", rejected: "Rifiutata", withdrawn: "Ritirata", no_response: "Nessuna risposta" };
+const APP_COLOR = { active: "var(--text)", accepted: "var(--green)", rejected: "var(--red)", withdrawn: "var(--muted)", no_response: "var(--muted)" };
+const todayStr = () => new Date().toLocaleDateString("sv-SE");
+const dayLabel = (d) => { if (!d) return ""; const [y, m, dd] = d.split("-"); return `${dd}/${m}/${y}`; };
+const agoLabel = (d) => { if (!d) return ""; const n = Math.round((new Date(todayStr()) - new Date(d)) / 864e5); return n <= 0 ? "oggi" : n === 1 ? "ieri" : `${n} giorni fa`; };
+function setAppBadge(n) { const b = $("appBadge"); b.hidden = !n; b.textContent = n || ""; }
+const appPost = async (id, body) => { await post("/api/apps/" + id, body); await loadApps(); };
+function evText(e) {
+  if (e.kind === "created") return "Candidatura inviata";
+  if (e.kind === "stage") return "Tappa: " + ((APP_STAGES.find((x) => x[0] === e.value) || [0, e.value])[1]);
+  return "Esito: " + (APP_OUTCOME[e.value] || e.value);
+}
+function appField(a, label, key, type = "text") {
+  const inp = el("input", { type, value: a[key] || "" });
+  inp.addEventListener("change", async () => {
+    const isDate = type === "date";
+    await post("/api/apps/" + a.id, { [key]: inp.value });
+    if (isDate) await loadApps(); else toast("Salvato");
+  });
+  return el("label", { class: "fl" }, label, inp);
+}
+function appCard(a) {
+  const closed = a.outcome !== "active", idx = APP_STAGES.findIndex((x) => x[0] === a.stage), open = appOpen === a.id;
+  const slider = el("input", { type: "range", min: 0, max: 3, step: 1, value: idx, class: "stage", disabled: closed, "aria-label": "Avanzamento candidatura" });
+  const paint = () => slider.style.setProperty("--p", (slider.value / 3 * 100) + "%");
+  paint(); slider.addEventListener("input", paint);
+  slider.addEventListener("change", () => appPost(a.id, { stage: APP_STAGES[+slider.value][0], at: todayStr() }));
+  const labels = el("div", { class: "stagelabels" }, APP_STAGES.map(([k, l], i) =>
+    el("button", { class: "sl" + (i === idx ? " on" : i < idx ? " done" : ""), disabled: closed, onclick: () => appPost(a.id, { stage: k, at: todayStr() }) }, l)));
+  const late = a.follow_up && !closed && a.follow_up < todayStr();
+  const q = (label, outcome, cls = "") => el("button", { class: "btn sm " + cls, onclick: () => appPost(a.id, { outcome, at: todayStr() }) }, label);
+  const quick = closed ? [q("Riapri", "active")] : [q("Accettata", "accepted"), q("Rifiutata", "rejected"), q("Ritirata", "withdrawn"), q("Nessuna risposta", "no_response")];
+
+  const card = el("div", { class: "acard" + (closed ? " closed" : "") },
+    el("div", { class: "ahead" },
+      el("div", { class: "atitle" },
+        el("div", { class: "aco" }, a.company), el("div", { class: "arole" }, a.role),
+        el("div", { class: "ameta" },
+          a.location ? el("span", {}, a.location) : null,
+          el("span", {}, `Inviata il ${dayLabel(a.applied_at)} (${agoLabel(a.applied_at)})`),
+          a.follow_up ? el("span", { class: "atag" + (late ? " late" : "") }, `Follow-up ${dayLabel(a.follow_up)}`) : null)),
+      el("div", { class: "astage" }, slider, labels),
+      el("span", { class: "atag" }, el("span", { class: "dot", style: `background:${APP_COLOR[a.outcome]}` }), APP_OUTCOME[a.outcome])),
+    el("div", { class: "aacts" }, ...quick, el("span", { class: "grow" }),
+      a.url ? el("a", { class: "btn sm", href: safeUrl(a.url), target: "_blank", rel: "noopener noreferrer" }, "Apri annuncio ↗") : null,
+      el("button", { class: "btn sm", onclick: () => { appOpen = open ? null : a.id; renderApps(); } }, open ? "Chiudi dettagli" : "Dettagli")));
+
+  if (open) {
+    const notes = el("textarea", { placeholder: "Appunti: referente, domande fatte, impressioni..." }, a.notes || "");
+    notes.addEventListener("change", async () => { await post("/api/apps/" + a.id, { notes: notes.value }); toast("Salvato"); });
+    const del = el("button", { class: "btn sm danger" }, "Elimina candidatura");
+    let armed = false;
+    del.onclick = async () => {
+      if (!armed) { armed = true; del.textContent = "Conferma eliminazione"; setTimeout(() => { armed = false; del.textContent = "Elimina candidatura"; }, 4000); return; }
+      await post(`/api/apps/${a.id}/delete`); appOpen = null; await loadApps(); toast("Candidatura eliminata");
+    };
+    card.append(el("div", { class: "adet" },
+      el("div", {},
+        el("h5", {}, "Dati"),
+        appField(a, "Azienda", "company"), appField(a, "Ruolo", "role"), appField(a, "Sede", "location"), appField(a, "Link annuncio", "url"),
+        appField(a, "Data candidatura", "applied_at", "date"), appField(a, "Follow-up (promemoria)", "follow_up", "date"), appField(a, "Referente", "contact"),
+        el("label", { class: "fl" }, "Note", notes), del),
+      el("div", {}, el("h5", {}, "Storico"),
+        el("ul", { class: "tl" }, a.events.map((e) => el("li", {}, el("time", {}, dayLabel(e.at)), evText(e), e.note ? el("span", { class: "muted" }, " · " + e.note) : null))))));
+  }
+  return card;
+}
+function appForm() {
+  const f = {};
+  const inp = (k, label, ph = "", type = "text", val = "") => { f[k] = el("input", { type, placeholder: ph, value: val }); return el("label", { class: "fl" }, label, f[k]); };
+  f.notes = el("textarea", { placeholder: "Appunti (opzionale)" });
+  const submit = async () => {
+    const body = Object.fromEntries(Object.entries(f).map(([k, i]) => [k, i.value]));
+    if (!body.company.trim() || !body.role.trim()) { toast("Azienda e ruolo sono obbligatori"); return; }
+    await post("/api/apps", body); appFormOpen = false; await loadApps(); toast("Candidatura aggiunta");
+  };
+  return el("div", { class: "aform" },
+    inp("company", "Azienda *", "Es. Acme Srl"), inp("role", "Ruolo *", "Es. SOC Analyst"), inp("location", "Sede", "Es. Milano"),
+    inp("url", "Link annuncio", "https://..."), inp("applied_at", "Data candidatura", "", "date", todayStr()), inp("follow_up", "Follow-up (promemoria)", "", "date"),
+    el("div", { class: "full" }, el("label", { class: "fl" }, "Referente", f.contact = el("input", { type: "text", placeholder: "Nome o contatto (opzionale)" }))),
+    el("div", { class: "full" }, el("label", { class: "fl" }, "Note", f.notes)),
+    el("div", { class: "full", style: "display:flex;gap:8px" }, el("button", { class: "btn primary", onclick: submit }, "Aggiungi"), el("button", { class: "btn", onclick: () => { appFormOpen = false; renderApps(); } }, "Annulla")));
+}
+function renderApps() {
+  $("appbar").replaceChildren(
+    ...[["active", `In corso (${appCounts.active})`], ["closed", `Chiuse (${appCounts.closed})`], ["all", "Tutte"]].map(([k, l]) =>
+      el("button", { class: "chip" + (appFilter === k ? " on" : ""), onclick: () => { appFilter = k; loadApps(); } }, l)),
+    el("div", { class: "spacer" }),
+    el("button", { class: "btn primary", onclick: () => { appFormOpen = !appFormOpen; renderApps(); } }, appFormOpen ? "Chiudi modulo" : "+ Nuova candidatura"));
+  $("appform").replaceChildren(...(appFormOpen ? [appForm()] : []));
+  $("applist").replaceChildren(...(appsData.length ? appsData.map(appCard)
+    : [el("div", { class: "empty" }, appFilter === "closed" ? "Nessuna candidatura chiusa." : "Nessuna candidatura. Aggiungine una, oppure usa \"Segna candidato\" su un annuncio.")]));
+}
+async function loadApps() {
+  const [list, st] = await Promise.all([api("/api/apps?outcome=" + appFilter), api("/api/stats")]);
+  appsData = list; appCounts = st.app_counts; setAppBadge(appCounts.active);
+  renderApps();
+}
+
+/* ---- ponte con l'app nativa (solo dentro JobsHunter.app) ---- */
+const native = () => (window.pywebview && window.pywebview.api) ? window.pywebview.api : null;
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest("a[target=_blank]");
+  if (a && native()) { e.preventDefault(); native().open_external(a.href); }
+}, true);
+
+
+/* ---- novità dall'ultimo accesso ---- */
+async function loadNews() {
+  const box = $("newsnote");
+  if (view !== "jobs") { box.hidden = true; return; }
+  const n = await api("/api/news");
+  if (!(n.new || n.closed || n.dups)) { box.hidden = true; return; }
+  const bits = [];
+  if (n.new) bits.push(`${n.new} nuovi annunci`);
+  if (n.closed) bits.push(`${n.closed} chiusi`);
+  if (n.dups) bits.push(`${n.dups} possibili duplicati da rivedere`);
+  box.replaceChildren(...[`Dall'ultimo accesso: ${bits.join(" · ")}. `,
+    n.new ? el("button", { class: "chip", onclick: () => { F.only_new = true; refresh(); } }, "Vedi i nuovi") : null, " ",
+    el("button", { class: "chip", onclick: async () => { await post("/api/news/ack"); box.hidden = true; } }, "Segna come letto")].filter(Boolean));  // replaceChildren(null) scriverebbe "null"
+  box.hidden = false;
+}
+
+/* ---- impostazioni: scansione automatica ---- */
+function scheduleGroup(sch, scans) {
+  const head = el("h4", {}, "Scansione automatica");
+  if (!sch.supported) return el("div", { class: "sgroup" }, head, el("div", { class: "shint" }, "Disponibile solo su macOS."));
+  const en = el("input", { type: "checkbox", checked: sch.enabled });
+  const kind = el("select", {}, [["daily", "Ogni giorno alle"], ["every", "Ogni"]].map(([v, l]) => el("option", { value: v, selected: sch.kind === v }, l)));
+  const times = el("input", { type: "text", value: sch.times, placeholder: "09:00, 18:30" });
+  const hours = el("select", {}, [1, 2, 3, 4, 6, 8, 12, 24].map((h) => el("option", { value: h, selected: sch.hours === h }, `${h} ${h === 1 ? "ora" : "ore"}`)));
+  const notif = el("input", { type: "checkbox", checked: sch.notify });
+  const sync = () => { times.hidden = kind.value !== "daily"; hours.hidden = kind.value !== "every"; };
+  kind.addEventListener("change", sync); sync();
+  const apply = async () => {
+    try {
+      const r = await post("/api/schedule", { enabled: en.checked, kind: kind.value, times: times.value, hours: +hours.value, notify: notif.checked });
+      if (!r.ok) { toast("Non riuscito", r.error); return; }
+      toast(r.enabled ? "Scansione automatica attivata" : "Scansione automatica disattivata", r.enabled && r.next ? "Prossima: " + r.next : "");
+      loadSettings();
+    } catch (e) { toast("Non riuscito", "Controlla gli orari (formato 09:00, anche due: 09:00, 18:30)"); }
+  };
+  const state = sch.installed
+    ? el("div", { class: "sstatus" }, el("b", { class: "on" }, "● Attiva"), sch.next ? ` · prossima scansione il ${sch.next}` : (sch.kind === "every" ? ` · ogni ${sch.hours} ore` : ""))
+    : el("div", { class: "sstatus" }, el("b", {}, "○ Non attiva"), sch.enabled ? " · impostata ma non caricata, premi Applica" : "");
+  const hist = scans.length
+    ? el("div", { class: "shist" }, scans.slice(0, 6).map((r) => el("div", {},
+        el("b", {}, fmtDate(r.started, true)), ` · ${r.kind === "auto" ? "automatica" : "manuale"} · ${r.new} nuovi`,
+        r.closed ? ` · ${r.closed} chiusi` : "", r.errors ? ` · errori: ${r.errors}` : "", r.blocked ? " · verifica fermata (il sito limitava)" : "")))
+    : el("div", { class: "shint" }, "Nessuna scansione registrata ancora.");
+  return el("div", { class: "sgroup" }, head, state,
+    el("div", { class: "srow" }, el("label", {}, "Scansione automatica"), el("label", { class: "chk" }, en, "attiva (anche con l'app chiusa)"), el("span")),
+    el("div", { class: "srow" }, el("label", {}, "Quando"), el("div", { class: "inl" }, kind, times, hours), el("span")),
+    el("div", { class: "srow" }, el("label", {}, "Notifiche"), el("label", { class: "chk" }, notif, "avvisami quando ci sono nuovi annunci"), el("span")),
+    el("div", { class: "sbar", style: "margin:0 0 12px" },
+      el("button", { class: "btn primary sm", onclick: apply }, "Applica"),
+      el("button", { class: "btn sm", onclick: async () => { const r = await post("/api/notify/test"); toast(r.ok ? "Notifica inviata" : "Notifica non riuscita", r.ok ? "Compare a nome di Script Editor" : "Controlla Impostazioni di Sistema > Notifiche"); } }, "Invia notifica di prova")),
+    el("div", { class: "shint" }, "Parte da sola all'ora indicata (se il Mac dorme, al risveglio). Le notifiche compaiono a nome di \"Script Editor\". Si disattiva qui in qualsiasi momento."),
+    hist);
+}
+
+/* ---- ricerca: profili ---- */
+let profiles = [], presets = [], countries = [];
+const SEN_LABEL = { any: "Qualsiasi livello", junior: "Junior, primo impiego", mid: "Intermedio", senior: "Senior" };
+const CONTRACT_PICK = ["internship", "apprenticeship", "fixed", "permanent", "other"];
+const cap = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : "");
+const stripProfile = (p) => { const { id, created, updated, job_count, ...rest } = p; return rest; };
+const countryName = (c) => (countries.find((x) => x.code === c) || {}).name || String(c || "").toUpperCase();
+const presetLabel = (k) => (presets.find((x) => x.key === k) || {}).label || (k === "custom" ? "Personalizzato" : k);
+async function loadProfiles() {
+  profiles = await api("/api/profiles");
+  if (F.profile !== "all" && !profiles.some((p) => String(p.id) === String(F.profile))) { F.profile = "all"; saveProfile(); }
+  return profiles;
+}
+async function loadMeta() {
+  if (!presets.length || !countries.length) [presets, countries] = await Promise.all([api("/api/presets"), api("/api/countries")]);
+}
+const whereOf = (p) => (p.location && p.location.city ? `${p.location.city}, ${p.location.radius_km} km` : "tutto il paese");
+
+function profileCard(p) {
+  const on = el("input", { type: "checkbox", checked: p.active });
+  on.addEventListener("change", async () => {
+    const r = await postRaw("/api/profiles/" + p.id, { ...stripProfile(p), active: on.checked });
+    if (!r.ok) { on.checked = !on.checked; toast("Non riuscito", cap((r.data && r.data.error) || "")); return; }
+    toast(on.checked ? "Profilo acceso" : "Profilo spento", p.name);
+    await loadSearch(); refreshAfterProfiles();
+  });
+  return el("div", { class: "pcard" + (p.active ? "" : " off") },
+    el("div", { class: "pname" }, p.name),
+    el("div", { class: "psub" }, presetLabel(p.preset), el("br"),
+      (p.titles || []).length ? "Cerco: " + p.titles.join(", ") : "Titoli del tipo di profilo", el("br"),
+      "Paesi: " + (p.countries || []).map(countryName).join(", "), el("br"),
+      "Luogo: " + whereOf(p) + (p.remote ? " · anche da remoto" : "")),
+    el("div", { class: "pcount" }, el("button", { title: "Vedi gli annunci di questo profilo", onclick: () => { F.profile = String(p.id); saveProfile(); setView("jobs"); renderToolbar(); } }, (p.job_count === 1 ? "1 annuncio" : `${p.job_count} annunci`))),
+    el("div", { class: "pacts" },
+      el("label", { class: "chk" }, on, p.active ? "Attivo" : "Spento"),
+      el("button", { class: "btn sm", disabled: !p.active, title: p.active ? "Cerca nuovi annunci solo per questo profilo" : "Accendi il profilo per cercare", onclick: async () => {
+        const r = await postRaw("/api/scan/start", { profile_ids: [p.id] });
+        if (!r.ok) { toast("Ricerca non avviata", cap((r.data && r.data.error) || "Riprova tra poco")); return; }
+        scanWasRunning = true; pollStatus(); toast("Ricerca avviata", p.name);
+      } }, "Cerca ora"),
+      el("button", { class: "btn sm", onclick: () => openEditor(p) }, "Modifica")));
+}
+function refreshAfterProfiles() { loadProfiles().then(() => { if (view === "jobs" || view === "jooble") renderToolbar(); }); }
+
+async function loadSearch() {
+  await loadMeta();
+  await loadProfiles();
+  const host = $("searchcontent");
+  host.replaceChildren(
+    el("p", { class: "dup-intro" }, "Qui scegli cosa cercare. Ogni profilo è una ricerca: un tipo di lavoro, i paesi e, se vuoi, una città con il suo raggio. Puoi tenerne accesi più d'uno: ogni scansione li cerca tutti e ogni annuncio riceve un punteggio per ciascun profilo."),
+    el("div", { class: "dup-bar" }, el("button", { class: "btn primary", onclick: () => openEditor(null) }, "+ Nuovo profilo")),
+    el("div", { id: "editorbox" }),
+    el("div", { class: "pgrid" }, profiles.map(profileCard)));
+}
+
+function tagList(arr, onChange, suggestions) {
+  const box = el("div", { class: "tags" });
+  const draw = () => {
+    box.replaceChildren(...arr.map((t, i) => el("span", { class: "tag" }, t, el("button", { title: "Togli", onclick: () => { arr.splice(i, 1); draw(); onChange(); } }, "×"))),
+      ...(suggestions || []).filter((s) => !arr.some((a) => a.toLowerCase() === s.toLowerCase())).map((s) => el("span", { class: "tag sug", title: "Aggiungi", onclick: () => { arr.push(s); draw(); onChange(); } }, "+ " + s)));
+  };
+  draw();
+  return { box, draw };
+}
+function addTags(arr, text, draw, onChange) {
+  const parts = text.split(",").map((x) => x.trim()).filter(Boolean);
+  for (const t of parts) if (!arr.some((a) => a.toLowerCase() === t.toLowerCase())) arr.push(t);
+  draw(); onChange();
+}
+
+async function openEditor(p) {
+  await loadMeta();
+  const st = p ? JSON.parse(JSON.stringify(stripProfile(p))) : { name: "", preset: "custom", active: true, titles: [], include: {}, exclude: [], seniority: "any", contracts: [], countries: ["it"], location: { city: "", radius_km: 100 }, remote: true, internships: true };
+  const box = $("editorbox");
+  const err = el("div", { class: "err" }), prev = el("div", { class: "prev", hidden: true });
+  let prevTimer;
+  const schedulePreview = () => { clearTimeout(prevTimer); prevTimer = setTimeout(showPreview, 450); };
+
+  const name = el("input", { type: "text", value: st.name, maxlength: 80, placeholder: "Es. Infermieri a Bari" });
+  name.addEventListener("input", () => { st.name = name.value; err.textContent = ""; });
+  const hintPreset = el("div", { class: "hint" });
+  const preset = el("select", { onchange: () => { st.preset = preset.value; drawPreset(); schedulePreview(); } },
+    [...presets.filter((x) => x.key !== "custom").map((x) => el("option", { value: x.key, selected: x.key === st.preset }, x.label)),
+     el("option", { value: "custom", selected: st.preset === "custom" }, "Personalizzato: scrivo io i lavori che cerco")]);
+  const titlesT = tagList(st.titles, schedulePreview, []);
+  const titleInput = el("input", { type: "text", placeholder: "Scrivi un lavoro e premi Invio (es. infermiere, magazziniere carrellista)", autocomplete: "off" });
+  titleInput.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTags(st.titles, titleInput.value, titlesT.draw, schedulePreview); titleInput.value = ""; } });
+  titleInput.addEventListener("blur", () => { if (titleInput.value.trim()) { addTags(st.titles, titleInput.value, titlesT.draw, schedulePreview); titleInput.value = ""; } });
+  const titleHint = el("div", { class: "hint" });
+  const drawPreset = () => {
+    const pr = presets.find((x) => x.key === st.preset);
+    hintPreset.textContent = pr ? pr.description : "";
+    titleHint.textContent = st.preset === "custom" ? "Serve almeno un lavoro. Ogni titolo diventa una ricerca e una parola chiave." : "Facoltativo: i titoli che scrivi si aggiungono a quelli del tipo di profilo.";
+  };
+  drawPreset();
+
+  const exclT = tagList(st.exclude, schedulePreview, []);
+  const exclInput = el("input", { type: "text", placeholder: "Parola che, se è nel titolo, scarta l'annuncio (Invio per aggiungere)", autocomplete: "off" });
+  exclInput.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTags(st.exclude, exclInput.value, exclT.draw, schedulePreview); exclInput.value = ""; } });
+  exclInput.addEventListener("blur", () => { if (exclInput.value.trim()) { addTags(st.exclude, exclInput.value, exclT.draw, schedulePreview); exclInput.value = ""; } });
+
+  const sen = el("select", { onchange: () => { st.seniority = sen.value; schedulePreview(); } },
+    Object.entries(SEN_LABEL).map(([k, l]) => el("option", { value: k, selected: st.seniority === k }, l)));
+  const toggleChip = (arr, v, label) => {
+    const b = el("button", { type: "button", class: "chip" + (arr.includes(v) ? " on" : ""), onclick: () => { const i = arr.indexOf(v); i >= 0 ? arr.splice(i, 1) : arr.push(v); b.classList.toggle("on", arr.includes(v)); schedulePreview(); } }, label);
+    return b;
+  };
+  const contractChips = CONTRACT_PICK.map((c) => toggleChip(st.contracts, c, CONTRACT_LABEL[c]));
+  const countryChips = countries.map((c) => toggleChip(st.countries, c.code, c.name));
+
+  const city = el("input", { type: "text", placeholder: "Vuota = tutto il paese. Es. Milano", value: st.location.city, list: "edGeo", autocomplete: "off" });
+  const geoList = el("datalist", { id: "edGeo" });
+  let gt;
+  const kmVal = el("b", {}, st.location.radius_km + " km");
+  const km = el("input", { type: "range", min: 10, max: 1000, step: 10, value: st.location.radius_km });
+  const kmRow = el("div", { class: "row2", hidden: !st.location.city }, el("span", { class: "muted" }, "Raggio"), km, kmVal);
+  km.addEventListener("input", () => { st.location.radius_km = +km.value; kmVal.textContent = km.value + " km"; schedulePreview(); });
+  city.addEventListener("input", () => {
+    st.location.city = city.value; kmRow.hidden = !city.value.trim(); schedulePreview();
+    clearTimeout(gt); gt = setTimeout(async () => {
+      const r = await api("/api/geo/suggest?q=" + encodeURIComponent(city.value));
+      geoList.replaceChildren(...r.map((x) => el("option", { value: x.label }, x.country === "IT" ? "" : x.country)));
+    }, 180);
+  });
+  const rem = el("input", { type: "checkbox", checked: st.remote }); rem.addEventListener("change", () => { st.remote = rem.checked; schedulePreview(); });
+  const intern = el("input", { type: "checkbox", checked: st.internships }); intern.addEventListener("change", () => { st.internships = intern.checked; schedulePreview(); });
+
+  const body = () => ({ ...st, name: st.name.trim(), location: { city: st.location.city.trim(), radius_km: st.location.radius_km } });
+  async function showPreview() {
+    const r = await postRaw("/api/profiles/preview", body());
+    if (!r.ok) { prev.hidden = false; prev.replaceChildren(el("div", { class: "note" }, cap((r.data && r.data.error) || "Anteprima non disponibile"))); return; }
+    const d = r.data;
+    const reqs = Object.entries(d.requests || {}).filter(([, n]) => n > 0);
+    prev.hidden = false;
+    prev.replaceChildren(
+      el("div", {}, `Verranno fatte ${d.queries.length} ricerche`, reqs.length ? ". Richieste stimate: " + reqs.map(([k, n]) => `${k} ${n}`).join(", ") + "." : "."),
+      ...(d.notes || []).map((n) => el("div", { class: "note" }, n)),
+      el("h5", {}, "Ricerche"),
+      el("ul", {}, d.queries.slice(0, 14).map((q) => el("li", {}, `${q.q} · ${countryName(q.country)}${q.where ? " · " + q.where : ""}`)), d.queries.length > 14 ? el("li", {}, `... e altre ${d.queries.length - 14}`) : null),
+      el("h5", {}, "Parole chiave principali"),
+      el("div", { class: "kw" }, [...d.keywords].sort((a, b) => b.weight - a.weight).slice(0, 16).map((k) => el("span", {}, `${k.term} · ${k.weight}`))));
+  }
+
+  let delBtn = null;
+  if (p) {
+    delBtn = el("button", { class: "btn danger", onclick: async () => {
+      if (delBtn.dataset.sure !== "1") { delBtn.dataset.sure = "1"; delBtn.textContent = "Conferma eliminazione"; return; }
+      const r = await postRaw(`/api/profiles/${p.id}/delete`, {});
+      if (!r.ok) { err.textContent = cap((r.data && r.data.error) || "Non riuscito"); delBtn.dataset.sure = ""; delBtn.textContent = "Elimina"; return; }
+      toast("Profilo eliminato", p.name); box.replaceChildren(); await loadSearch(); refreshAfterProfiles();
+    } }, "Elimina");
+  }
+  const save = async () => {
+    err.textContent = "";
+    const r = await postRaw(p ? "/api/profiles/" + p.id : "/api/profiles", body());
+    if (!r.ok) { err.textContent = cap((r.data && r.data.error) || "Salvataggio non riuscito"); return; }
+    toast(p ? "Profilo aggiornato" : "Profilo creato", st.name);
+    box.replaceChildren(); await loadSearch(); refreshAfterProfiles();
+  };
+  box.replaceChildren(el("div", { class: "editor" },
+    el("h3", {}, p ? "Modifica profilo" : "Nuovo profilo"),
+    el("label", { class: "fl" }, el("span", { class: "lab" }, "Nome"), name),
+    el("label", { class: "fl" }, el("span", { class: "lab" }, "Tipo di lavoro"), preset, hintPreset),
+    el("div", { class: "fl" }, el("span", { class: "lab" }, "Lavori che cerchi"), titleInput, titlesT.box, titleHint),
+    el("div", { class: "fl" }, el("span", { class: "lab" }, "Parole da escludere"), exclInput, exclT.box),
+    el("div", { class: "two" },
+      el("label", { class: "fl" }, el("span", { class: "lab" }, "Livello"), sen),
+      el("div", { class: "fl" }, el("span", { class: "lab" }, "Tipo di contratto (nessuno = tutti)"), el("div", { class: "pchips" }, contractChips))),
+    el("div", { class: "fl" }, el("span", { class: "lab" }, "Paesi"), el("div", { class: "pchips" }, countryChips),
+      el("div", { class: "hint" }, "La ricerca usa Adzuna, che copre tutti questi paesi con la stessa chiave. Le ricerche sono nella lingua del paese quando il tipo di profilo la prevede.")),
+    el("div", { class: "fl" }, el("span", { class: "lab" }, "Città"), city, geoList, kmRow,
+      el("div", { class: "hint" }, "Con una città si cerca solo nel suo raggio, nel paese a cui appartiene. Lasciala vuota per cercare in tutto il paese.")),
+    el("div", { class: "row2" },
+      el("label", { class: "chk" }, rem, "Accetta anche annunci da remoto"),
+      el("label", { class: "chk" }, intern, "Cerca anche stage e tirocini")),
+    err,
+    el("div", { class: "pacts" }, el("button", { class: "btn primary", onclick: save }, "Salva"),
+      el("button", { class: "btn", onclick: showPreview }, "Anteprima"),
+      el("button", { class: "btn", onclick: () => box.replaceChildren() }, "Annulla"), delBtn),
+    prev));
+  box.scrollIntoView({ block: "nearest" });
+  if (p) showPreview();
+}
+
+/* ---- informazioni e attribuzioni ---- */
+function aboutGroup(version) {
+  const a = (href, text) => el("a", { href, target: "_blank", rel: "noopener noreferrer" }, text);
+  return el("div", { class: "sgroup", id: "about" }, el("h4", {}, "Informazioni"),
+    el("div", { class: "shint" }, "JobsHunter " + version + ": strumento personale per cercare lavoro, in locale sul tuo computer, senza garanzie. Dati, chiavi e CV restano sul tuo Mac."),
+    el("div", { class: "shint" }, "Annunci forniti da ", a(ADZUNA_URL, "Adzuna"), " (", adzunaBadge(), ") e da ", a("https://jooble.org", "Jooble"),
+      ", oltre alle pagine carriere pubbliche di Greenhouse e Lever, a Arbeitnow, RemoteOK e Remotive. Il progetto non è affiliato né approvato da Adzuna, Jooble, LinkedIn o Indeed: usa le loro API nel rispetto dei termini d'uso."),
+    el("div", { class: "shint" }, "Le coordinate delle città vengono da ", a("https://www.geonames.org", "GeoNames"), " (licenza CC BY 4.0), tramite il pacchetto geonamescache. Le licenze delle altre librerie sono nel file THIRD_PARTY_NOTICES.md."));
+}
+
+/* ---- impostazioni ---- */
+async function loadSettings() {
+  const [d, sch, scans] = await Promise.all([api("/api/settings"), api("/api/schedule"), api("/api/scans"), loadCv()]);
+  const byKey = Object.fromEntries(d.fields.map((f) => [f.key, f]));
+  const inputs = {}, cleared = new Set();
+
+  const row = (key, hint) => {
+    const f = byKey[key];
+    let inp;
+    if (f.type === "bool") {
+      inp = el("input", { type: "checkbox", checked: !!f.value });
+      inputs[key] = () => inp.checked;
+      return el("div", { class: "srow" }, el("label", {}, f.label), el("label", { class: "chk" }, inp, f.value ? "attivo" : "spento"), el("span"));
+    }
+    if (f.type === "int") { inp = el("input", { type: "number", value: f.value, min: 1 }); inputs[key] = () => inp.value; }
+    else if (f.secret) {
+      inp = el("input", { type: "password", autocomplete: "off", placeholder: f.set ? "•••••••• impostata (vuoto = invariata)" : "non impostata" });
+      inputs[key] = () => inp.value;
+    } else { inp = el("input", { type: "text", value: f.value || "", autocomplete: "off", spellcheck: "false" }); inputs[key] = () => inp.value; }
+    const extra = [];
+    if (f.secret && f.set) extra.push(el("button", { class: "btn sm", onclick: (e) => { cleared.add(key); inp.placeholder = "verrà rimossa al salvataggio"; e.target.remove(); } }, "Rimuovi"));
+    if (f.type === "path") {
+      if (native()) extra.push(el("button", { class: "btn sm", onclick: async () => { const p = await native().choose_folder(); if (p) inp.value = p; } }, "Scegli..."));
+    }
+    return [el("div", { class: "srow" }, el("label", {}, f.label), inp, extra.length ? el("span", { style: "display:flex;gap:6px" }, extra) : el("span")),
+      hint ? el("div", { class: "shint" }, hint) : null];
+  };
+  const testBtn = (name) => el("button", { class: "btn sm", onclick: async () => { const r = await post("/api/settings/test/" + name); toast(r.ok ? "Chiave valida" : "Verifica non riuscita", r.detail); } }, "Verifica chiave (dopo aver salvato)");
+
+  const save = async () => {
+    const values = {};
+    for (const [k, get] of Object.entries(inputs)) values[k] = get();
+    try {
+      await post("/api/settings", { values, clear: [...cleared] });
+      toast("Impostazioni salvate"); loadSettings(); loadStats();
+    } catch (e) { toast("Salvataggio non riuscito", "Controlla città e valori inseriti"); }
+  };
+
+  $("setcontent").replaceChildren(...[
+    el("div", { class: "sbar" }, el("button", { class: "btn primary", onclick: save }, "Salva impostazioni"),
+      el("span", { class: "muted", style: "font-size:12px" }, "Le modifiche valgono dal prossimo scan.")),
+    scheduleGroup(sch, scans),
+    el("div", { class: "sgroup" }, el("h4", {}, "Fonti, Adzuna (mercato italiano, testo completo)"),
+      row("sources.adzuna.enabled"), row("sources.adzuna.full_text"), row("sources.adzuna.app_id"), row("sources.adzuna.app_key"),
+      el("div", { class: "shint" }, "Il testo completo si legge dalla pagina dell'annuncio su Adzuna (una richiesta per annuncio): è una funzione facoltativa, non coperta dai termini delle API. Se la spegni vedrai solo l'anteprima e gli annunci Adzuna non verranno verificati."),
+      el("div", { class: "shint" }, "Chiavi gratuite su developer.adzuna.com. "), testBtn("adzuna")),
+    el("div", { class: "sgroup" }, el("h4", {}, "Fonti, Jooble (solo anteprime)"),
+      row("sources.jooble.enabled"), row("sources.jooble.host"), row("sources.jooble.api_key"),
+      el("div", { class: "shint" }, "La chiave vale solo per il suo paese: per l'Italia l'host è it.jooble.org. Limite predefinito: 500 richieste."), testBtn("jooble")),
+    el("div", { class: "sgroup" }, el("h4", {}, "Zona"),
+      row("home"), row("radius_km"),
+      el("div", { class: "shint" }, "Valori storici di casa. La città e il raggio di ogni ricerca ora si scelgono per profilo, nella scheda Ricerca. Il filtro \"Raggio\" della lista funziona a parte.")),
+    el("div", { class: "sgroup" }, el("h4", {}, "Report"),
+      row("report.dir"),
+      el("div", { class: "shint" }, "Punta alla tua vault di Obsidian. Se lasci un nome semplice, la cartella viene creata nei dati dell'app.")),
+    el("div", { class: "sgroup" }, el("h4", {}, "Altro"),
+      row("search.internships"), row("notify.topic"), row("general.min_score"),
+      el("div", { class: "shint" }, "Con \"Cerca anche stage e tirocini\" lo scan aggiunge ricerche dedicate (qualche richiesta in più). Il topic ntfy attiva le notifiche (usa un nome non indovinabile). Il punteggio minimo scarta gli annunci poco pertinenti.")),
+    el("div", { class: "sgroup" }, el("h4", {}, "Avanzate, rete"),
+      row("net.contact"), row("net.user_agent"),
+      el("div", { class: "shint" }, "JobsHunter si presenta ai siti con il proprio nome (User-Agent: " + d.user_agent + "), mai come un browser. Il contatto, per esempio un'email o l'indirizzo del progetto, è facoltativo e finisce solo in quell'intestazione. Se un sito rifiuta le richieste, il programma non insiste: l'annuncio resta \"non verificato\".")),
+    el("div", { class: "sgroup" }, el("h4", {}, "Il tuo CV"),
+      el("div", { class: "shint" }, "Carica il CV per vedere, su ogni annuncio, quanto ti somiglia e perché. Il confronto è tutto locale: nessun servizio esterno, nessun invio in rete."),
+      cvBox()),
+    el("div", { class: "sgroup" }, el("h4", {}, "Guida di primo avvio"),
+      el("div", { class: "shint" }, "Rivedi i passi guidati: che lavoro cerchi, dove, le chiavi delle fonti e le ultime scelte. I tuoi annunci e gli altri profili non vengono toccati."),
+      el("div", { class: "sbar", style: "margin:0 0 12px" }, el("button", { class: "btn", onclick: () => openOnboarding(true) }, "Rifai la guida"))),
+    aboutGroup(d.version),
+    el("div", { class: "sfoot" },
+      el("div", {}, el("b", {}, "Versione "), d.version),
+      el("div", {}, el("b", {}, "Dati "), d.paths.home, native() ? el("button", { class: "btn sm", style: "margin-left:8px", onclick: () => native().open_folder("data") }, "Apri in Finder") : null),
+      el("div", {}, el("b", {}, "Database "), d.paths.db),
+      el("div", {}, el("b", {}, "Report "), d.paths.reports, native() ? el("button", { class: "btn sm", style: "margin-left:8px", onclick: () => native().open_folder("reports") }, "Apri in Finder") : null)),
+  ].flat());
+}
+
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA" || (typeof OB !== "undefined" && OB)) return;  // niente scorciatoie della lista mentre si scrive o con la guida aperta
+  if (e.key === "Escape") closeDrawer();
+  if (e.key === "j" || e.key === "k") {
+    const i = jobs.findIndex((j) => j.uid === selected);
+    const n = jobs[Math.min(Math.max(i + (e.key === "j" ? 1 : -1), 0), jobs.length - 1)];
+    if (n) { openJob(n.uid); document.querySelector(`tr.row[data-uid="${n.uid}"]`)?.scrollIntoView({ block: "nearest" }); }
+  }
+});
+
+/* ---- il tuo CV ---- */
+async function loadCv() { try { CV = await api("/api/cv"); } catch (e) { CV = { present: false }; } return CV; }
+async function cvSend(what) {
+  let opts;
+  if (typeof what === "string") opts = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: what }) };
+  else {
+    if (what.size > 5 * 1024 * 1024) return { ok: false, error: "Il file è troppo grande: il limite è 5 MB." };
+    if (!/\.(pdf|docx|txt|md)$/i.test(what.name)) return { ok: false, error: "Formato non supportato: usa un file .pdf, .docx, .txt o .md." };
+    const fd = new FormData(); fd.append("file", what); opts = { method: "POST", body: fd };
+  }
+  let r, data = {};
+  try { r = await fetch("/api/cv", opts); data = await r.json(); } catch (e) { return { ok: false, error: "Non sono riuscito a caricare il CV. Riprova." }; }
+  return { ok: !!(r.ok && data.ok), data, error: data.error || "Non sono riuscito a caricare il CV." };
+}
+function cvAfterChange() {
+  if (!CV.present) { F.cvMin = 0; F.sortCv = false; }
+  if (view === "jobs" || view === "jooble") { renderToolbar(); loadJobs(); }
+}
+let CV_VOCAB = null;
+async function cvFillList(dl) {
+  try { if (!CV_VOCAB) CV_VOCAB = await api("/api/cv/vocab"); } catch (e) { CV_VOCAB = []; }
+  dl.replaceChildren(...CV_VOCAB.map((n) => el("option", { value: n })));
+}
+function cvBox() {
+  const box = el("div", { class: "cvbox" });
+  let replacing = false, err = "", busy = false, confirmDel = false, timer = null;
+  const set = (cv) => { CV = cv; };
+  const poll = () => {
+    clearInterval(timer);
+    timer = setInterval(async () => {
+      if (!box.isConnected) return clearInterval(timer);
+      const was = CV.matching && CV.matching.running;
+      await loadCv(); draw();
+      if (!(CV.matching && CV.matching.running)) { clearInterval(timer); if (was) cvAfterChange(); }
+    }, 1000);
+  };
+  const upload = async (what) => {
+    busy = true; err = ""; draw();
+    const r = await cvSend(what);
+    busy = false;
+    if (!r.ok) { err = r.error; return draw(); }
+    set(r.data.cv); replacing = false; draw(); cvAfterChange();
+    if (CV.matching && CV.matching.running) poll();
+  };
+  const change = async (body) => {
+    const r = await postRaw("/api/cv/skills", body);
+    if (!r.ok) { err = (r.data && r.data.error) || "Non sono riuscito a salvare."; return draw(); }
+    err = ""; set(r.data.cv); draw(); poll();
+  };
+  function uploadView() {
+    const file = el("input", { type: "file", accept: ".pdf,.docx,.txt,.md", "aria-label": "File del CV", disabled: busy });
+    file.addEventListener("change", () => { if (file.files[0]) upload(file.files[0]); });
+    const ta = el("textarea", { placeholder: "Oppure incolla qui il testo del CV", "aria-label": "Testo del CV", disabled: busy });
+    return [
+      el("p", { class: "shint" }, "Formati: PDF con testo, Word (.docx), .txt o .md, fino a 5 MB. Il file viene letto sul tuo Mac: ne tengo solo il testo, in un file riservato, e non esce mai dal computer."),
+      el("div", { class: "row" }, file, replacing ? el("button", { class: "btn sm", type: "button", onclick: () => { replacing = false; err = ""; draw(); } }, "Annulla") : null),
+      ta,
+      el("div", { class: "row" }, el("button", { class: "btn sm", type: "button", disabled: busy, onclick: () => ta.value.trim() ? upload(ta.value) : (err = "Incolla prima il testo del CV.", draw()) }, "Usa questo testo")),
+      busy ? el("div", { class: "shint" }, "Leggo il CV...") : null,
+    ];
+  }
+  function presentView() {
+    const add = el("input", { type: "text", placeholder: "Aggiungi una competenza (es. Splunk)", list: "cvSkillList", autocomplete: "off", "aria-label": "Aggiungi competenza" });
+    const doAdd = () => { const v = add.value.trim(); if (v) change({ add: [v] }); };
+    add.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); doAdd(); } });
+    const m = CV.matching || {};
+    const langs = (CV.languages || []).map((l) => l.lang + (l.level ? " " + l.level : "")).join(", ");
+    return [
+      el("div", { class: "shint" }, `CV caricato il ${fmtDate((CV.updated || "").slice(0, 10)) || "-"} · ${CV.words} parole · ` +
+        (CV.years != null ? `circa ${String(CV.years).replace(".", ",")} ${CV.years === 1 ? "anno" : "anni"} di esperienza` : "anni di esperienza non stimabili con sicurezza") + (langs ? ` · ${langs}` : "")),
+      el("div", { class: "cvx-l" }, `Competenze riconosciute (${(CV.skills || []).length}). Togli quelle sbagliate con la x.`),
+      el("div", { class: "skl" }, (CV.skills || []).map((n) => el("span", { class: "skchip" }, n, el("button", { type: "button", title: "Togli", "aria-label": "Togli " + n, onclick: () => change({ remove: [n] }) }, "×")))),
+      (CV.skills_removed || []).length ? [el("div", { class: "cvx-l" }, "Tolte da te"), el("div", { class: "skl" }, CV.skills_removed.map((n) => el("span", { class: "skchip" }, n, el("button", { type: "button", title: "Ripristina", onclick: () => change({ restore: [n] }) }, "↺"))))] : null,
+      el("div", { class: "row" }, add, el("button", { class: "btn sm", type: "button", onclick: doAdd }, "Aggiungi"), (() => { const dl = el("datalist", { id: "cvSkillList" }); cvFillList(dl); return dl; })()),
+      m.running ? el("div", { class: "shint" }, `Confronto con gli annunci: ${m.done}/${m.total || "..."}`) : null,
+      el("div", { class: "row" },
+        el("button", { class: "btn sm", type: "button", onclick: () => { replacing = true; err = ""; draw(); } }, "Sostituisci"),
+        confirmDel
+          ? [el("span", { class: "muted" }, "Elimino davvero il CV?"),
+             el("button", { class: "btn sm stop", type: "button", onclick: async () => { await post("/api/cv/delete"); CV = { present: false }; confirmDel = false; draw(); cvAfterChange(); toast("CV eliminato"); } }, "Si', elimina"),
+             el("button", { class: "btn sm", type: "button", onclick: () => { confirmDel = false; draw(); } }, "Annulla")]
+          : el("button", { class: "btn sm stop", type: "button", onclick: () => { confirmDel = true; draw(); } }, "Elimina il CV")),
+    ];
+  }
+  function draw() {
+    box.replaceChildren(...[...(CV.present && !replacing ? presentView() : uploadView()), err ? el("div", { class: "cverr", role: "alert" }, err) : null].flat().filter(Boolean));
+  }
+  draw();
+  if (CV.matching && CV.matching.running) poll();
+  return box;
+}
+
+/* ---- guida di primo avvio ---- */
+const OB_STEPS = ["Benvenuto", "Che lavoro cerchi", "Dove", "Fonti degli annunci", "Ultime scelte", "Il tuo CV (facoltativo)", "Riepilogo e prima ricerca"];
+const OB_FIELD_STEP = { profile: 2, titles: 2, country: 3, home: 3, radius_km: 3, adzuna: 4, jooble: 4, keys: 4, report_dir: 5, schedule: 5 };
+const OB_LEVELS = { any: "Qualsiasi livello", junior: "Primo impiego o poca esperienza", mid: "Con qualche anno di esperienza", senior: "Esperto o con ruoli di responsabilità" };
+const OB_SRC = { adzuna: "Adzuna", jooble: "Jooble", arbeitnow: "Arbeitnow", remoteok: "RemoteOK", remotive: "Remotive", greenhouse: "Pagine carriere (Greenhouse)", lever: "Pagine carriere (Lever)" };
+const obSrcName = (n) => OB_SRC[String(n).split(/[:/ ]/)[0]] || cap(String(n));
+const obJooHost = (c) => (c === "gb" ? "uk.jooble.org" : c === "us" ? "jooble.org" : `${c}.jooble.org`);
+const obTitles = () => OB.d.titles.split("\n").map((t) => t.trim()).filter(Boolean);
+let OB = null;
+
+async function openOnboarding(rerun, info) {
+  try { info = info || await api("/api/onboarding"); await loadMeta(); } catch (e) { toast("Non riesco ad aprire la guida", "Riprova tra un attimo"); return; }
+  const pf = info.prefill || {}, mp = pf.profile, sch = pf.schedule || {};
+  OB = {
+    step: 1, phase: "form", rerun: !!rerun, info, error: "", errField: "", testRes: null, est: null, estErr: "", timer: null,
+    pid: null, notes: [], found: null, status: null, busy: false,
+    d: {
+      preset: mp ? mp.preset : "", titles: mp ? mp.titles.join("\n") : "", seniority: mp ? mp.seniority : "any",
+      internships: mp ? mp.internships : true, remote: mp ? mp.remote : true, country: mp ? mp.countries[0] : "it",
+      home: rerun ? (pf.home || "") : "", radius: rerun ? (pf.radius_km || 100) : 100,
+      adzId: "", adzKey: "", jooHost: pf.jooble_host || "", jooKey: "",
+      reportDir: rerun && pf.report_dir && pf.report_dir !== "reports" ? pf.report_dir : "",
+      schedOn: !!sch.enabled, schedTimes: sch.times || "09:00", notify: sch.notify !== false,
+      schedKind: sch.kind || "daily", schedHours: sch.hours || 6,
+    },
+  };
+  OB.sch0 = { on: !!sch.enabled, times: sch.times || "09:00", notify: sch.notify !== false };  // com'era prima: si manda solo se cambia
+  if (!rerun) obLoadDraft();
+  document.querySelector(".app").inert = true;
+  document.body.style.overflow = "hidden";
+  $("onb").hidden = false;
+  obRender(true);
+}
+
+const OB_DRAFT = "jh-onb-draft";
+function obSaveDraft() {  // bozza in sessionStorage per un ricaricamento a metà; mai le chiavi
+  try {
+    if (!OB || OB.rerun || OB.phase !== "form") return;
+    const { adzId, adzKey, jooKey, ...d } = OB.d;
+    sessionStorage.setItem(OB_DRAFT, JSON.stringify({ step: OB.step, d }));
+  } catch (e) {}
+}
+function obLoadDraft() {
+  try {
+    const x = JSON.parse(sessionStorage.getItem(OB_DRAFT) || "null");
+    if (x && x.d) { Object.assign(OB.d, x.d); OB.step = Math.min(6, Math.max(1, x.step || 1)); }
+  } catch (e) {}
+}
+function obClose(goToJobs) {
+  if (!OB) return;
+  try { sessionStorage.removeItem(OB_DRAFT); } catch (e) {}
+  clearInterval(OB.timer);
+  const pid = OB.pid;
+  OB = null;
+  $("onb").hidden = true;
+  document.querySelector(".app").inert = false;
+  document.body.style.overflow = "";
+  loadStats();
+  if (goToJobs && pid != null) {
+    F.profile = String(pid); saveProfile();
+    loadProfiles().then(() => { setView("jobs"); renderToolbar(); loadJobs(); });
+  } else {
+    loadProfiles().then(() => { if (view === "jobs" || view === "jooble") { renderToolbar(); loadJobs(); } if (view === "search") loadSearch(); });
+  }
+}
+
+async function obSkip() {
+  if (!OB.rerun) { try { await post("/api/onboarding/skip"); } catch (e) {} toast("Guida saltata", "La riapri quando vuoi da Impostazioni, con \"Rifai la guida\"."); }
+  obClose(false);
+}
+
+function obFl(label, control, hint, id) {
+  return el("div", { class: "onb-fl" }, el("label", { class: "lab", for: id }, label), control, hint ? el("span", { class: "hint" }, hint) : null);
+}
+function obInput(id, key, props = {}) {
+  const i = el("input", { id, type: props.type || "text", autocomplete: "off", spellcheck: "false", ...props, value: OB.d[key] });
+  i.addEventListener("input", () => { OB.d[key] = i.value; });
+  return i;
+}
+function obCheck(key, text) {
+  const i = el("input", { type: "checkbox", checked: !!OB.d[key] });
+  i.addEventListener("change", () => { OB.d[key] = i.checked; });
+  return el("label", { class: "chk", style: "margin: 4px 0 10px; display:flex" }, i, text);
+}
+function obShowError(msg, field) {
+  OB.error = msg; OB.errField = field || "";
+  const e = $("onbErr");
+  if (e) { e.textContent = msg; e.hidden = !msg; if (msg) e.scrollIntoView({ block: "nearest" }); }
+}
+
+/* disegno: barra dei passi, corpo del passo, pulsanti in fondo */
+function obRender(focus) {
+  const s = OB.step;
+  const segs = OB_STEPS.map((_, i) => el("div", { class: "onb-seg" + (i + 1 < s ? " done" : i + 1 === s ? " on" : "") }));
+  $("onbProg").replaceChildren(el("div", { class: "onb-segs", "aria-hidden": "true" }, segs),
+    el("div", { class: "onb-stepname", role: "status" }, `Passo ${s} di ${OB_STEPS.length}: ${OB_STEPS[s - 1]}`));
+  const fn = [null, obStep1, obStep2, obStep3, obStep4, obStep5, obStepCv, obStep6][s];
+  const body = fn();
+  $("onbBody").replaceChildren(...body.filter(Boolean), el("div", { id: "onbErr", class: "onb-err", role: "alert", hidden: !OB.error }, OB.error));
+  obFoot();
+  obSaveDraft();
+  if (focus !== false) { const h = $("onbBody").querySelector("h2"); if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); } $("onb").scrollTop = 0; }
+}
+
+function obFoot() {
+  const s = OB.step, f = $("onbFoot");
+  const scanning = OB.phase !== "form";
+  if (scanning) { f.replaceChildren(); f.hidden = true; return; }
+  f.hidden = false;
+  const back = s > 1 ? el("button", { class: "btn", type: "button", onclick: () => obGo(s - 1) }, "Indietro") : null;
+  let next;
+  if (s === 1) next = el("button", { class: "btn primary", type: "button", onclick: () => obGo(2) }, "Inizia");
+  else if (s === 4) {
+    const empty = !OB.d.adzId.trim() && !OB.d.adzKey.trim() && !OB.d.jooKey.trim();
+    next = el("button", { class: "btn primary", type: "button", onclick: obNext }, empty ? "Continua senza chiavi" : "Continua");
+  } else if (s === 6) next = el("button", { class: "btn primary", type: "button", onclick: obNext }, CV.present ? "Avanti" : "Salta questo passo");
+  else if (s === 7) next = el("button", { class: "btn primary", type: "button", id: "onbRun", onclick: obRun, disabled: OB.busy }, OB.busy ? "Un attimo..." : "Avvia la prima scansione");
+  else next = el("button", { class: "btn primary", type: "button", onclick: obNext }, "Avanti");
+  const save = s === 7 ? el("button", { class: "btn", type: "button", onclick: () => obRun(true), disabled: OB.busy }, "Salva senza cercare ora") : null;
+  f.replaceChildren(...[back, el("span", { class: "grow" }), save, next].filter(Boolean));
+}
+
+function obGo(n) { OB.step = n; OB.error = ""; OB.errField = ""; if (n === 7) { OB.est = null; OB.estErr = ""; } obRender(); if (n === 7) obEstimate(); }
+
+async function obNext() {
+  const s = OB.step, d = OB.d;
+  obShowError("");
+  if (s === 2) {
+    const t = obTitles();
+    if (t.length > 8) return obShowError(`Hai scritto ${t.length} lavori: ne bastano 8 al massimo. Togli quelli meno importanti.`);
+    if (!d.preset && !t.length) return obShowError("Scegli un tipo di lavoro qui sopra, oppure scrivi almeno un lavoro nella casella.");
+    if (d.preset === "custom" && !t.length) return obShowError("Hai scelto «Altro»: scrivi almeno un lavoro nella casella (uno per riga).");
+  }
+  if (s === 3 && d.home.trim()) {
+    let r; try { r = await api("/api/geo/resolve?q=" + encodeURIComponent(d.home.trim())); } catch (e) { r = { ok: true }; }
+    if (!r.ok) return obShowError("Non trovo questa città. Scegline una dall'elenco che compare mentre scrivi, oppure lascia il campo vuoto per cercare in tutto il paese.");
+  }
+  if (s === 4) {
+    if (!!d.adzId.trim() !== !!d.adzKey.trim()) return obShowError("Per Adzuna servono tutti e due i codici: Application ID e Application Key.");
+    if (d.jooKey.trim() && !d.jooHost.trim()) return obShowError("Per Jooble serve anche l'indirizzo (esempio: it.jooble.org).");
+  }
+  obGo(s + 1);
+}
+
+/* passo 1 */
+function obStep1() {
+  return [
+    el("h2", {}, OB.rerun ? "Rifacciamo la guida" : "Benvenuto in JobsHunter"),
+    el("p", { class: "lead" }, "In pochi minuti scegli che lavoro cerchi e dove, e JobsHunter va a cercare gli annunci per te, da diversi siti, e li mette in ordine dal più adatto."),
+    el("ul", { class: "plain" },
+      el("li", {}, el("b", {}, "Resta tutto sul tuo Mac."), " Gli annunci, le candidature e le tue scelte non vengono mandati a nessuno."),
+      el("li", {}, el("b", {}, "Nessun account, nessuna registrazione"), " per usare l'app."),
+      el("li", {}, el("b", {}, "Ci vogliono circa 3 minuti."), " Puoi tornare indietro in ogni momento e cambiare idea più tardi.")),
+    OB.rerun ? el("p", { class: "onb-note" }, "Le tue scelte attuali sono già compilate. I profili e gli annunci che hai già non vengono toccati: la guida aggiorna solo il profilo che aveva creato lei.") : null,
+  ];
+}
+
+/* passo 2 */
+function obStep2() {
+  const d = OB.d;
+  const opts = [...presets.filter((p) => p.key !== "custom").map((p) => [p.key, p.label, p.description]),
+    ["custom", "Altro: scrivo io i lavori che cerco", "Per qualsiasi mestiere, per esempio infermiere o magazziniere."]];
+  const radios = opts.map(([key, label, desc]) => {
+    const r = el("input", { type: "radio", name: "onbPreset", value: key, checked: d.preset === key });
+    r.addEventListener("change", () => { d.preset = key; obShowError(""); });
+    return el("label", { class: "onb-opt" }, r, el("span", {}, el("b", {}, label), el("small", {}, desc)));
+  });
+  const ta = el("textarea", { id: "onbTitles", spellcheck: "false", placeholder: "Un lavoro per riga, per esempio:\ninfermiere\noperatore sociosanitario" }, d.titles);
+  const count = el("span", { class: "hint" });
+  const upd = () => { const n = obTitles().length; count.textContent = n ? `${n} su 8 lavori` : "Al massimo 8 lavori."; count.style.color = n > 8 ? "var(--red)" : ""; };
+  ta.addEventListener("input", () => { d.titles = ta.value; upd(); });
+  upd();
+  const lvl = el("select", { id: "onbLevel" }, Object.entries(OB_LEVELS).map(([k, l]) => el("option", { value: k, selected: d.seniority === k }, l)));
+  lvl.addEventListener("change", () => { d.seniority = lvl.value; });
+  return [
+    el("h2", {}, "Che lavoro cerchi?"),
+    el("p", { class: "lead" }, "Scegli il tipo di lavoro che somiglia di più al tuo, oppure scrivi tu i lavori."),
+    el("div", { class: "onb-opts", role: "radiogroup", "aria-label": "Tipo di lavoro" }, radios),
+    el("div", { class: "onb-fl" }, el("label", { class: "lab", for: "onbTitles" }, d.preset && d.preset !== "custom" ? "Altri lavori da aggiungere (facoltativo)" : "I lavori che cerchi"), ta, count),
+    obFl("Che esperienza hai?", lvl, "Serve a far salire gli annunci adatti al tuo livello. Non esclude nessun annuncio.", "onbLevel"),
+    obCheck("internships", "Cerca anche stage e tirocini"),
+  ];
+}
+
+/* passo 3 */
+function obStep3() {
+  const d = OB.d;
+  const sel = el("select", { id: "onbCountry" }, countries.map((c) => el("option", { value: c.code, selected: d.country === c.code }, c.name)));
+  sel.addEventListener("change", () => { d.country = sel.value; if (!OB.jooTouched) d.jooHost = obJooHost(d.country); });
+  const city = obInput("onbCity", "home", { list: "onbGeo", placeholder: "Per esempio Bari. Vuoto = tutto il paese" });
+  const dl = el("datalist", { id: "onbGeo" });
+  let gt;
+  const kmVal = el("b", {}, d.radius + " km");
+  const km = el("input", { type: "range", id: "onbKm", min: 10, max: 500, step: 10, value: Math.min(500, d.radius), "aria-label": "Raggio in chilometri", style: "flex:1 1 200px;accent-color:var(--blue)" });
+  const kmRow = el("div", { class: "onb-row", hidden: !d.home.trim() }, km, kmVal);
+  km.addEventListener("input", () => { d.radius = +km.value; kmVal.textContent = km.value + " km"; });
+  city.addEventListener("input", () => {
+    kmRow.hidden = !city.value.trim();
+    clearTimeout(gt); gt = setTimeout(async () => {
+      try { const r = await api("/api/geo/suggest?q=" + encodeURIComponent(city.value)); dl.replaceChildren(...r.map((x) => el("option", { value: x.label }, x.country === "IT" ? "" : x.country))); } catch (e) {}
+    }, 180);
+  });
+  return [
+    el("h2", {}, "Dove vuoi lavorare?"),
+    el("p", { class: "lead" }, "Indica il paese e, se vuoi, la città da cui cercare. Senza città cerco in tutto il paese."),
+    obFl("Paese", sel, null, "onbCountry"),
+    obFl("La tua città (facoltativo)", city, "Inizia a scrivere e scegli dall'elenco.", "onbCity"), dl,
+    el("div", { class: "onb-fl" }, el("span", { class: "lab" }, "Quanto lontano sei disposto ad andare?"), kmRow,
+      el("span", { class: "hint" }, "Compare quando scrivi una città. Il raggio si misura in linea d'aria.")),
+    obCheck("remote", "Includi anche il lavoro da remoto"),
+  ];
+}
+
+/* passo 4 */
+function obTestResult(r) {
+  const box = $("onbTestRes");
+  if (!box) return;
+  if (!r) { box.hidden = true; return; }
+  box.hidden = false;
+  box.className = "onb-res " + (r.ok ? "ok" : (r.status === "blocked" || r.status === "network" ? "warn" : "bad"));
+  box.textContent = (r.ok ? "Perfetto. " : "") + r.message;
+}
+async function obTestKey() {
+  const d = OB.d, b = $("onbTest");
+  b.disabled = true; const old = b.textContent; b.textContent = "Provo...";
+  let r;
+  try {
+    const x = await postRaw("/api/onboarding/test-adzuna", { app_id: d.adzId, app_key: d.adzKey, country: d.country });
+    r = x.data && x.data.message ? x.data : { ok: false, status: "network", message: "Qualcosa è andato storto. Riprova tra un attimo." };
+  } catch (e) { r = { ok: false, status: "network", message: "Non riesco a contattare l'app. Riprova." }; }
+  OB.testRes = r; obTestResult(r);
+  b.disabled = false; b.textContent = old;
+}
+function obStep4() {
+  const d = OB.d, pf = OB.info.prefill || {};
+  const idI = obInput("onbAdzId", "adzId", { placeholder: "Application ID (circa 8 caratteri)" });
+  const keyI = obInput("onbAdzKey", "adzKey", { type: "password", placeholder: "Application Key (circa 32 caratteri)" });
+  const sync = () => { OB.testRes = null; obTestResult(null); obFoot(); };
+  idI.addEventListener("input", sync); keyI.addEventListener("input", sync);
+  const joo = obInput("onbJooHost", "jooHost", { placeholder: "it.jooble.org" });
+  joo.addEventListener("input", () => { OB.jooTouched = true; });
+  if (!d.jooHost) d.jooHost = obJooHost(d.country), joo.value = d.jooHost;
+  const jooK = obInput("onbJooKey", "jooKey", { type: "password", placeholder: "Chiave Jooble" });
+  jooK.addEventListener("input", obFoot);
+  const free = [["Arbeitnow", "annunci soprattutto in Germania e in Europa, spesso in inglese o tedesco."],
+    ["RemoteOK", "solo lavori da remoto, quasi tutti nel settore informatico e in inglese."],
+    ["Remotive", "solo lavori da remoto, soprattutto informatica e digitale, in inglese."]];
+  const res = el("div", { id: "onbTestRes", class: "onb-res", role: "status", hidden: true });
+  const body = [
+    el("h2", {}, "Da dove prendo gli annunci?"),
+    el("p", { class: "lead" }, "JobsHunter funziona subito anche senza chiavi, ma con una chiave gratuita trova molto di più."),
+    el("div", { class: "onb-box" }, el("h4", {}, "Senza chiavi: fonti gratuite"),
+      el("ul", { class: "plain" }, free.map(([n, t]) => el("li", {}, el("b", {}, n), ": " + t))),
+      el("p", { class: "onb-note" }, "Sono pochi annunci e quasi mai di una città italiana precisa. Per un mestiere non informatico, o per cercare vicino a casa, serve Adzuna.")),
+    el("div", { class: "onb-box" }, el("h4", {}, "Adzuna (consigliata, gratis)"),
+      el("p", {}, "Adzuna raccoglie annunci di molti siti italiani e di altri 18 paesi. La chiave è gratuita e si ottiene in due minuti."),
+      el("ol", { class: "plain" },
+        el("li", {}, "Apri il sito di Adzuna per sviluppatori e crea un account gratuito."),
+        el("li", {}, "Dopo l'accesso trovi due codici: l'«Application ID» e l'«Application Key»."),
+        el("li", {}, "Copiali qui sotto e premi «Prova la chiave».")),
+      el("p", {}, el("a", { class: "btn", href: "https://developer.adzuna.com/", target: "_blank", rel: "noopener noreferrer" }, "Apri Adzuna nel browser")),
+      pf.has_adzuna ? el("p", { class: "onb-note" }, "Hai già una chiave Adzuna salvata. Lascia i campi vuoti per tenerla, oppure scrivine una nuova per sostituirla.") : null,
+      obFl("Application ID", idI, null, "onbAdzId"), obFl("Application Key", keyI, null, "onbAdzKey"),
+      el("div", { class: "onb-row" }, el("button", { class: "btn sm", type: "button", id: "onbTest", onclick: obTestKey }, "Prova la chiave"),
+        el("span", { class: "onb-note" }, "Fa una sola richiesta di prova.")),
+      res),
+    el("details", {}, el("summary", {}, "Jooble (facoltativo)"),
+      el("p", { class: "onb-note" }, "Un secondo sito di annunci, con solo l'anteprima di ogni annuncio. La chiave si chiede gratis su jooble.org/api/about e vale solo per il suo paese."),
+      el("p", {}, el("a", { class: "btn sm", href: "https://jooble.org/api/about", target: "_blank", rel: "noopener noreferrer" }, "Apri Jooble nel browser")),
+      pf.has_jooble ? el("p", { class: "onb-note" }, "Hai già una chiave Jooble salvata: lascia vuoto per tenerla.") : null,
+      obFl("Indirizzo del tuo paese", joo, "Esempio: it.jooble.org per l'Italia.", "onbJooHost"), obFl("Chiave", jooK, null, "onbJooKey")),
+  ];
+  setTimeout(() => obTestResult(OB && OB.testRes), 0);
+  return body;
+}
+
+/* passo 5 */
+function obStep5() {
+  const d = OB.d, info = OB.info;
+  const dir = obInput("onbDir", "reportDir", { placeholder: info.suggested_report_dir });
+  const btns = [el("button", { class: "btn sm", type: "button", onclick: () => { d.reportDir = info.suggested_report_dir; dir.value = d.reportDir; } }, "Usa " + info.suggested_report_dir)];
+  if (native()) btns.unshift(el("button", { class: "btn sm", type: "button", onclick: async () => { const p = await native().choose_folder(); if (p) { d.reportDir = p; dir.value = p; } } }, "Scegli..."));
+  const out = [
+    el("h2", {}, "Ultime scelte"),
+    el("p", { class: "lead" }, "Sono tutte facoltative: puoi cambiarle in qualsiasi momento dalle Impostazioni."),
+    el("h3", {}, "Report"),
+    obFl("Dove salvo i report", dir, "I report sono file di testo con gli annunci migliori, comodi da leggere o da aprire in Obsidian. Se non scegli niente li tengo nella cartella dei dati dell'app.", "onbDir"),
+    el("div", { class: "onb-row" }, btns),
+  ];
+  if (info.can_schedule) {
+    const t = obInput("onbTimes", "schedTimes", { placeholder: "09:00" });
+    const every = d.schedKind === "every";
+    out.push(el("h3", {}, "Ricerca automatica"),
+      obCheck("schedOn", every ? `Cerca nuovi annunci da sola ogni ${d.schedHours} ore, anche con l'app chiusa` : "Cerca nuovi annunci da sola ogni giorno, anche con l'app chiusa"),
+      every ? el("p", { class: "onb-note" }, "La frequenza resta quella che hai già scelto in Impostazioni.") : obFl("A che ora", t, "Formato 09:00. Per due volte al giorno scrivi per esempio 09:00, 18:30. Se il Mac è in stop a quell'ora, parte appena si risveglia.", "onbTimes"));
+  }
+  out.push(el("h3", {}, "Notifiche"), obCheck("notify", "Avvisami quando ci sono nuovi annunci"),
+    el("p", { class: "onb-note" }, "Le notifiche arrivano sul Mac a nome di «Script Editor»."));
+  return out;
+}
+
+/* passo 6: il CV */
+function obStepCv() {
+  return [
+    el("h2", {}, "Il tuo CV (facoltativo)"),
+    el("p", { class: "lead" }, "Se carichi il CV, accanto a ogni annuncio vedrai quanto ti somiglia e perché: quali competenze hai in comune e quali mancano."),
+    el("ul", { class: "plain" },
+      el("li", {}, el("b", {}, "Resta sul tuo Mac."), " Il confronto è tutto locale, senza servizi esterni."),
+      el("li", {}, "Ne tengo solo il testo, in un file riservato. Lo elimini quando vuoi dalle Impostazioni.")),
+    cvBox(),
+    el("p", { class: "onb-note" }, "Puoi saltare questo passo e caricare il CV più tardi."),
+  ];
+}
+
+/* passo 7: riepilogo */
+function obPayload() {
+  const d = OB.d, t = obTitles();
+  const p = {
+    profile: { preset: d.preset || "custom", titles: t, seniority: d.seniority, internships: d.internships, remote: d.remote },
+    country: d.country, home: d.home.trim(), radius_km: d.radius, keys: {}, report_dir: d.reportDir.trim(),
+    schedule: null,
+  };
+  const s0 = OB.sch0 || {};
+  if (OB.info.can_schedule && (d.schedOn !== s0.on || d.schedTimes.trim() !== s0.times || d.notify !== s0.notify))  // tipo e ore già impostati restano come sono
+    p.schedule = { enabled: d.schedOn, kind: d.schedKind, hours: d.schedHours, times: d.schedTimes.trim() || "09:00", notify: d.notify };
+  if (d.adzId.trim() || d.adzKey.trim()) p.keys.adzuna = { app_id: d.adzId.trim(), app_key: d.adzKey.trim() };
+  if (d.jooKey.trim()) p.keys.jooble = { host: d.jooHost.trim(), api_key: d.jooKey.trim() };
+  return p;
+}
+function obGoField(msg, field) {
+  const n = OB_FIELD_STEP[field] || 2;
+  OB.step = n; OB.phase = "form"; OB.error = msg; obRender();
+}
+async function obEstimate() {
+  let r;
+  try { r = await postRaw("/api/onboarding/estimate", obPayload()); } catch (e) { r = { ok: false, data: {} }; }
+  if (!OB || OB.step !== 7) return;
+  if (r.status === 400 && r.data && r.data.error) return obGoField(r.data.error, r.data.field);
+  if (!r.ok) OB.estErr = "Non riesco a calcolare le richieste, ma puoi avviare comunque la ricerca.";
+  else OB.est = r.data;
+  obRender(false);
+}
+function obStep6() {
+  const d = OB.d, t = obTitles();
+  if (OB.phase === "scan") return obScanView();
+  if (OB.phase === "result") return obResultView();
+  const preset = presets.find((p) => p.key === d.preset);
+  const what = [preset && d.preset !== "custom" ? preset.label : null, ...t].filter(Boolean).join(", ");
+  const cn = (countries.find((c) => c.code === d.country) || {}).name || d.country;
+  const hasAdz = !!(d.adzKey.trim() || (OB.info.prefill || {}).has_adzuna), hasJoo = !!(d.jooKey.trim() || (OB.info.prefill || {}).has_jooble);
+  const srcs = ["Arbeitnow", "RemoteOK", "Remotive", hasAdz ? "Adzuna" : null, hasJoo ? "Jooble" : null].filter(Boolean).join(", ");
+  const est = [];
+  if (OB.est) {
+    const parts = Object.entries(OB.est.requests).filter(([, n]) => n > 0).map(([k, n]) => `${obSrcName(k)} ${n}`);
+    est.push(el("p", {}, `La prima ricerca farà circa ${OB.est.total} ${OB.est.total === 1 ? "richiesta" : "richieste"} in totale${parts.length ? " (" + parts.join(", ") + ")" : ""}. Di solito ci vuole meno di un minuto.`));
+    for (const n of OB.est.notes || []) est.push(el("p", { class: "onb-note" }, n));
+  } else est.push(el("p", { class: "onb-note" }, OB.estErr || "Calcolo quante richieste servono..."));
+  return [
+    el("h2", {}, "Tutto pronto"),
+    el("p", { class: "lead" }, "Controlla il riepilogo. Premendo il pulsante salvo le scelte e parte la prima ricerca."),
+    el("dl", { class: "onb-sum" },
+      el("dt", {}, "Cerchi"), el("dd", {}, what || "-"),
+      el("dt", {}, "Livello"), el("dd", {}, OB_LEVELS[d.seniority] + (d.internships ? ", anche stage e tirocini" : "")),
+      el("dt", {}, "Dove"), el("dd", {}, cn + (d.home.trim() ? `, ${d.home.trim()} (${d.radius} km)` : ", tutto il paese") + (d.remote ? ", anche da remoto" : "")),
+      el("dt", {}, "Fonti"), el("dd", {}, srcs),
+      el("dt", {}, "Report"), el("dd", {}, d.reportDir.trim() || "cartella dei dati dell'app"),
+      OB.info.can_schedule ? el("dt", {}, "Ricerca automatica") : null, OB.info.can_schedule ? el("dd", {}, d.schedOn ? (d.schedKind === "every" ? `ogni ${d.schedHours} ore` : `ogni giorno alle ${d.schedTimes}`) : "spenta") : null),
+    ...est,
+  ];
+}
+function obScanView() {
+  const s = OB.status || { sources: {}, order: [] };
+  const names = s.order || [];
+  const done = names.filter((n) => ["done", "error", "stopped"].includes(s.sources[n].status)).length;
+  const pct = names.length ? Math.max(4, (done / names.length) * 100) : 4;
+  const T = { queued: "in attesa", running: "in corso", done: "fatto", error: "non riuscita", stopped: "fermata" };
+  return [
+    el("h2", {}, "Sto cercando gli annunci..."),
+    el("p", { class: "lead" }, "Non chiudere l'app. Gli annunci compaiono nella lista appena ho finito."),
+    el("div", { class: "onb-bar", role: "progressbar", "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(pct) }, el("div", { style: `width:${pct}%` })),
+    el("div", { class: "onb-srcs" }, names.map((n) => { const v = s.sources[n]; return el("div", {}, el("span", { class: "s " + v.status }, "● "), obSrcName(n) + ": " + (T[v.status] || v.status) + (v.status === "done" ? `, ${v.new} nuovi` : "")); })),
+    s.message ? el("p", { class: "onb-note" }, s.message) : null,
+    el("div", { style: "margin-top:16px" }, el("button", { class: "btn", type: "button", onclick: () => post("/api/scan/stop") }, "Interrompi")),
+  ];
+}
+function obResultView() {
+  const n = OB.found || 0, sum = (OB.status || {}).summary || {}, srcs = (OB.status || {}).sources || {};
+  const errs = Object.entries(srcs).filter(([, v]) => v.status === "error");
+  const hasKeys = !!(OB.d.adzKey.trim() || (OB.info.prefill || {}).has_adzuna || OB.d.jooKey.trim() || (OB.info.prefill || {}).has_jooble);
+  const notes = (OB.notes || []).map((t) => el("p", { class: "onb-note" }, t));
+  const goBtn = (label, step) => el("button", { class: "btn", type: "button", style: "margin: 0 8px 8px 0", onclick: () => { OB.phase = "form"; OB.step = step; OB.error = ""; obRender(); } }, label);
+  if (n > 0) {
+    return [el("h2", {}, "Ho trovato qualcosa"), el("div", { class: "onb-big" }, String(n)),
+      el("p", { class: "lead" }, n === 1 ? "annuncio adatto a te. Sono ordinati dal più adatto." : "annunci adatti a te, ordinati dal più adatto."),
+      sum.cancelled ? el("p", { class: "onb-note" }, "La ricerca è stata interrotta, quindi potrebbero essercene altri. Puoi rifarla con «Scan» in alto." ) : null,
+      !hasKeys ? el("p", { class: "onb-note" }, "Con la chiave gratuita di Adzuna ne troverai molti di più: la aggiungi quando vuoi da Impostazioni.") : null,
+      ...notes,
+      el("div", { style: "margin-top:18px" }, el("button", { class: "btn primary", type: "button", onclick: () => obClose(true) }, "Vedi gli annunci"))];
+  }
+  const why = [];
+  if (!hasKeys) why.push(el("li", {}, el("b", {}, "Non hai ancora una chiave Adzuna."), " Le fonti gratuite hanno pochi annunci e per lo più da remoto: è il motivo più comune."));
+  why.push(el("li", {}, "I titoli potrebbero essere troppo precisi. Prova con parole più semplici (per esempio «magazziniere» invece di «addetto logistica di magazzino»)."));
+  if (OB.d.home.trim()) why.push(el("li", {}, "La città scelta potrebbe essere piccola. Prova ad allargare il raggio o a toglierla."));
+  return [el("h2", {}, sum.cancelled ? "Ricerca interrotta" : "Non ho trovato annunci, per ora"),
+    el("p", { class: "lead" }, sum.cancelled ? "Hai fermato la ricerca prima della fine." : "Non è un errore: ecco cosa puoi provare."),
+    el("ul", { class: "plain" }, why),
+    errs.length ? el("div", { class: "onb-box" }, el("h4", {}, "Fonti che non hanno risposto"), errs.map(([k, v]) => el("p", { class: "onb-note" }, `${obSrcName(k)}: ${v.msg || "errore"}`))) : null,
+    ...notes,
+    el("div", { style: "margin-top:12px" }, !hasKeys ? goBtn("Aggiungi la chiave Adzuna", 4) : null, goBtn("Cambia i lavori", 2), OB.d.home.trim() ? goBtn("Cambia la zona", 3) : null,
+      el("button", { class: "btn", type: "button", style: "margin: 0 8px 8px 0", onclick: () => { OB.phase = "form"; OB.step = 7; OB.error = ""; obRender(); } }, "Riprova la ricerca")),
+    el("div", { style: "margin-top:8px" }, el("button", { class: "btn primary", type: "button", onclick: () => obClose(true) }, "Vai agli annunci"))];
+}
+
+async function obRun(saveOnly) {
+  if (OB.busy) return;
+  OB.busy = true; OB.error = ""; obFoot();
+  let r;
+  try { r = await postRaw("/api/onboarding/complete", obPayload()); } catch (e) { r = { ok: false, status: 0, data: {} }; }
+  OB.busy = false;
+  if (!r.ok) {
+    if (r.status === 400 && r.data && r.data.error) return obGoField(r.data.error, r.data.field);
+    OB.error = (r.data && r.data.error) || "Non sono riuscito a salvare. Riprova tra un attimo."; return obRender(false);
+  }
+  OB.pid = r.data.profile_id; OB.notes = r.data.notes || [];
+  if (saveOnly === true) { toast("Scelte salvate", "Quando vuoi, premi «Scan» in alto per cercare gli annunci."); return obClose(true); }
+  const s = await postRaw("/api/scan/start", { profile_ids: [OB.pid] });
+  if (!s.ok) { OB.error = (s.data && s.data.error) || "Non riesco ad avviare la ricerca."; OB.phase = "form"; return obRender(false); }
+  OB.phase = "scan"; OB.status = null; scanWasRunning = true; pollStatus(); obRender();
+  OB.timer = setInterval(obPoll, 1000); obPoll();
+}
+async function obPoll() {
+  if (!OB) return;
+  let st; try { st = await api("/api/status"); } catch (e) { return; }
+  if (!OB) return;
+  OB.status = st;
+  if (st.running) { $("onbBody").replaceChildren(...obScanView().filter(Boolean)); return; }
+  if (!st.summary && !st.order.length) return;  // la scansione non è ancora partita
+  clearInterval(OB.timer);
+  let n = (st.summary || {}).new || 0;
+  try { const p = (await api("/api/profiles")).find((x) => x.id === OB.pid); if (p) n = p.job_count; } catch (e) {}
+  if (!OB) return;
+  OB.found = n; OB.phase = "result"; obRender();
+}
+
+$("onbSkip").onclick = obSkip;
+$("onb").addEventListener("keydown", (e) => {  // Esc = indietro di un passo, Invio nei campi = avanti
+  if (!OB || OB.phase !== "form" || e.isComposing) return;
+  if (e.key === "Escape" && OB.step > 1) { e.preventDefault(); obGo(OB.step - 1); }
+  else if (e.key === "Enter" && e.target.tagName === "INPUT" && e.target.type !== "radio" && e.target.type !== "checkbox" && OB.step < 7 && !e.target.closest(".cvbox")) { e.preventDefault(); obNext(); }
+});
+api("/api/onboarding").then((o) => { if (o.needed) openOnboarding(false, o); }).catch(() => {});
+
+loadCv().finally(() => loadProfiles().then(() => { renderToolbar(); loadJobs(); }).catch(() => { renderToolbar(); loadJobs(); }));
+pollStatus();
+</script>
+</body>
+</html>

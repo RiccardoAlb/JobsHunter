@@ -1,0 +1,9 @@
+rich
+click
+httpx
+beautifulsoup4
+lxml
+flask
+geonamescache
+pypdf
+cryptography

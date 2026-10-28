@@ -1,0 +1,624 @@
+[
+ {
+  "title": "SOC Analyst",
+  "company": "Acme Security",
+  "location": "Roma",
+  "description": "Lavorerai su triage SIEM. Richiesta esperienza con Splunk EDR e incident response.",
+  "remote": false,
+  "expected": {
+   "score": 82,
+   "category": "BLUE",
+   "matched": [
+    "edr",
+    "incident response",
+    "siem",
+    "soc",
+    "soc analyst",
+    "splunk"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Junior SOC Analyst",
+  "company": "Acme Security",
+  "location": "Milano",
+  "description": "Lavorerai su eventi. Richiesta esperienza con Wazuh e QRadar.",
+  "remote": false,
+  "expected": {
+   "score": 80,
+   "category": "BLUE",
+   "matched": [
+    "qradar",
+    "soc",
+    "soc analyst",
+    "wazuh"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Senior SOC Analyst",
+  "company": "Acme Security",
+  "location": "Milano",
+  "description": "Lavorerai su eventi. Richiesta esperienza con Wazuh e QRadar.",
+  "remote": false,
+  "expected": {
+   "score": 56,
+   "category": "BLUE",
+   "matched": [
+    "qradar",
+    "soc",
+    "soc analyst",
+    "wazuh"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Penetration Tester",
+  "company": "Cyberia",
+  "location": "Palermo",
+  "description": "Lavorerai su test. Richiesta esperienza con Metasploit Burp OSCP.",
+  "remote": false,
+  "expected": {
+   "score": 72,
+   "category": "RED",
+   "matched": [
+    "burp",
+    "metasploit",
+    "oscp",
+    "penetration test"
+   ],
+   "near_home": true
+  }
+ },
+ {
+  "title": "Pentester Junior",
+  "company": "Cyberia",
+  "location": "Catania",
+  "description": "Lavorerai su vulnerability assessment. Richiesta esperienza con Kali linux.",
+  "remote": false,
+  "expected": {
+   "score": 86,
+   "category": "RED",
+   "matched": [
+    "linux",
+    "pentest",
+    "vulnerability",
+    "vulnerability assessment"
+   ],
+   "near_home": true
+  }
+ },
+ {
+  "title": "Red Team Operator",
+  "company": "Offensive Srl",
+  "location": "Torino",
+  "description": "Lavorerai su red team. Richiesta esperienza con exploit.",
+  "remote": false,
+  "expected": {
+   "score": 42,
+   "category": "RED",
+   "matched": [
+    "exploit",
+    "red team"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Blue Team Engineer",
+  "company": "DefendIT",
+  "location": "Roma",
+  "description": "Lavorerai su detection engineering. Richiesta esperienza con threat hunting DFIR.",
+  "remote": false,
+  "expected": {
+   "score": 62,
+   "category": "BLUE",
+   "matched": [
+    "blue team",
+    "detection engineer",
+    "dfir",
+    "threat hunting"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Sistemista Linux",
+  "company": "Exprivia",
+  "location": "Bari",
+  "description": "Lavorerai su server. Richiesta esperienza con Linux VMware Proxmox backup.",
+  "remote": false,
+  "expected": {
+   "score": 63,
+   "category": "SYSADM",
+   "matched": [
+    "backup",
+    "linux",
+    "proxmox",
+    "sistemista",
+    "vmware"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Tecnico Sistemista",
+  "company": "Infra Spa",
+  "location": "Palermo",
+  "description": "Lavorerai su assistenza. Richiesta esperienza con Active Directory Windows Server.",
+  "remote": false,
+  "expected": {
+   "score": 100,
+   "category": "SYSADM",
+   "matched": [
+    "active directory",
+    "sistemista",
+    "tecnico sistemista",
+    "windows server"
+   ],
+   "near_home": true
+  }
+ },
+ {
+  "title": "System Administrator",
+  "company": "Hosting Ltd",
+  "location": "Napoli",
+  "description": "Lavorerai su sistemi. Richiesta esperienza con Linux networking.",
+  "remote": false,
+  "expected": {
+   "score": 44,
+   "category": "SYSADM",
+   "matched": [
+    "linux",
+    "networking",
+    "system administrator"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "IT Support Specialist",
+  "company": "Helpdesk Srl",
+  "location": "Roma",
+  "description": "Lavorerai su supporto. Richiesta esperienza con help desk.",
+  "remote": false,
+  "expected": {
+   "score": 22,
+   "category": "SYSADM",
+   "matched": [
+    "help desk",
+    "it support"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Cyber Security Specialist",
+  "company": "Leonardo",
+  "location": "Roma",
+  "description": "Lavorerai su sicurezza. Richiesta esperienza con information security.",
+  "remote": false,
+  "expected": {
+   "score": 37,
+   "category": "SEC",
+   "matched": [
+    "cyber security",
+    "information security",
+    "security"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Security Engineer",
+  "company": "Okta",
+  "location": "Remote",
+  "description": "Lavorerai su platform security. Richiesta esperienza con cloud.",
+  "remote": true,
+  "expected": {
+   "score": 24,
+   "category": "SEC",
+   "matched": [
+    "security",
+    "security engineer"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Security Analyst",
+  "company": "Palantir",
+  "location": "Bagheria",
+  "description": "Lavorerai su analisi. Richiesta esperienza con SIEM.",
+  "remote": false,
+  "expected": {
+   "score": 61,
+   "category": "BLUE",
+   "matched": [
+    "security",
+    "security analyst",
+    "siem"
+   ],
+   "near_home": true
+  }
+ },
+ {
+  "title": "Stage Cybersecurity",
+  "company": "BlueShield",
+  "location": "Milano",
+  "description": "Lavorerai su affiancamento. Richiesta esperienza con sicurezza informatica.",
+  "remote": false,
+  "expected": {
+   "score": 42,
+   "category": "SEC",
+   "matched": [
+    "cybersecurity",
+    "sicurezza informatica"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Tirocinio SOC",
+  "company": "Reply",
+  "location": "Torino",
+  "description": "Lavorerai su SOC. Richiesta esperienza con SIEM.",
+  "remote": false,
+  "expected": {
+   "score": 36,
+   "category": "BLUE",
+   "matched": [
+    "siem",
+    "soc"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Internship Security",
+  "company": "Mandiant",
+  "location": "Roma",
+  "description": "Lavorerai su security. Richiesta esperienza con malware analysis.",
+  "remote": false,
+  "expected": {
+   "score": 20,
+   "category": "BLUE",
+   "matched": [
+    "malware analysis",
+    "security"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Apprendistato Sistemista",
+  "company": "Rete Srl",
+  "location": "Trapani",
+  "description": "Lavorerai su rete. Richiesta esperienza con Linux.",
+  "remote": false,
+  "expected": {
+   "score": 67,
+   "category": "SYSADM",
+   "matched": [
+    "linux",
+    "sistemista"
+   ],
+   "near_home": true
+  }
+ },
+ {
+  "title": "Sales Engineer Security",
+  "company": "Vendor",
+  "location": "Milano",
+  "description": "Lavorerai su vendite. Richiesta esperienza con security.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Marketing Manager Cybersecurity",
+  "company": "Vendor",
+  "location": "Milano",
+  "description": "Lavorerai su marketing. Richiesta esperienza con security.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Account Executive",
+  "company": "SecurCo",
+  "location": "Roma",
+  "description": "Lavorerai su vendite. Richiesta esperienza con cybersecurity.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Security Architect",
+  "company": "BigBank",
+  "location": "Milano",
+  "description": "Lavorerai su architettura. Richiesta esperienza con security SIEM.",
+  "remote": false,
+  "expected": {
+   "score": 6,
+   "category": "BLUE",
+   "matched": [
+    "security",
+    "siem"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Head of Security",
+  "company": "BigBank",
+  "location": "Roma",
+  "description": "Lavorerai su guida team. Richiesta esperienza con security.",
+  "remote": false,
+  "expected": {
+   "score": 0,
+   "category": "SEC",
+   "matched": [
+    "security"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Lead SOC Analyst",
+  "company": "BigBank",
+  "location": "Roma",
+  "description": "Lavorerai su guida. Richiesta esperienza con SIEM.",
+  "remote": false,
+  "expected": {
+   "score": 52,
+   "category": "BLUE",
+   "matched": [
+    "siem",
+    "soc",
+    "soc analyst"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Principal Security Researcher",
+  "company": "Lab",
+  "location": "Roma",
+  "description": "Lavorerai su ricerca. Richiesta esperienza con exploit.",
+  "remote": false,
+  "expected": {
+   "score": 18,
+   "category": "RED",
+   "matched": [
+    "exploit",
+    "security",
+    "security researcher"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Sviluppatore Java",
+  "company": "Engineering",
+  "location": "Roma",
+  "description": "Lavorerai su backend. Richiesta esperienza con Spring.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Infermiere",
+  "company": "Humanitas",
+  "location": "Milano",
+  "description": "Lavorerai su reparto. Richiesta esperienza con turni.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Cuoco",
+  "company": "Hotel Excelsior",
+  "location": "Venezia",
+  "description": "Lavorerai su cucina. Richiesta esperienza con HACCP.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Magazziniere carrellista",
+  "company": "Logista",
+  "location": "Milano",
+  "description": "Lavorerai su magazzino. Richiesta esperienza con carrello.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Social Media Specialist",
+  "company": "Agency",
+  "location": "Milano",
+  "description": "Lavorerai su social. Richiesta esperienza con social media.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Analista SOC",
+  "company": "Reply",
+  "location": "Torino",
+  "description": "Lavorerai su monitoraggio. Richiesta esperienza con SIEM Splunk.",
+  "remote": false,
+  "expected": {
+   "score": 32,
+   "category": "BLUE",
+   "matched": [
+    "siem",
+    "soc",
+    "splunk"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Threat Intelligence Analyst",
+  "company": "Mandiant",
+  "location": "Remote",
+  "description": "Lavorerai su intelligence. Richiesta esperienza con threat intelligence.",
+  "remote": true,
+  "expected": {
+   "score": 18,
+   "category": "BLUE",
+   "matched": [
+    "threat intelligence"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "DevOps Engineer",
+  "company": "Datadog",
+  "location": "Paris",
+  "description": "Lavorerai su infrastructure. Richiesta esperienza con linux kubernetes.",
+  "remote": false,
+  "expected": {
+   "score": 8,
+   "category": "SYSADM",
+   "matched": [
+    "infrastructure",
+    "linux"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Vulnerability Management Specialist",
+  "company": "Atlas",
+  "location": "Roma",
+  "description": "Lavorerai su scansioni. Richiesta esperienza con vulnerability assessment.",
+  "remote": false,
+  "expected": {
+   "score": 21,
+   "category": "RED",
+   "matched": [
+    "vulnerability",
+    "vulnerability assessment"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Cloud Security Engineer",
+  "company": "Okta",
+  "location": "Remote - USA",
+  "description": "Lavorerai su cloud. Richiesta esperienza con security.",
+  "remote": true,
+  "expected": {
+   "score": 24,
+   "category": "SEC",
+   "matched": [
+    "security",
+    "security engineer"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Network Administrator",
+  "company": "TelcoItalia",
+  "location": "Catania",
+  "description": "Lavorerai su rete. Richiesta esperienza con networking.",
+  "remote": false,
+  "expected": {
+   "score": 47,
+   "category": "SYSADM",
+   "matched": [
+    "network administrator",
+    "networking"
+   ],
+   "near_home": true
+  }
+ },
+ {
+  "title": "Digital Forensics Analyst",
+  "company": "Polizia Postale",
+  "location": "Roma",
+  "description": "Lavorerai su indagini. Richiesta esperienza con forensic.",
+  "remote": false,
+  "expected": {
+   "score": 18,
+   "category": "BLUE",
+   "matched": [
+    "forensic"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "AppSec Engineer",
+  "company": "Spotify",
+  "location": "Remote",
+  "description": "Lavorerai su appsec. Richiesta esperienza con application security.",
+  "remote": true,
+  "expected": {
+   "score": 26,
+   "category": "RED",
+   "matched": [
+    "application security",
+    "appsec",
+    "security"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "Junior Penetration Tester",
+  "company": "Cyberia",
+  "location": "Palermo",
+  "description": "Lavorerai su test. Richiesta esperienza con bug bounty.",
+  "remote": false,
+  "expected": {
+   "score": 73,
+   "category": "RED",
+   "matched": [
+    "bug bounty",
+    "penetration test"
+   ],
+   "near_home": true
+  }
+ },
+ {
+  "title": "Social Engineer",
+  "company": "Agency",
+  "location": "Roma",
+  "description": "Lavorerai su campagne. Richiesta esperienza con social.",
+  "remote": false,
+  "expected": null
+ },
+ {
+  "title": "Security Guard",
+  "company": "Vigilanza Srl",
+  "location": "Roma",
+  "description": "Lavorerai su sorveglianza. Richiesta esperienza con security.",
+  "remote": false,
+  "expected": {
+   "score": 6,
+   "category": "SEC",
+   "matched": [
+    "security"
+   ],
+   "near_home": false
+  }
+ },
+ {
+  "title": "EDR Specialist Entry Level",
+  "company": "Sentinel",
+  "location": "Milano",
+  "description": "Lavorerai su endpoint. Richiesta esperienza con EDR MDR.",
+  "remote": false,
+  "expected": {
+   "score": 29,
+   "category": "BLUE",
+   "matched": [
+    "edr",
+    "mdr"
+   ],
+   "near_home": false
+  }
+ }
+]

@@ -1,0 +1,128 @@
+# JobsHunter, configurazione di esempio.
+# Copia questo file in config.toml e inserisci le tue chiavi (config.toml e' escluso da Git).
+# Adzuna e Jooble sono spenti finche' non metti la chiave e imposti enabled = true.
+# Quasi tutto si imposta anche dalla GUI (Impostazioni e scheda Ricerca): qui stanno i valori di partenza.
+
+# Configurazione JobsHunter
+
+[general]
+db_path = "jobshunter.db"
+min_score = 15            # sotto questa soglia l'annuncio viene scartato
+max_age_days = 45         # ignora annunci piu' vecchi (se la data e' nota)
+max_scan_seconds = 300    # tetto massimo di durata dello scan (sicurezza anti-loop)
+
+[location]
+# Un annuncio passa se la sede contiene una di queste stringhe (o se e' remoto)
+include = ["italy", "italia", "milano", "roma", "torino", "napoli", "bologna", "remote", "remoto", "europe", "emea"]
+allow_remote = true
+home_names = []           # luoghi "vicini a casa" (la tua citta' e i dintorni), per esempio ["bologna", "modena"]
+home_bonus = 20           # bonus per annunci vicini a casa (solo se gia' pertinenti)
+home_min_score = 20       # score minimo (prima del bonus) per ottenerlo
+# Remoto limitato a questi paesi viene scartato (a meno che non ci sia anche una sede utile)
+exclude = ["usa", "united states", "us", "canada", "india", "brazil", "brasil", "mexico", "australia", "singapore", "japan", "israel", "uk", "united kingdom", "london"]
+
+[notify]
+# ntfy.sh: lascia vuoto per disattivare. Usa un nome non indovinabile, per esempio topic = "jobs-k3x9q2"
+server = "https://ntfy.sh"
+topic = ""
+min_score = 40            # notifica solo gli annunci sopra questa soglia
+
+[net]
+# Le richieste in uscita si presentano come "JobsHunter/<versione> (+personal job search tool; contact: <contatto>)".
+# Il contatto e' facoltativo (un'email o l'indirizzo del progetto): serve ai siti per scriverti se qualcosa non va.
+contact = ""
+# user_agent = ""         # per sostituire l'intera intestazione (avanzato)
+
+[search]
+internships = true        # cerca anche stage e tirocini (ricerche dedicate su Adzuna e Jooble)
+
+# ---- Fonti ----
+[sources.arbeitnow]
+enabled = true
+
+[sources.remoteok]
+enabled = true
+
+[sources.remotive]
+enabled = true
+queries = ["security", "soc", "penetration", "sysadmin", "devops"]
+
+# Mercato italiano. Chiavi gratuite: https://developer.adzuna.com
+# (oppure variabili d'ambiente ADZUNA_APP_ID / ADZUNA_APP_KEY)
+[sources.adzuna]
+enabled = false
+app_id = ""
+app_key = ""
+full_text = true          # legge il testo completo dalla pagina dell'annuncio su Adzuna (facoltativo, non coperto dai termini delle API)
+country = "it"
+home = ""                # centro del raggio di ricerca, una citta' (per esempio "Bologna"); vuoto = tutto il paese
+radius_km = 100           # raggio in km attorno a home
+queries = ["cyber security", "soc analyst", "penetration tester", "sistemista", "system administrator", "tecnico informatico", "security analyst"]
+
+# Secondo aggregatore (italiano incluso). Chiave gratuita: https://jooble.org/api/about
+# (oppure variabile d'ambiente JOOBLE_API_KEY). Resta spento finche' non metti la chiave.
+[sources.jooble]
+enabled = false
+host = "it.jooble.org"       # endpoint del tuo paese (la chiave vale solo per quello)
+# Con piu' paesi nei profili: un host per paese (la chiave vale solo per il proprio). I paesi senza host si saltano.
+# hosts = { it = "it.jooble.org", gb = "uk.jooble.org" }
+api_key = ""
+home = ""
+radius_km = 100
+queries = ["cyber security", "soc analyst", "penetration tester", "sistemista", "system administrator", "tecnico informatico", "security analyst"]
+
+# Pagine carriere aziendali (API pubbliche Greenhouse / Lever): aziende di cybersecurity, usate SOLO dai profili
+# di tipo cybersecurity (chi cerca altro non le interroga mai). Per un'altra azienda aggiungi il "token" della board,
+# per esempio boards.greenhouse.io/<token>. Per spegnerle del tutto metti enabled = false.
+[sources.greenhouse]
+enabled = true
+boards = ["cloudflare", "okta", "datadog", "crowdstrike", "sentinelone", "snyk", "wizinc"]
+
+[sources.lever]
+enabled = true
+companies = ["palantir", "netskope", "hackerone"]
+
+# ---- Keyword per categoria ----
+# Valgono per i profili di tipo "cybersecurity" (gli altri tipi hanno le loro parole chiave, vedi la scheda Ricerca).
+# Formato: "keyword" = peso. Il titolo vale x3, la descrizione x1 (max 1 volta per keyword).
+[keywords.blue]
+label = "BLUE"
+terms = { "soc analyst" = 12, "soc" = 6, "blue team" = 12, "siem" = 8, "splunk" = 6, "wazuh" = 8, "qradar" = 6, "sentinel" = 5, "edr" = 5, "incident response" = 9, "dfir" = 9, "threat hunting" = 8, "threat detection" = 7, "detection engineer" = 9, "security analyst" = 9, "forensic" = 6, "malware analysis" = 6, "threat intelligence" = 6, "mdr" = 4 }
+
+[keywords.red]
+label = "RED"
+terms = { "penetration test" = 12, "pentest" = 12, "pen tester" = 12, "red team" = 12, "offensive security" = 12, "vulnerability assessment" = 9, "vulnerability" = 4, "ethical hacker" = 10, "exploit" = 6, "oscp" = 8, "ejpt" = 8, "security researcher" = 7, "application security" = 6, "appsec" = 6, "bug bounty" = 5, "metasploit" = 4, "burp" = 4 }
+
+[keywords.sysadmin]
+label = "SYSADM"
+terms = { "sistemista" = 12, "system administrator" = 12, "sysadmin" = 12, "systems engineer" = 8, "tecnico informatico" = 8, "tecnico sistemista" = 10, "it support" = 6, "help desk" = 4, "active directory" = 7, "windows server" = 7, "linux" = 5, "vmware" = 4, "proxmox" = 5, "infrastructure" = 3, "network administrator" = 8, "networking" = 3, "backup" = 3 }
+
+[keywords.generic]
+label = "SEC"
+terms = { "cybersecurity" = 8, "cyber security" = 8, "information security" = 7, "infosec" = 7, "security engineer" = 6, "security" = 2, "sicurezza informatica" = 8 }
+
+# ---- Penalita' ----
+[penalties]
+# Livelli che non ti interessano ora (junior-friendly). Applicati a titolo.
+title_terms = { "senior" = -12, "sr." = -12, "lead" = -10, "principal" = -15, "head of" = -20, "director" = -20, "manager" = -12, "staff" = -10, "vp" = -25, "architect" = -8 }
+# Titoli del tutto irrilevanti: se presenti, l'annuncio e' scartato
+blacklist = ["sales", "account executive", "marketing", "recruiter", "legal", "counsel", "customer success", "business development", "finance", "accountant", "designer"]
+
+[bonus]
+# Bonus se il titolo contiene queste parole (livello adatto a te)
+title_terms = { "junior" = 12, "entry" = 10, "trainee" = 10, "intern" = 6, "graduate" = 8, "associate" = 4, "tier 1" = 8, "l1" = 6 }
+
+[report]
+# Cartella di output dei report Markdown. Puoi puntare a una cartella di note, per esempio una vault di Obsidian
+# (es. "/percorso/della/tua/vault/Annunci"). Se lasci "reports" la cartella viene creata nei dati dell'app.
+dir = "reports"
+
+[dedupe]
+# Il programma propone le coppie sospette; la decisione finale e' tua (GUI > Duplicati).
+min_percent = 75              # somiglianza minima per proporre una coppia
+auto_confirm_percent = 100    # a questa soglia conferma da solo (annullabile). Metti 101 per non farlo mai
+
+[availability]
+# Verifica che gli annunci siano ancora aperti (un annuncio chiuso sparisce dalla lista e dai report).
+recheck_hours = 24            # dopo quante ore una verifica va ripetuta
+auto_check_after_scan = 20    # dopo ogni scan controlla i migliori N annunci (0 = disattivato)
