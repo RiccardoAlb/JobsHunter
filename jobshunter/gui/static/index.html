@@ -480,7 +480,7 @@ const CATS = ["BLUE", "RED", "SYSADM", "SEC", "PURPLE"];
 const F = { cat: "", near: false, only_new: false, q: "", min: 0, group: "main", geo: null, profile: "all" };
 try { const g = localStorage.getItem("jh-profile"); if (g) F.profile = g; } catch (e) {}
 const saveProfile = () => { try { localStorage.setItem("jh-profile", F.profile); } catch (e) {} };
-let catKeys = [];  // categorie presenti nella lista (i profili non cyber hanno le loro)
+let catKeys = [];  // categorie presenti negli annunci (ogni profilo ha le sue: cyber, supporto IT, sviluppo...)
 const PALETTE = ["var(--teal)", "var(--yellow)", "var(--blue)", "var(--purple)", "var(--green)", "var(--red)"];
 const catColor = (c) => COLORS[c] || (c ? PALETTE[[...c].reduce((a, ch) => a + ch.charCodeAt(0), 0) % PALETTE.length] : "var(--dim)");
 try { const g = JSON.parse(localStorage.getItem("jh-geo") || "null"); if (g && g.city) F.geo = g; } catch (e) {}
@@ -564,7 +564,7 @@ function renderToolbar() {
   const profSel = profiles.length > 1 ? el("select", { class: "sel-prof", title: "Mostra gli annunci di un solo profilo di ricerca", onchange: (e) => { F.profile = e.target.value; saveProfile(); F.cat = ""; refresh(); } },
     el("option", { value: "all", selected: F.profile === "all" }, "Profilo: tutti"),
     profiles.map((p) => el("option", { value: String(p.id), selected: String(p.id) === String(F.profile) }, p.name + (p.active ? "" : " (spento)")))) : null;
-  const shownCats = [...(F.profile === "all" || cyberSelected() ? CATS : []), ...catKeys.filter((c) => !CATS.includes(c))];
+  const shownCats = [...CATS.filter((c) => catKeys.includes(c)), ...catKeys.filter((c) => !CATS.includes(c))];  // solo le categorie che ci sono davvero negli annunci
   tb.replaceChildren(...[
     profSel,
     chip("Tutti", !F.cat, () => { F.cat = ""; refresh(); }),
@@ -644,7 +644,7 @@ function renderRows() {
 }
 async function loadStats() {
   const s = await api("/api/stats?profile=" + encodeURIComponent(F.profile));
-  const keys = Object.keys(s.by_cat || {}).filter((k) => k && !CATS.includes(k)).sort();
+  const keys = Object.keys(s.by_cat || {}).filter((k) => k).sort();
   if (JSON.stringify(keys) !== JSON.stringify(catKeys)) {
     catKeys = keys;
     const a = document.activeElement;
