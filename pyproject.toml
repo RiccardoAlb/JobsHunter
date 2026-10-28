@@ -24,10 +24,10 @@ dependencies = ["rich", "click", "httpx", "beautifulsoup4", "lxml", "flask", "ge
 license = { file = "LICENSE" }
 
 [project.urls]
-Homepage = "https://github.com/RiccardoAlbanese/JobsHunter"
-Repository = "https://github.com/RiccardoAlbanese/JobsHunter"
-Issues = "https://github.com/RiccardoAlbanese/JobsHunter/issues"
-Changelog = "https://github.com/RiccardoAlbanese/JobsHunter/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/RiccardoAlb/JobsHunter"
+Repository = "https://github.com/RiccardoAlb/JobsHunter"
+Issues = "https://github.com/RiccardoAlb/JobsHunter/issues"
+Changelog = "https://github.com/RiccardoAlb/JobsHunter/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 branding = ["pillow"]
