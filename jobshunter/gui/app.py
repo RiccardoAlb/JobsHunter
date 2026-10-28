@@ -470,18 +470,19 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
             if state["running"]:
                 return jsonify(ok=False, error="una scansione è in corso: aspetta che finisca o fermala"), 409
         db = open_db()
-        try:
-            plan = onboarding.prepare(b, cfg, prof.ProfileStore(db))
-        except onboarding.OnboardingError as e:
-            return jsonify(ok=False, error=str(e), field=e.field), 400
-        was_scheduled = bool(cfg.get("schedule", {}).get("enabled"))
-        try:
-            pid = onboarding.apply(plan, cfg_file, db, cfg, rescore)
-        except prof.ProfileError as e:
-            return jsonify(ok=False, error=str(e), field="profile"), 400
-        except Exception:  # tutto e' stato rimesso com'era: si risponde in italiano, senza dettagli tecnici
-            app.logger.exception("guida di primo avvio: salvataggio non riuscito")
-            return jsonify(ok=False, error="Non sono riuscito a salvare le scelte e non ho cambiato niente. Riprova tra un attimo."), 500
+        with onboarding.COMPLETE_LOCK:  # prepare + apply di seguito: due richieste insieme non creano due profili
+            try:
+                plan = onboarding.prepare(b, cfg, prof.ProfileStore(db))
+            except onboarding.OnboardingError as e:
+                return jsonify(ok=False, error=str(e), field=e.field), 400
+            was_scheduled = bool(cfg.get("schedule", {}).get("enabled"))
+            try:
+                pid = onboarding.apply(plan, cfg_file, db, cfg, rescore)
+            except prof.ProfileError as e:
+                return jsonify(ok=False, error=str(e), field="profile"), 400
+            except Exception:  # tutto e' stato rimesso com'era: si risponde in italiano, senza dettagli tecnici
+                app.logger.exception("guida di primo avvio: salvataggio non riuscito")
+                return jsonify(ok=False, error="Non sono riuscito a salvare le scelte e non ho cambiato niente. Riprova tra un attimo."), 500
         notes = list(plan.notes)
         sch = plan.schedule
         if sch is not None and (sch["enabled"] or was_scheduled):

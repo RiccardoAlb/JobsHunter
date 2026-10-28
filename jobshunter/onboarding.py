@@ -379,6 +379,9 @@ def _rollback_db(db, snap, pid) -> None:
     db.refresh_best()
 
 
+COMPLETE_LOCK = threading.Lock()  # una sola conclusione della guida alla volta (anche con piu' app nello stesso processo)
+
+
 def apply(plan: Plan, cfg_file, db, cfg: dict, rescore_fn) -> int:
     """Scrive tutto: se qualcosa va storto impostazioni e profilo tornano come prima. Ritorna l'id del profilo."""
     store = prof.ProfileStore(db)

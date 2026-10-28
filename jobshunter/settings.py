@@ -11,6 +11,7 @@ import json
 import os
 import shutil
 import sys
+import threading
 import tomllib
 from pathlib import Path
 
@@ -166,7 +167,7 @@ def save_overrides(config_path: Path, updates: dict, clear: list[str] | None = N
     for k in clear or []:
         current.pop(k, None)
     p = overrides_path(config_path)
-    tmp = p.with_suffix(".tmp")
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.{threading.get_ident()}.tmp")  # nome unico: due salvataggi insieme non si pestano
     tmp.write_text(json.dumps(current, indent=2, ensure_ascii=False))
     os.chmod(tmp, 0o600)
     tmp.replace(p)
@@ -236,7 +237,7 @@ def clean_values(values: dict) -> dict:
 def restore_overrides(config_path: Path, snapshot: dict) -> None:
     """Rimette settings.json com'era (serve ad annullare un'operazione a più passi andata male)."""
     p = overrides_path(config_path)
-    tmp = p.with_suffix(".tmp")
+    tmp = p.with_name(f"{p.name}.{os.getpid()}.{threading.get_ident()}.tmp")
     tmp.write_text(json.dumps(snapshot, indent=2, ensure_ascii=False))
     os.chmod(tmp, 0o600)
     tmp.replace(p)

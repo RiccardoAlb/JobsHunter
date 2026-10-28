@@ -1,5 +1,6 @@
 """API di novita', cronologia e pianificazione."""
 import json
+import sys
 
 import pytest
 
@@ -42,6 +43,7 @@ def test_cronologia_scansioni(client, db, cfg):
     assert len(scans) == 1 and scans[0]["kind"] == "manuale" and scans[0]["new"] == 1
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="la scansione automatica usa launchd: solo macOS")
 def test_attiva_e_salva_la_pianificazione(client):
     r = client.post("/api/schedule", headers=H, json={"enabled": True, "kind": "daily", "times": "08:30, 18:00", "notify": True})
     d = jget(r)

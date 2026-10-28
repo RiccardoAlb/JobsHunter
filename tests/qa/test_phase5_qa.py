@@ -436,7 +436,7 @@ def test_mig_corsa_reale_due_processi(tmp_path):
 def test_mig_percorsi_assoluti_nella_config_restano_validi_e_non_perdono_dati():
     """db_path assoluto verso la vecchia cartella: dopo la migrazione continua a puntare ai dati veri (nessuna perdita)."""
     old = build_old(Path.home())
-    (old / "config.toml").write_text(f'[general]\ndb_path = "{old / "\x6aobhunter.db"}"\n[report]\ndir = "{old / "rep"}"\n')
+    (old / "config.toml").write_text('[general]\ndb_path = "' + str(old / "\x6aobhunter.db") + '"\n[report]\ndir = "' + str(old / "rep") + '"\n')
     new = new_dir(old)
     migrate.migrate_app_data(old, new)
     os.environ["JOBSHUNTER_HOME"] = str(new)
@@ -446,7 +446,7 @@ def test_mig_percorsi_assoluti_nella_config_restano_validi_e_non_perdono_dati():
 
 def test_mig_percorsi_assoluti_vengono_riscritti_o_segnalati(caplog):
     old = build_old(Path.home())
-    (old / "config.toml").write_text(f'[general]\ndb_path = "{old / "\x6aobhunter.db"}"\n')
+    (old / "config.toml").write_text('[general]\ndb_path = "' + str(old / "\x6aobhunter.db") + '"\n')
     new = new_dir(old)
     with caplog.at_level("WARNING"):
         migrate.migrate_app_data(old, new)
