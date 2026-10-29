@@ -494,7 +494,7 @@ def test_requisiti_gui_e_comuni():
 
 def test_python_m_jobshunter_parte(tmp_path):
     env = dict(os.environ, JOBSHUNTER_HOME=str(tmp_path / "h"), PYTHONPATH=str(ROOT), PYTHONIOENCODING="cp1252")
-    r = subprocess.run([sys.executable, "-m", "jobshunter", "--help"], capture_output=True, text=True, env=env, cwd=str(tmp_path), timeout=60)
+    r = subprocess.run([sys.executable, "-m", "jobshunter", "--help"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, cwd=str(tmp_path), timeout=60)
     assert r.returncode == 0 and "JobsHunter" in r.stdout
 
 

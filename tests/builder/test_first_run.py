@@ -89,7 +89,7 @@ def test_due_processi_insieme_creano_un_solo_config(tmp_path):
     env = {k: v for k, v in os.environ.items() if k != "PYTEST_CURRENT_TEST"}
     env.update(JOBSHUNTER_HOME=str(tmp_path), PYTHONPATH=str(ROOT))
     procs = [subprocess.Popen([sys.executable, "-c", code, "x", str(EXAMPLE.parent), start], env=env, cwd=tmp_path,
-                              stderr=subprocess.PIPE, text=True, encoding="utf-8") for _ in range(2)]
+                              stderr=subprocess.PIPE, text=True, errors="replace", encoding="utf-8") for _ in range(2)]
     errs = [p.communicate(timeout=60)[1] for p in procs]
     assert [p.returncode for p in procs] == [0, 0], errs
     assert sum("Creato config.toml" in e for e in errs) == 1

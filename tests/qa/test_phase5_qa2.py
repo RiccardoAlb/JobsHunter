@@ -242,7 +242,7 @@ def test_pyproject_pacchetti_e_dati_inclusi():
 @pytest.mark.skipif(not Path("/opt/homebrew/bin/python3.11").exists(), reason="python3.11 non installato")
 def test_il_codice_compila_con_python_3_11():
     files = [str(p) for p in list((ROOT / "jobshunter").rglob("*.py")) + list((ROOT / "scripts").glob("*.py")) + [ROOT / "run_app.py"]]
-    r = subprocess.run(["/opt/homebrew/bin/python3.11", "-B", "-c", "import sys,ast\nfor f in sys.argv[1:]: ast.parse(open(f,encoding='utf-8').read(), f)", *files], capture_output=True, text=True)
+    r = subprocess.run(["/opt/homebrew/bin/python3.11", "-B", "-c", "import sys,ast\nfor f in sys.argv[1:]: ast.parse(open(f,encoding='utf-8').read(), f)", *files], capture_output=True, text=True, errors="replace")
     assert r.returncode == 0, r.stderr[-500:]
 
 
@@ -265,7 +265,7 @@ def _yaml_load(path: Path):
     except ImportError:
         pass
     if shutil.which("ruby"):
-        r = subprocess.run(["ruby", "-ryaml", "-rjson", "-e", "puts JSON.generate(YAML.load_file(ARGV[0]))", str(path)], capture_output=True, text=True)
+        r = subprocess.run(["ruby", "-ryaml", "-rjson", "-e", "puts JSON.generate(YAML.load_file(ARGV[0]))", str(path)], capture_output=True, text=True, encoding="utf-8", errors="replace")
         if r.returncode != 0:
             raise ValueError(r.stderr.strip().splitlines()[0] if r.stderr else "yaml non valido")
         import json
@@ -398,7 +398,7 @@ def test_screenshot_senza_percorsi_o_nomi_nel_testo_associato():
 
 # ----------------------------------------------------------------------------- script di shell ----
 def _run_sh(script: Path, home: Path, stdin: str | None):
-    return subprocess.run(["sh", str(script)], input=stdin, capture_output=True, text=True, env={"HOME": str(home), "PATH": "/usr/bin:/bin"}, timeout=30)
+    return subprocess.run(["sh", str(script)], input=stdin, capture_output=True, text=True, encoding="utf-8", errors="replace", env={"HOME": str(home), "PATH": "/usr/bin:/bin"}, timeout=30)
 
 
 def _fake_apps(base: Path, with_new=True):
@@ -447,7 +447,7 @@ def test_remove_old_app_symlink_non_segue_il_collegamento(tmp_path):
 
 def test_remove_old_app_stdin_chiuso_non_cancella(tmp_path):
     apps, _ = _fake_apps(tmp_path)
-    r = subprocess.run(["sh", str(ROOT / "scripts" / "remove_old_app.sh")], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+    r = subprocess.run(["sh", str(ROOT / "scripts" / "remove_old_app.sh")], stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8", errors="replace",
                        env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"}, timeout=30)
     assert (apps / "\x4aobHunter.app").exists()
 
@@ -475,7 +475,7 @@ def test_build_script_analisi_statica():
 def test_launcher_jh_funziona_da_un_altra_cartella(tmp_path):
     if not (ROOT / ".venv" / "bin" / "python").exists():
         pytest.skip("nessuna .venv")
-    r = subprocess.run([str(ROOT / "jh"), "--help"], capture_output=True, text=True, cwd=str(tmp_path), env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)}, timeout=60)
+    r = subprocess.run([str(ROOT / "jh"), "--help"], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=str(tmp_path), env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)}, timeout=60)
     assert r.returncode == 0, r.stderr[-300:]
 
 

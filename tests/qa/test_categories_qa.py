@@ -575,7 +575,7 @@ def test_B74_report_ordine_delle_categorie_stabile(client, qdb, home, qcfg):
     outs = set()
     for seed in ("1", "2", "3", "4", "5"):
         env = dict(os.environ, PYTHONHASHSEED=seed, JOBSHUNTER_HOME=str(home), HOME=str(home))
-        r = subprocess.run([sys.executable, "-I", "-c", "import sys; sys.path.insert(0, %r)\n" % str(ROOT) + _REPORT_SCRIPT], capture_output=True, text=True, env=env, cwd=str(home))
+        r = subprocess.run([sys.executable, "-I", "-c", "import sys; sys.path.insert(0, %r)\n" % str(ROOT) + _REPORT_SCRIPT], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, cwd=str(home))
         assert r.returncode == 0, r.stderr
         outs.add(r.stdout.strip())
     assert len(outs) == 1, outs

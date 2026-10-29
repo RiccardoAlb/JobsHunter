@@ -315,7 +315,7 @@ def test_determinismo_con_hash_seed_diversi(tmp_path):
         h = tmp_path / f"h{seed}"
         h.mkdir()
         env = dict(os.environ, PYTHONHASHSEED=seed)
-        r = subprocess.run([sys.executable, "-c", CODE, str(PROJECT), str(h)], capture_output=True, text=True, env=env, cwd=PROJECT)
+        r = subprocess.run([sys.executable, "-c", CODE, str(PROJECT), str(h)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, cwd=PROJECT)
         assert r.returncode == 0, r.stderr[-800:]
         outs.append(r.stdout)
     assert outs[0] == outs[1] == outs[2]

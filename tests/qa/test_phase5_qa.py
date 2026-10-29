@@ -90,7 +90,7 @@ def test_mig_copia_integra_su_struttura_realistica():
     for rel in ("config.toml", "settings.json", "cv.json", "skills_extra.json", "webview/Local Storage/ls.txt"):
         assert (new / rel).read_bytes() == (old / rel).read_bytes(), rel
     for rel in ("config.toml", "settings.json", "cv.json", "skills_extra.json", "\x6aobhunter.db", "backups/\x6aobhunter-pre-fase2-20260101-0000.db"):
-        assert sys.platform.startswith("win") or stat.S_IMODE((new / rel).stat().st_mode) == 0o600, rel  # i bit POSIX non esistono su Windows
+        assert os.name == "nt" or stat.S_IMODE((new / rel).stat().st_mode) == 0o600, rel  # i bit POSIX non esistono su Windows
     # la copia si apre davvero con l'applicazione
     n = DB(new / "\x6aobhunter.db").conn.execute("select count(*) from jobs").fetchone()[0]
     assert n == 30
@@ -430,7 +430,7 @@ def test_mig_corsa_reale_due_processi(tmp_path):
         use, out = migrate.migrate_app_data()
         print(json.dumps([str(use), out]))
     """)
-    procs = [subprocess.Popen([PY, "-I", "-c", code], stdout=subprocess.PIPE, text=True) for _ in range(4)]
+    procs = [subprocess.Popen([PY, "-I", "-c", code], stdout=subprocess.PIPE, text=True, encoding="utf-8", errors="replace") for _ in range(4)]
     go.write_text("1", encoding="utf-8")
     results = [json.loads(p.communicate(timeout=60)[0]) for p in procs]
     assert {r[0] for r in results} == {str(new_dir(old))}, results
@@ -629,7 +629,7 @@ def test_ld_ensure_current_con_scansione_attiva_installa_il_nuovo_e_toglie_il_ve
     assert scheduler.ensure_current(cfg) is True
     new = plistlib.loads(scheduler.plist_path().read_bytes())
     assert new["Label"] == "local.jobshunter.scan" and new["EnvironmentVariables"]["JOBSHUNTER_HOME"] == str(settings.home())
-    assert sys.platform.startswith("win") or stat.S_IMODE(scheduler.plist_path().stat().st_mode) == 0o644
+    assert os.name == "nt" or stat.S_IMODE(scheduler.plist_path().stat().st_mode) == 0o644
     assert not scheduler.legacy_plist_paths()[0].exists()
     assert ld.loaded == {"local.jobshunter.scan"}
     n = len(ld.calls)

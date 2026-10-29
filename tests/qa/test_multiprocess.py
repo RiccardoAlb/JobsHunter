@@ -17,7 +17,7 @@ ADD = ("from jobshunter.gui.app import create_app; c=create_app(None,8765).test_
 def run_many(code, home, n=6):
     env = dict(os.environ, JOBSHUNTER_HOME=str(home))
     ps = [subprocess.Popen([sys.executable, "-c", code], cwd=str(ROOT), env=env, stdout=subprocess.PIPE,
-                           stderr=subprocess.PIPE, text=True) for _ in range(n)]
+                           stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace") for _ in range(n)]
     return [(p.communicate(timeout=120), p.returncode) for p in ps]
 
 

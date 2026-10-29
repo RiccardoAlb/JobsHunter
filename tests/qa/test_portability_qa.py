@@ -226,7 +226,7 @@ def test_il_pacchetto_si_importa_senza_fcntl(tmp_path):
             "    try: importlib.import_module(m.name)\n"
             "    except Exception as e: bad.append((m.name, repr(e)))\n"
             "print(bad)\nfrom jobshunter import filelock\nassert filelock.fcntl is None\nl=filelock.FileLock(sys.argv[1]); print(l.acquire(False))\n")
-    r = subprocess.run([sys.executable, "-c", code, str(tmp_path / "x.lock")], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+    r = subprocess.run([sys.executable, "-c", code, str(tmp_path / "x.lock")], cwd=ROOT, capture_output=True, text=True, errors="replace", encoding="utf-8",
                        env=dict(os.environ, JOBSHUNTER_HOME=str(tmp_path)))
     assert r.returncode == 0, r.stderr[-500:]
     assert r.stdout.splitlines()[0] == "[]", r.stdout
@@ -1100,7 +1100,7 @@ def test_cli_home_e_log_file_di_scan_auto(tmp_path, monkeypatch):
     env.update(HOME=str(tmp_path / "h"), PYTHONPATH=str(ROOT))
     (tmp_path / "h").mkdir()
     r = subprocess.run([sys.executable, "-m", "jobshunter", "--home", str(home), "scan-auto", "--no-notify", "--log-file", str(log)],
-                       cwd=tmp_path, env=env, capture_output=True, text=True, encoding="utf-8", timeout=120)
+                       cwd=tmp_path, env=env, capture_output=True, text=True, errors="replace", encoding="utf-8", timeout=120)
     assert r.returncode == 0, r.stderr[-800:]
     assert log.exists() and "scansione completata" in log.read_text(encoding="utf-8")
     assert (home / "jobshunter.db").exists()
@@ -1297,10 +1297,10 @@ def test_jh_app_ripiega_sul_browser_con_messaggio_chiaro(tmp_path, mode):
     data = home / "Library" / "Application Support" / "JobsHunter" if osinfo.current() == "mac" else tmp_path / "dati"
     data.mkdir(parents=True)
     shutil.copy(ROOT / "config.example.toml", data / "config.toml")
-    env.update(HOME=str(home), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), BROWSER="/usr/bin/true", PYTHONUNBUFFERED="1")
-    p = subprocess.Popen([sys.executable, "-c", APP_SCRIPT, mode], cwd=tmp_path, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
+    env.update(HOME=str(home), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), BROWSER="/usr/bin/true", PYTHONUNBUFFERED="1", JOBSHUNTER_ENGINE_TIMEOUT="90")
+    p = subprocess.Popen([sys.executable, "-c", APP_SCRIPT, mode], cwd=tmp_path, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace", encoding="utf-8")
     try:
-        deadline, err, out = time.time() + 40, "", ""
+        deadline, err, out = time.time() + 120, "", ""  # su un runner lento il motore puo' metterci di piu'
         port = None
         import selectors
 
@@ -1315,7 +1315,13 @@ def test_jh_app_ripiega_sul_browser_con_messaggio_chiaro(tmp_path, mode):
                     port = int(m.group(1))
             if p.poll() is not None:
                 break
-        assert port, f"nessuna porta: {err[-600:]}"
+        if not port:
+            if p.poll() is None:
+                p.kill()
+            err += p.stderr.read()
+            logs = sorted(home.rglob("app.log"))
+            log_tail = "\n".join(logs[0].read_text(encoding="utf-8", errors="replace").splitlines()[-40:]) if logs else "(nessun app.log)"
+            raise AssertionError(f"nessuna porta.\n--- stderr completo ---\n{err}\n--- app.log (ultime 40 righe) ---\n{log_tail}")
         assert "pywebview" in err or "finestra nativa" in err
         body = urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=10).read()
         assert b"<html" in body.lower()
@@ -1368,7 +1374,7 @@ def test_jh_sh_percorsi_con_spazi_e_link(tmp_path):
     link = tmp_path / "bin con spazi"
     link.mkdir()
     os.symlink(proj / "jh", link / "jh")
-    r = subprocess.run([str(link / "jh"), "gui", "--no-browser", "a b"], cwd="/", capture_output=True, text=True, encoding="utf-8", env=dict(os.environ, PYTHONPATH="/gia"))
+    r = subprocess.run([str(link / "jh"), "gui", "--no-browser", "a b"], cwd="/", capture_output=True, text=True, errors="replace", encoding="utf-8", env=dict(os.environ, PYTHONPATH="/gia"))
     assert r.returncode == 0 and r.stdout.strip() == f"ARGS:-m jobshunter gui --no-browser a b|PP:{proj}:/gia", r.stdout + r.stderr
 
 
@@ -1531,7 +1537,7 @@ for u in ("/api/jobs", "/api/settings", "/api/stats", "/api/profiles", "/api/cv"
     assert c.get(u, headers={"Host": "127.0.0.1:8765"}).status_code == 200, u
 print("OK")
 """
-    r = subprocess.run([sys.executable, "-X", "warn_default_encoding", "-c", code], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+    r = subprocess.run([sys.executable, "-X", "warn_default_encoding", "-c", code], cwd=ROOT, capture_output=True, text=True, errors="replace", encoding="utf-8",
                        env={k: v for k, v in os.environ.items() if k not in ("JOBSHUNTER_HOME", "PYTEST_CURRENT_TEST")})
     assert r.returncode == 0 and r.stdout.strip().endswith("OK"), r.stderr[-1200:]
 
@@ -1597,7 +1603,7 @@ def test_python_311_vero_compila_tutto_e_importa_i_moduli_puri(tmp_path):
             "assert str(osinfo.data_dir(platform='win32', env={'APPDATA':'C:\\\\a'}, home=W('C:/u'))) == 'C:\\\\a\\\\JobsHunter'\n"
             "l = filelock.FileLock(sys.argv[1]); assert l.acquire(False); assert not filelock.FileLock(sys.argv[1]).acquire(False); l.release()\n"
             "print('OK', sys.version_info[:2])\n")
-    r = subprocess.run(["/opt/homebrew/bin/python3.11", "-B", "-c", code, str(tmp_path / "l")], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
+    r = subprocess.run(["/opt/homebrew/bin/python3.11", "-B", "-c", code, str(tmp_path / "l")], cwd=ROOT, capture_output=True, text=True, errors="replace", encoding="utf-8")
     assert r.returncode == 0 and r.stdout.splitlines()[0] == "[]" and "OK (3, 11)" in r.stdout, r.stderr[-500:]
 
 
@@ -1612,7 +1618,7 @@ def _load_ci():
     ruby = __import__("shutil").which("ruby")
     if ruby:
         r = subprocess.run([ruby, "-ryaml", "-rjson", "-e", 'puts JSON.generate(YAML.load_file(ARGV[0]))', str(ROOT / ".github" / "workflows" / "ci.yml")],
-                           capture_output=True, text=True, encoding="utf-8")
+                           capture_output=True, text=True, errors="replace", encoding="utf-8")
         if r.returncode == 0:
             return json.loads(r.stdout)
     pytest.skip("nessun lettore YAML disponibile")
@@ -1698,7 +1704,7 @@ def test_B101_i_test_specifici_di_macos_sono_marcati(tmp_path):
     env = {k: v for k, v in os.environ.items() if k not in ("PYTEST_CURRENT_TEST",)}
     env["PYTHONPATH"] = str(plug)
     r = subprocess.run([sys.executable, "-m", "pytest", "-p", "simlinux_qa", "-q", "--tb=no", "-p", "no:cacheprovider", *MAC_ONLY_NON_MARCATI],
-                       cwd=ROOT, env=env, capture_output=True, text=True, encoding="utf-8", timeout=300)
+                       cwd=ROOT, env=env, capture_output=True, text=True, errors="replace", encoding="utf-8", timeout=300)
     assert r.returncode == 0, r.stdout[-900:]
 
 
@@ -1712,7 +1718,7 @@ def test_B102_nessun_test_lancia_osascript_vero(tmp_path):
     env = {k: v for k, v in os.environ.items() if k != "PYTEST_CURRENT_TEST"}
     env["PATH"] = f"{shim}{os.pathsep}/usr/bin:/bin"   # osascript e' un finto che si limita a scrivere un file
     r = subprocess.run([sys.executable, "-m", "pytest", "-q", "--tb=no", "-p", "no:cacheprovider", "tests/test_autoscan.py"], cwd=ROOT, env=env,
-                       capture_output=True, text=True, encoding="utf-8", timeout=300)
+                       capture_output=True, text=True, errors="replace", encoding="utf-8", timeout=300)
     assert r.returncode == 0, r.stdout[-400:]
     assert not log.exists(), log.read_text(encoding="utf-8")[:300]
 
@@ -1999,8 +2005,8 @@ def _skip_rules():
 
 def test_skip_rules_ogni_regola_ha_un_motivo_e_cattura_qualcosa():
     rules = _skip_rules()
-    ids = subprocess.run([sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
-                         env={k: v for k, v in os.environ.items() if k != "PYTEST_CURRENT_TEST"}).stdout.splitlines()
+    ids = subprocess.run([sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"], cwd=ROOT, capture_output=True, text=True, errors="replace", encoding="utf-8",
+                         env={**{k: v for k, v in os.environ.items() if k != "PYTEST_CURRENT_TEST"}, "PYTHONIOENCODING": "utf-8"}).stdout.splitlines()  # su Windows i nomi con accenti escono in cp1252
     ids = [i for i in ids if "::" in i]
     assert len(ids) > 2000
     for pattern, reason, where in rules:

@@ -1,2 +1,19 @@
-# Auto detect text files and perform LF normalization
+# Normalizza i file di testo (LF nel repository)
 * text=auto
+
+# Windows: il batch DEVE restare CRLF anche dopo un clone su qualunque sistema (cmd.exe e i test lo richiedono)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# POSIX: gli script restano LF (un CRLF li rompe: "bad interpreter")
+jh text eol=lf
+*.sh text eol=lf
+
+# Binari: mai toccati
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.icns binary
+*.ico binary
+*.pdf binary
+*.docx binary

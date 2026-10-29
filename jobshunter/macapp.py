@@ -119,12 +119,24 @@ def _start_engine() -> int:
 
     port = _free_port()
     flask_app = create_app(None, port)
-    threading.Thread(
-        target=lambda: flask_app.run(host="127.0.0.1", port=port, threaded=True, use_reloader=False),
-        daemon=True,
-    ).start()
-    if not _wait_port(port):
-        logging.error("il motore locale non si e' avviato")
+    failure: list[BaseException] = []
+
+    def serve() -> None:
+        try:
+            flask_app.run(host="127.0.0.1", port=port, threaded=True, use_reloader=False)
+        except BaseException as e:  # noqa: BLE001 - un'eccezione nel thread sarebbe invisibile: la si scrive nel log
+            failure.append(e)
+            logging.exception("il motore locale si e' fermato con un errore")
+
+    th = threading.Thread(target=serve, daemon=True, name="motore-locale")
+    th.start()
+    try:
+        timeout = float(os.environ.get("JOBSHUNTER_ENGINE_TIMEOUT", "20"))
+    except ValueError:
+        timeout = 20.0
+    if not _wait_port(port, timeout):
+        logging.error("il motore locale non si e' avviato (porta %s, attesa %.0f s, thread %s, errore: %s)", port, timeout,
+                      "vivo" if th.is_alive() else "terminato", repr(failure[0]) if failure else "nessuno")
         raise SystemExit(f"JobsHunter: il motore locale non si e' avviato (vedi {LOG_DIR / 'app.log'})")
     logging.info("motore locale su porta %s, dati in %s", port, settings.home())
     return port

@@ -133,7 +133,7 @@ def test_launcher_jh_da_processo_vero(home):
     env = dict(os.environ, JOBSHUNTER_HOME=str(home))
     proj_db = ROOT / "jobshunter.db"
     before = proj_db.stat().st_mtime if proj_db.exists() else None
-    r = subprocess.run([str(ROOT / "jh"), "profiles", "list"], capture_output=True, text=True, env=env, timeout=60, cwd=str(ROOT))
+    r = subprocess.run([str(ROOT / "jh"), "profiles", "list"], capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=60, cwd=str(ROOT))
     assert r.returncode == 0, r.stderr[-400:]
     assert "Cybersecurity" in r.stdout
     assert (home / "jobshunter.db").exists()
