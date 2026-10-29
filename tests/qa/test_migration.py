@@ -36,7 +36,7 @@ def make_legacy_db(path: Path) -> dict:
     """DB di fase 1 con gli annunci d'oro (punteggi calcolati dal codice di fase 1), candidature, duplicati decisi e impostazioni."""
     from jobshunter.models import Job
 
-    gold = [g for g in json.loads((DATA / "score_golden.json").read_text()) if g["expected"] and g["expected"]["score"] >= 15]
+    gold = [g for g in json.loads((DATA / "score_golden.json").read_text(encoding="utf-8")) if g["expected"] and g["expected"]["score"] >= 15]
     con = sqlite3.connect(path)
     con.executescript(LEGACY_SCHEMA)
     uids, rows = [], {}

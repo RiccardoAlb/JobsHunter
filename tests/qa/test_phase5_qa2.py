@@ -334,18 +334,18 @@ def test_check_publishable_trova_ip_privati():
 def test_check_publishable_non_salta_file_che_git_traccerebbe(tmp_path):
     import check_publishable as cp
 
-    (tmp_path / ".gitignore").write_text("config.toml\njobshunter.db\n\x6aobhunter.db\nsettings.json\nreports/\ncv.json\n")
+    (tmp_path / ".gitignore").write_text("config.toml\njobshunter.db\n\x6aobhunter.db\nsettings.json\nreports/\ncv.json\n", encoding="utf-8")
     d = tmp_path / "docs" / "venv"
     d.mkdir(parents=True)
-    (d / "n.txt").write_text(("ghp" + "_aB3dE6gH9jK2mN5pQ8sT1vW4yZ7bC0dF3gH6"))
+    (d / "n.txt").write_text(("ghp" + "_aB3dE6gH9jK2mN5pQ8sT1vW4yZ7bC0dF3gH6"), encoding="utf-8")
     assert cp.check(tmp_path), "una cartella 'venv' dentro a docs/ non e' ignorata da .gitignore ma lo script la salta"
 
 
 def test_check_publishable_trova_nomi_e_percorsi_in_copia_temporanea(tmp_path):
     import check_publishable as cp
 
-    (tmp_path / ".gitignore").write_text("config.toml\njobshunter.db\n\x6aobhunter.db\nsettings.json\nreports/\ncv.json\n")
-    (tmp_path / "a.md").write_text("vedi /Us" + "ers/luca.bianchi/Documents e scrivi a luca" + "@gmail.com, " + "ghp" + "_aB3dE6gH9jK2mN5pQ8sT1vW4yZ7bC0dF3gH6, RICC" + "ARDO.ALBAN" + "ESE")
+    (tmp_path / ".gitignore").write_text("config.toml\njobshunter.db\n\x6aobhunter.db\nsettings.json\nreports/\ncv.json\n", encoding="utf-8")
+    (tmp_path / "a.md").write_text("vedi /Us" + "ers/luca.bianchi/Documents e scrivi a luca" + "@gmail.com, " + "ghp" + "_aB3dE6gH9jK2mN5pQ8sT1vW4yZ7bC0dF3gH6, RICC" + "ARDO.ALBAN" + "ESE", encoding="utf-8")
     msgs = "\n".join(cp.check(tmp_path))
     assert "percorso personale" in msgs and "indirizzo email" in msgs and "token GitHub" in msgs and "nome dell'autore" in msgs
 
@@ -408,7 +408,7 @@ def _fake_apps(base: Path, with_new=True):
         (apps / "JobsHunter.app" / "Contents").mkdir(parents=True)
     data = base / "Library" / "Application Support" / "\x4aobHunter"
     data.mkdir(parents=True)
-    (data / "\x6aobhunter.db").write_text("dati")
+    (data / "\x6aobhunter.db").write_text("dati", encoding="utf-8")
     return apps, data
 
 
@@ -416,7 +416,7 @@ def _fake_apps(base: Path, with_new=True):
 def test_remove_old_app_senza_conferma_esplicita_non_toglie_nulla(tmp_path, answer):
     apps, data = _fake_apps(tmp_path)
     r = _run_sh(ROOT / "scripts" / "remove_old_app.sh", tmp_path, answer)
-    assert (apps / "\x4aobHunter.app").exists() and (apps / "JobsHunter.app").exists() and (data / "\x6aobhunter.db").read_text() == "dati", r.stdout
+    assert (apps / "\x4aobHunter.app").exists() and (apps / "JobsHunter.app").exists() and (data / "\x6aobhunter.db").read_text(encoding="utf-8") == "dati", r.stdout
 
 
 @pytest.mark.parametrize("answer", ["s\n", "S\n", "si\n", "y\n"])
@@ -425,7 +425,7 @@ def test_remove_old_app_con_conferma_toglie_solo_la_vecchia_app_e_mai_i_dati(tmp
     r = _run_sh(ROOT / "scripts" / "remove_old_app.sh", tmp_path, answer)
     assert r.returncode == 0
     assert not (apps / "\x4aobHunter.app").exists()
-    assert (apps / "JobsHunter.app").exists() and (data / "\x6aobhunter.db").read_text() == "dati"
+    assert (apps / "JobsHunter.app").exists() and (data / "\x6aobhunter.db").read_text(encoding="utf-8") == "dati"
 
 
 def test_remove_old_app_rifiuta_se_manca_la_nuova_app(tmp_path):
@@ -439,7 +439,7 @@ def test_remove_old_app_symlink_non_segue_il_collegamento(tmp_path):
     shutil.rmtree(apps / "\x4aobHunter.app")
     precious = tmp_path / "preziosa"
     precious.mkdir()
-    (precious / "f").write_text("x")
+    (precious / "f").write_text("x", encoding="utf-8")
     (apps / "\x4aobHunter.app").symlink_to(precious)
     _run_sh(ROOT / "scripts" / "remove_old_app.sh", tmp_path, "s\n")
     assert (precious / "f").exists()
@@ -625,6 +625,7 @@ def test_sec_nessun_segreto_nei_log_di_httpx_dopo_le_richieste(caplog):
     assert logging.getLogger("httpx").level >= logging.WARNING
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_sec_permessi_dei_file_creati_dall_app(home):
     import os
     import stat

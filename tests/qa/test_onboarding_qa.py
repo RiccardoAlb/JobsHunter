@@ -7,6 +7,8 @@ import logging
 import threading
 
 import httpx
+import sys
+
 import pytest
 
 from jobshunter import onboarding, settings
@@ -228,6 +230,7 @@ def test_ripristino_settings_json_senza_file_iniziale(cfg):
     assert settings.load_overrides(settings.default_config_path()) == {}
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_settings_json_permessi_600_dopo_complete(client):
     call(client, "post", "/api/onboarding/complete", body(keys={"adzuna": {"app_id": KEY_ID, "app_key": KEY_SECRET}}))
     p = settings.overrides_path(settings.default_config_path())
@@ -696,7 +699,7 @@ def test_chiavi_non_finiscono_nei_risultati_di_altre_api(client):
 def test_messaggio_di_errore_riflette_il_testo_ma_la_pagina_usa_textContent():
     """Il messaggio 400 contiene il testo scritto dall'utente (es. la citta'): e' sicuro solo perche' la GUI usa textContent."""
     from pathlib import Path
-    html = (Path(onboarding.__file__).parent / "gui" / "static" / "index.html").read_text()
+    html = (Path(onboarding.__file__).parent / "gui" / "static" / "index.html").read_text(encoding="utf-8")
     js = html[html.index("/* ---- guida di primo avvio ---- */"):]
     assert "e.textContent = msg" in js and "innerHTML" not in js
 
@@ -829,7 +832,7 @@ def test_scorciatoie_j_k_non_attive_dentro_la_guida():
 
 
 def test_il_pulsante_prova_chiave_e_il_limite_lato_server_coincidono():
-    assert "TEST_INTERVAL = 5.0" in open(onboarding.__file__).read()
+    assert "TEST_INTERVAL = 5.0" in open(onboarding.__file__, encoding="utf-8").read()
 
 
 def test_guida_riapribile_anche_dopo_skip_e_complete(client):

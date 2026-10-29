@@ -194,7 +194,7 @@ def test_server_vero_richieste_parallele_guida_modifica_eliminazione_creazione(h
     s.close()
     env = dict(os.environ, HOME=str(tmp_path), JOBSHUNTER_HOME=str(tmp_path / "srv"))
     script = tmp_path / "srv.py"
-    script.write_text(_SERVER_OK)
+    script.write_text(_SERVER_OK, encoding="utf-8")
     proc = subprocess.Popen([sys.executable, str(script), str(ROOT), str(port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=str(tmp_path))
 
     def req(path, body=None, timeout=40):

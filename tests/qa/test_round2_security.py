@@ -47,7 +47,7 @@ def test_gui_costruisce_il_dom_senza_innerhtml():
     """La GUI crea gli elementi con testo (mai HTML): nomi profilo e titoli con codice non possono eseguire nulla."""
     from pathlib import Path
 
-    html = (Path(__file__).resolve().parent.parent.parent / "jobshunter/gui/static/index.html").read_text()
+    html = (Path(__file__).resolve().parent.parent.parent / "jobshunter/gui/static/index.html").read_text(encoding="utf-8")
     for bad in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "eval("):
         assert bad not in html, f"{bad} nella GUI: rischio XSS con dati dei profili"
 

@@ -13,7 +13,7 @@ DB_COLS = ("source", "title", "company", "location", "url", "description", "post
 
 def load_cases(holdout: bool = False, blind: bool = False, blind2: bool = False, blind3: bool = False) -> list[dict]:
     f = DATA.with_name("dedupe_blind3.json") if blind3 else DATA.with_name("dedupe_blind2.json") if blind2 else DATA.with_name("dedupe_blind.json") if blind else (HOLDOUT if holdout else DATA)
-    return json.loads(f.read_text())
+    return json.loads(f.read_text(encoding="utf-8"))
 
 
 def as_row(d: dict) -> sqlite3.Row:

@@ -1,6 +1,7 @@
-"""JobsHunter come app Mac: motore locale + finestra nativa (WKWebView tramite pywebview).
+"""JobsHunter come app con finestra nativa: motore locale + pywebview (WKWebView su macOS, WebView2 su Windows, GTK/Qt su Linux).
 
-I dati stanno in ~/Library/Application Support/JobsHunter (database, configurazione, report).
+I dati stanno nella cartella dell'app del sistema (vedi `osinfo`): su macOS `~/Library/Application Support/JobsHunter`.
+Se pywebview manca o la finestra non si apre, si ripiega sul browser predefinito con lo stesso motore locale.
 """
 from __future__ import annotations
 
@@ -8,15 +9,41 @@ import logging
 import os
 import socket
 import subprocess
+import sys
 import threading
 import time
 import webbrowser
 from pathlib import Path
 
-from . import APP_NAME, migrate
+from . import APP_NAME, migrate, osinfo
 
 APP_DIR = migrate.support_dir()
 LOG_DIR = migrate.log_dir()
+
+
+def open_path(path) -> bool:
+    """Apre una cartella o un file con il programma del sistema (Finder, Esplora risorse, gestore file). True se ha provato, mai eccezioni."""
+    target = str(path)
+    try:
+        if osinfo.is_windows():
+            os.startfile(target)  # type: ignore[attr-defined]  # solo Windows
+        else:
+            # lanciato e lasciato andare (sessione propria): il gestore dei file puo' restare aperto quanto vuole, nessun timeout lo uccide
+            cmd = ["open", target] if osinfo.is_mac() else ["xdg-open", target]
+            subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        return True
+    except (OSError, subprocess.SubprocessError, AttributeError):
+        return False
+
+
+def open_url(url: str) -> bool:
+    """Apre un indirizzo http/https nel browser predefinito."""
+    if isinstance(url, str) and url.startswith(("http://", "https://")):
+        try:
+            return bool(webbrowser.open(url))
+        except webbrowser.Error:
+            return False
+    return False
 
 
 class Bridge:
@@ -27,10 +54,7 @@ class Bridge:
 
     def open_external(self, url: str) -> bool:
         """Apre un link nel browser predefinito (solo http/https)."""
-        if isinstance(url, str) and url.startswith(("http://", "https://")):
-            webbrowser.open(url)
-            return True
-        return False
+        return open_url(url)
 
     def choose_folder(self) -> str | None:
         import webview
@@ -39,7 +63,7 @@ class Bridge:
         return res[0] if res else None
 
     def open_folder(self, kind: str) -> bool:
-        """Apre in Finder la cartella dati o quella dei report."""
+        """Apre nel gestore file del sistema la cartella dati o quella dei report."""
         from . import settings
 
         if kind == "data":
@@ -50,8 +74,7 @@ class Bridge:
             path.mkdir(parents=True, exist_ok=True)
         else:
             return False
-        subprocess.run(["open", str(path)], check=False)
-        return True
+        return open_path(path)
 
 
 def _free_port() -> int:
@@ -71,23 +94,22 @@ def _wait_port(port: int, timeout: float = 20.0) -> bool:
     return False
 
 
-def main() -> None:
-    data_dir, outcome = migrate.migrate_app_data()  # copia (mai sposta) i dati del vecchio nome, senza la s
+def _start_engine() -> int:
+    """Prepara cartelle e log, avvia il motore locale in un thread e ritorna la porta."""
+    data_dir, outcome = migrate.migrate_app_data()  # copia (mai sposta) i dati del vecchio nome (solo macOS)
     os.environ.setdefault("JOBSHUNTER_HOME", str(data_dir))
     from . import settings
 
     settings.home().mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(filename=LOG_DIR / "app.log", level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s")
+                        format="%(asctime)s %(levelname)s %(message)s", encoding="utf-8")
     logging.getLogger("werkzeug").setLevel(logging.WARNING)
     logging.info("dati: %s (%s)", data_dir, outcome)
 
-    import webview
-
     from .gui.app import create_app
 
-    try:  # se la scansione automatica e' attiva, il LaunchAgent deve puntare a questa app
+    try:  # se la scansione automatica e' attiva, la pianificazione deve puntare a questa app
         from . import scheduler
 
         if scheduler.ensure_current(settings.load_config(create_if_missing=True)):
@@ -103,13 +125,41 @@ def main() -> None:
     ).start()
     if not _wait_port(port):
         logging.error("il motore locale non si e' avviato")
-        raise SystemExit("JobsHunter: il motore locale non si e' avviato (vedi ~/Library/Logs/JobsHunter/app.log)")
+        raise SystemExit(f"JobsHunter: il motore locale non si e' avviato (vedi {LOG_DIR / 'app.log'})")
     logging.info("motore locale su porta %s, dati in %s", port, settings.home())
+    return port
+
+
+def _browser_fallback(port: int, why: str) -> None:
+    """Niente finestra nativa: il motore resta acceso e la pagina si apre nel browser predefinito (Ctrl+C per chiudere)."""
+    logging.info("finestra nativa non disponibile (%s): uso il browser", why)
+    print(f"{APP_NAME}: {why}. Apro la pagina nel browser: http://127.0.0.1:{port}/  (Ctrl+C per chiudere)", file=sys.stderr)
+    open_url(f"http://127.0.0.1:{port}/")
+    try:
+        while True:
+            time.sleep(3600)
+    except KeyboardInterrupt:
+        pass
+
+
+def main() -> None:
+    port = _start_engine()
+    from . import settings
+
+    try:
+        import webview
+    except ImportError:
+        _browser_fallback(port, "manca pywebview (installalo con: pip install -r requirements-gui.txt)")
+        return
 
     bridge = Bridge()
-    bridge.window = webview.create_window(
-        APP_NAME, f"http://127.0.0.1:{port}/", js_api=bridge,
-        width=1320, height=860, min_size=(960, 620), background_color="#0b0b0c",
-    )
-    # private_mode=False: serve a ricordare tema e raggio scelti (localStorage) tra un avvio e l'altro
-    webview.start(private_mode=False, storage_path=str(settings.home() / "webview"))
+    try:
+        bridge.window = webview.create_window(
+            APP_NAME, f"http://127.0.0.1:{port}/", js_api=bridge,
+            width=1320, height=860, min_size=(960, 620), background_color="#0b0b0c",
+        )
+        # private_mode=False: serve a ricordare tema e raggio scelti (localStorage) tra un avvio e l'altro
+        webview.start(private_mode=False, storage_path=str(settings.home() / "webview"))
+    except Exception as e:  # noqa: BLE001 - qualunque problema della finestra (WebView2/GTK mancanti...): si ripiega sul browser
+        logging.exception("la finestra nativa non si e' aperta")
+        _browser_fallback(port, f"la finestra nativa non si e' aperta ({type(e).__name__})")

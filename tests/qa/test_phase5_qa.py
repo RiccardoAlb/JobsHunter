@@ -55,11 +55,11 @@ def build_old(base: Path, name: str = "\x4aobHunter") -> Path:
     db.conn.commit()
     db.conn.close()
     shutil.copyfile(old / "\x6aobhunter.db", old / "backups" / "\x6aobhunter-pre-fase2-20260101-0000.db")
-    (old / "config.toml").write_text('[general]\ndb_path = "\x6aobhunter.db"\nmin_score = 20\n[report]\ndir = "reports"\n')
-    (old / "settings.json").write_text('{"home": "Bologna", "net.contact": "me@example.org"}')
-    (old / "cv.json").write_text('{"text": "cv inventato"}')
-    (old / "skills_extra.json").write_text('["Foo"]')
-    (old / "webview" / "Local Storage" / "ls.txt").write_text("tema scuro")
+    (old / "config.toml").write_text('[general]\ndb_path = "\x6aobhunter.db"\nmin_score = 20\n[report]\ndir = "reports"\n', encoding="utf-8")
+    (old / "settings.json").write_text('{"home": "Bologna", "net.contact": "me@example.org"}', encoding="utf-8")
+    (old / "cv.json").write_text('{"text": "cv inventato"}', encoding="utf-8")
+    (old / "skills_extra.json").write_text('["Foo"]', encoding="utf-8")
+    (old / "webview" / "Local Storage" / "ls.txt").write_text("tema scuro", encoding="utf-8")
     for f in ("config.toml", "settings.json", "cv.json", "skills_extra.json", "\x6aobhunter.db"):
         os.chmod(old / f, 0o600)
     return old
@@ -90,7 +90,7 @@ def test_mig_copia_integra_su_struttura_realistica():
     for rel in ("config.toml", "settings.json", "cv.json", "skills_extra.json", "webview/Local Storage/ls.txt"):
         assert (new / rel).read_bytes() == (old / rel).read_bytes(), rel
     for rel in ("config.toml", "settings.json", "cv.json", "skills_extra.json", "\x6aobhunter.db", "backups/\x6aobhunter-pre-fase2-20260101-0000.db"):
-        assert stat.S_IMODE((new / rel).stat().st_mode) == 0o600, rel
+        assert sys.platform.startswith("win") or stat.S_IMODE((new / rel).stat().st_mode) == 0o600, rel  # i bit POSIX non esistono su Windows
     # la copia si apre davvero con l'applicazione
     n = DB(new / "\x6aobhunter.db").conn.execute("select count(*) from jobs").fetchone()[0]
     assert n == 30
@@ -108,6 +108,7 @@ def test_mig_idempotente_due_volte_e_tre():
     assert not list(new.parent.glob("*.migrating-*"))
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_mig_permessi_della_cartella_nuova_non_piu_larghi_dell_originale():
     """B-nota: la cartella copiata contiene cv.json e chiavi: se la vecchia era 700 anche la nuova deve esserlo."""
     old = build_old(Path.home())
@@ -261,6 +262,7 @@ def test_mig_disco_pieno_durante_la_copia_del_db(monkeypatch):
     assert snap(old) == before and not new_dir(old).exists()
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_mig_permesso_negato_su_un_file_dell_originale():
     old = build_old(Path.home())
     before = snap(old)
@@ -274,6 +276,7 @@ def test_mig_permesso_negato_su_un_file_dell_originale():
     assert not new_dir(old).exists() and not list(old.parent.glob("*.migrating-*"))
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_mig_permesso_negato_sulla_cartella_di_destinazione():
     old = build_old(Path.home())
     parent = old.parent
@@ -309,7 +312,7 @@ def test_mig_residuo_temporaneo_di_un_tentativo_interrotto_viene_ripulito():
     old = build_old(Path.home())
     stale = old.parent / "JobsHunter.migrating-99999"
     stale.mkdir()
-    (stale / "cv.json").write_text('{"text": "copia privata rimasta"}')
+    (stale / "cv.json").write_text('{"text": "copia privata rimasta"}', encoding="utf-8")
     migrate.migrate_app_data(old, new_dir(old))
     assert not stale.exists()
 
@@ -318,7 +321,7 @@ def test_mig_il_residuo_di_un_altro_pid_non_viene_scambiato_per_la_cartella_nuov
     old = build_old(Path.home())
     stale = old.parent / "JobsHunter.migrating-99999"
     stale.mkdir()
-    (stale / "x").write_text("a")
+    (stale / "x").write_text("a", encoding="utf-8")
     use, outcome = migrate.migrate_app_data(old, new_dir(old))
     assert outcome == "copied" and use == new_dir(old)
 
@@ -360,7 +363,7 @@ def test_mig_la_cartella_vecchia_e_un_collegamento_simbolico():
 def test_mig_il_symlink_non_viene_seguito_verso_fuori_dalla_cartella():
     old = build_old(Path.home())
     secret = Path.home() / "segreto.txt"
-    secret.write_text("NON COPIARE")
+    secret.write_text("NON COPIARE", encoding="utf-8")
     (old / "link.txt").symlink_to(secret)
     (old / "dirlink").symlink_to(Path.home())
     use, outcome = migrate.migrate_app_data(old, new_dir(old))
@@ -371,7 +374,7 @@ def test_mig_entrambe_le_cartelle_si_usa_la_nuova_e_nessuna_delle_due_cambia():
     old = build_old(Path.home())
     new = new_dir(old)
     new.mkdir()
-    (new / "config.toml").write_text("[general]\n")
+    (new / "config.toml").write_text("[general]\n", encoding="utf-8")
     b_old, b_new = snap(old), snap(new)
     assert migrate.migrate_app_data(old, new) == (new, "new")
     assert snap(old) == b_old and snap(new) == b_new
@@ -428,7 +431,7 @@ def test_mig_corsa_reale_due_processi(tmp_path):
         print(json.dumps([str(use), out]))
     """)
     procs = [subprocess.Popen([PY, "-I", "-c", code], stdout=subprocess.PIPE, text=True) for _ in range(4)]
-    go.write_text("1")
+    go.write_text("1", encoding="utf-8")
     results = [json.loads(p.communicate(timeout=60)[0]) for p in procs]
     assert {r[0] for r in results} == {str(new_dir(old))}, results
 
@@ -436,7 +439,7 @@ def test_mig_corsa_reale_due_processi(tmp_path):
 def test_mig_percorsi_assoluti_nella_config_restano_validi_e_non_perdono_dati():
     """db_path assoluto verso la vecchia cartella: dopo la migrazione continua a puntare ai dati veri (nessuna perdita)."""
     old = build_old(Path.home())
-    (old / "config.toml").write_text('[general]\ndb_path = "' + str(old / "\x6aobhunter.db") + '"\n[report]\ndir = "' + str(old / "rep") + '"\n')
+    (old / "config.toml").write_text('[general]\ndb_path = "' + str(old / "\x6aobhunter.db") + '"\n[report]\ndir = "' + str(old / "rep") + '"\n', encoding="utf-8")
     new = new_dir(old)
     migrate.migrate_app_data(old, new)
     os.environ["JOBSHUNTER_HOME"] = str(new)
@@ -446,11 +449,11 @@ def test_mig_percorsi_assoluti_nella_config_restano_validi_e_non_perdono_dati():
 
 def test_mig_percorsi_assoluti_vengono_riscritti_o_segnalati(caplog):
     old = build_old(Path.home())
-    (old / "config.toml").write_text('[general]\ndb_path = "' + str(old / "\x6aobhunter.db") + '"\n')
+    (old / "config.toml").write_text('[general]\ndb_path = "' + str(old / "\x6aobhunter.db") + '"\n', encoding="utf-8")
     new = new_dir(old)
     with caplog.at_level("WARNING"):
         migrate.migrate_app_data(old, new)
-    txt = (new / "config.toml").read_text()
+    txt = (new / "config.toml").read_text(encoding="utf-8")
     assert str(old) not in txt or any("assolut" in r.message or "percors" in r.message for r in caplog.records)
 
 
@@ -492,7 +495,7 @@ def test_mig_app_import_dopo_la_migrazione_non_sovrascrive_senza_force(monkeypat
     proj = Path.home() / "proj"
     proj.mkdir()
     DB(proj / "\x6aobhunter.db").conn.close()
-    (proj / "config.toml").write_text('[general]\ndb_path="\x6aobhunter.db"\n')
+    (proj / "config.toml").write_text('[general]\ndb_path="\x6aobhunter.db"\n', encoding="utf-8")
     monkeypatch.setenv("JOBSHUNTER_HOME", str(proj))
     r = CliRunner().invoke(cli.main, ["app-import"])
     assert r.exit_code == 1 and "gia'" in r.output
@@ -512,7 +515,7 @@ def test_mig_app_import_non_deve_impedire_la_migrazione_dei_dati_vecchi(monkeypa
     proj.mkdir()
     pdb = DB(proj / "jobshunter.db")
     pdb.conn.close()
-    (proj / "config.toml").write_text('[general]\ndb_path="jobshunter.db"\n')
+    (proj / "config.toml").write_text('[general]\ndb_path="jobshunter.db"\n', encoding="utf-8")
     monkeypatch.setenv("JOBSHUNTER_HOME", str(proj))
     r = CliRunner().invoke(cli.main, ["app-import"])
     assert r.exit_code == 0, r.output
@@ -611,12 +614,12 @@ def test_ld_remove_legacy_plist_vecchio_illeggibile_viene_tolto_senza_errori(ld)
 
 def test_ld_remove_legacy_se_il_plist_e_un_symlink_non_tocca_il_bersaglio(ld):
     target = Path.home() / "importante.plist"
-    target.write_text("dato dell'utente")
+    target.write_text("dato dell'utente", encoding="utf-8")
     p = scheduler.legacy_plist_paths()[0]
     p.parent.mkdir(parents=True)
     p.symlink_to(target)
     scheduler.remove_legacy()
-    assert target.exists() and target.read_text() == "dato dell'utente"
+    assert target.exists() and target.read_text(encoding="utf-8") == "dato dell'utente"
 
 
 def test_ld_ensure_current_con_scansione_attiva_installa_il_nuovo_e_toglie_il_vecchio(ld, home):
@@ -626,7 +629,7 @@ def test_ld_ensure_current_con_scansione_attiva_installa_il_nuovo_e_toglie_il_ve
     assert scheduler.ensure_current(cfg) is True
     new = plistlib.loads(scheduler.plist_path().read_bytes())
     assert new["Label"] == "local.jobshunter.scan" and new["EnvironmentVariables"]["JOBSHUNTER_HOME"] == str(settings.home())
-    assert stat.S_IMODE(scheduler.plist_path().stat().st_mode) == 0o644
+    assert sys.platform.startswith("win") or stat.S_IMODE(scheduler.plist_path().stat().st_mode) == 0o644
     assert not scheduler.legacy_plist_paths()[0].exists()
     assert ld.loaded == {"local.jobshunter.scan"}
     n = len(ld.calls)
@@ -665,7 +668,7 @@ def test_ld_ensure_current_con_launchctl_che_fallisce_non_perde_il_plist_vecchio
 
 
 def test_ld_macapp_main_non_fa_esplodere_l_avvio_se_ensure_current_fallisce():
-    src = (ROOT / "jobshunter" / "macapp.py").read_text()
+    src = (ROOT / "jobshunter" / "macapp.py").read_text(encoding="utf-8")
     assert "except Exception:\n        logging.exception(\"impossibile verificare la scansione automatica\")" in src
 
 

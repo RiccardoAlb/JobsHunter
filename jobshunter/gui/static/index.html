@@ -1112,7 +1112,7 @@ async function loadNews() {
 /* ---- impostazioni: scansione automatica ---- */
 function scheduleGroup(sch, scans) {
   const head = el("h4", {}, "Scansione automatica");
-  if (!sch.supported) return el("div", { class: "sgroup" }, head, el("div", { class: "shint" }, "Disponibile solo su macOS."));
+  if (!sch.supported) return el("div", { class: "sgroup" }, head, el("div", { class: "shint" }, sch.reason || "Non disponibile su questo computer."));
   const en = el("input", { type: "checkbox", checked: sch.enabled });
   const kind = el("select", {}, [["daily", "Ogni giorno alle"], ["every", "Ogni"]].map(([v, l]) => el("option", { value: v, selected: sch.kind === v }, l)));
   const times = el("input", { type: "text", value: sch.times, placeholder: "09:00, 18:30" });
@@ -1142,8 +1142,8 @@ function scheduleGroup(sch, scans) {
     el("div", { class: "srow" }, el("label", {}, "Notifiche"), el("label", { class: "chk" }, notif, "avvisami quando ci sono nuovi annunci"), el("span")),
     el("div", { class: "sbar", style: "margin:0 0 12px" },
       el("button", { class: "btn primary sm", onclick: apply }, "Applica"),
-      el("button", { class: "btn sm", onclick: async () => { const r = await post("/api/notify/test"); toast(r.ok ? "Notifica inviata" : "Notifica non riuscita", r.ok ? "Compare a nome di Script Editor" : "Controlla Impostazioni di Sistema > Notifiche"); } }, "Invia notifica di prova")),
-    el("div", { class: "shint" }, "Parte da sola all'ora indicata (se il Mac dorme, al risveglio). Le notifiche compaiono a nome di \"Script Editor\". Si disattiva qui in qualsiasi momento."),
+      el("button", { class: "btn sm", onclick: async () => { const r = await post("/api/notify/test"); toast(r.ok ? "Notifica inviata" : "Notifica non riuscita", r.ok ? (sch.platform === "mac" ? "Compare a nome di Script Editor" : "Controlla che sia comparsa sullo schermo") : (sch.platform === "mac" ? "Controlla Impostazioni di Sistema > Notifiche" : "Il sistema non ha mostrato la notifica (su Linux serve notify-send)")); } }, "Invia notifica di prova")),
+    el("div", { class: "shint" }, (sch.platform === "mac" ? "Parte da sola all'ora indicata (se il Mac dorme, al risveglio). Le notifiche compaiono a nome di \"Script Editor\"." : sch.platform === "windows" ? "Parte da sola all'ora indicata con l'Utilità di pianificazione di Windows (se il PC era spento o in stop, appena possibile). Le notifiche sono quelle di Windows." : "Parte da sola all'ora indicata (" + (sch.method || "cron") + "). Le notifiche usano notify-send, se c'è.") + " Si disattiva qui in qualsiasi momento."),
     hist);
 }
 
@@ -1398,7 +1398,7 @@ async function openEditor(p) {
 function aboutGroup(version) {
   const a = (href, text) => el("a", { href, target: "_blank", rel: "noopener noreferrer" }, text);
   return el("div", { class: "sgroup", id: "about" }, el("h4", {}, "Informazioni"),
-    el("div", { class: "shint" }, "JobsHunter " + version + ": strumento personale per cercare lavoro, in locale sul tuo computer, senza garanzie. Dati, chiavi e CV restano sul tuo Mac."),
+    el("div", { class: "shint" }, "JobsHunter " + version + ": strumento personale per cercare lavoro, in locale sul tuo computer, senza garanzie. Dati, chiavi e CV restano sul tuo computer."),
     el("div", { class: "shint" }, "Annunci forniti da ", a(ADZUNA_URL, "Adzuna"), " (", adzunaBadge(), ") e da ", a("https://jooble.org", "Jooble"),
       ", oltre alle pagine carriere pubbliche di Greenhouse e Lever, a Arbeitnow, RemoteOK e Remotive. Il progetto non è affiliato né approvato da Adzuna, Jooble, LinkedIn o Indeed: usa le loro API nel rispetto dei termini d'uso."),
     el("div", { class: "shint" }, "Le coordinate delle città vengono da ", a("https://www.geonames.org", "GeoNames"), " (licenza CC BY 4.0), tramite il pacchetto geonamescache. Le licenze delle altre librerie sono nel file THIRD_PARTY_NOTICES.md."));
@@ -1474,9 +1474,9 @@ async function loadSettings() {
     aboutGroup(d.version),
     el("div", { class: "sfoot" },
       el("div", {}, el("b", {}, "Versione "), d.version),
-      el("div", {}, el("b", {}, "Dati "), d.paths.home, native() ? el("button", { class: "btn sm", style: "margin-left:8px", onclick: () => native().open_folder("data") }, "Apri in Finder") : null),
+      el("div", {}, el("b", {}, "Dati "), d.paths.home, native() ? el("button", { class: "btn sm", style: "margin-left:8px", onclick: () => native().open_folder("data") }, "Apri la cartella") : null),
       el("div", {}, el("b", {}, "Database "), d.paths.db),
-      el("div", {}, el("b", {}, "Report "), d.paths.reports, native() ? el("button", { class: "btn sm", style: "margin-left:8px", onclick: () => native().open_folder("reports") }, "Apri in Finder") : null)),
+      el("div", {}, el("b", {}, "Report "), d.paths.reports, native() ? el("button", { class: "btn sm", style: "margin-left:8px", onclick: () => native().open_folder("reports") }, "Apri la cartella") : null)),
   ].flat());
 }
 
@@ -1544,7 +1544,7 @@ function cvBox() {
     file.addEventListener("change", () => { if (file.files[0]) upload(file.files[0]); });
     const ta = el("textarea", { placeholder: "Oppure incolla qui il testo del CV", "aria-label": "Testo del CV", disabled: busy });
     return [
-      el("p", { class: "shint" }, "Formati: PDF con testo, Word (.docx), .txt o .md, fino a 5 MB. Il file viene letto sul tuo Mac: ne tengo solo il testo, in un file riservato, e non esce mai dal computer."),
+      el("p", { class: "shint" }, "Formati: PDF con testo, Word (.docx), .txt o .md, fino a 5 MB. Il file viene letto sul tuo computer: ne tengo solo il testo, in un file riservato, e non esce mai dal computer."),
       el("div", { class: "row" }, file, replacing ? el("button", { class: "btn sm", type: "button", onclick: () => { replacing = false; err = ""; draw(); } }, "Annulla") : null),
       ta,
       el("div", { class: "row" }, el("button", { class: "btn sm", type: "button", disabled: busy, onclick: () => ta.value.trim() ? upload(ta.value) : (err = "Incolla prima il testo del CV.", draw()) }, "Usa questo testo")),
@@ -1569,7 +1569,7 @@ function cvBox() {
         el("button", { class: "btn sm", type: "button", onclick: () => { replacing = true; err = ""; draw(); } }, "Sostituisci"),
         confirmDel
           ? [el("span", { class: "muted" }, "Elimino davvero il CV?"),
-             el("button", { class: "btn sm stop", type: "button", onclick: async () => { await post("/api/cv/delete"); CV = { present: false }; confirmDel = false; draw(); cvAfterChange(); toast("CV eliminato"); } }, "Si', elimina"),
+             el("button", { class: "btn sm stop", type: "button", onclick: async () => { const r = await post("/api/cv/delete"); confirmDel = false; if (r && r.ok === false) { err = r.error || "Non sono riuscito a cancellare il CV."; draw(); toast("CV non cancellato", err); return; } CV = { present: false }; draw(); cvAfterChange(); toast("CV eliminato"); } }, "Si', elimina"),
              el("button", { class: "btn sm", type: "button", onclick: () => { confirmDel = false; draw(); } }, "Annulla")]
           : el("button", { class: "btn sm stop", type: "button", onclick: () => { confirmDel = true; draw(); } }, "Elimina il CV")),
     ];
@@ -1732,7 +1732,7 @@ function obStep1() {
     el("h2", {}, OB.rerun ? "Rifacciamo la guida" : "Benvenuto in JobsHunter"),
     el("p", { class: "lead" }, "In pochi minuti scegli che lavoro cerchi e dove, e JobsHunter va a cercare gli annunci per te, da diversi siti, e li mette in ordine dal più adatto."),
     el("ul", { class: "plain" },
-      el("li", {}, el("b", {}, "Resta tutto sul tuo Mac."), " Gli annunci, le candidature e le tue scelte non vengono mandati a nessuno."),
+      el("li", {}, el("b", {}, "Resta tutto sul tuo computer."), " Gli annunci, le candidature e le tue scelte non vengono mandati a nessuno."),
       el("li", {}, el("b", {}, "Nessun account, nessuna registrazione"), " per usare l'app."),
       el("li", {}, el("b", {}, "Ci vogliono circa 3 minuti."), " Puoi tornare indietro in ogni momento e cambiare idea più tardi.")),
     OB.rerun ? el("p", { class: "onb-note" }, "Le tue scelte attuali sono già compilate. I profili e gli annunci che hai già non vengono toccati: la guida aggiorna solo il profilo che aveva creato lei.") : null,
@@ -1883,10 +1883,10 @@ function obStep5() {
     const every = d.schedKind === "every";
     out.push(el("h3", {}, "Ricerca automatica"),
       obCheck("schedOn", every ? `Cerca nuovi annunci da sola ogni ${d.schedHours} ore, anche con l'app chiusa` : "Cerca nuovi annunci da sola ogni giorno, anche con l'app chiusa"),
-      every ? el("p", { class: "onb-note" }, "La frequenza resta quella che hai già scelto in Impostazioni.") : obFl("A che ora", t, "Formato 09:00. Per due volte al giorno scrivi per esempio 09:00, 18:30. Se il Mac è in stop a quell'ora, parte appena si risveglia.", "onbTimes"));
+      every ? el("p", { class: "onb-note" }, "La frequenza resta quella che hai già scelto in Impostazioni.") : obFl("A che ora", t, "Formato 09:00. Per due volte al giorno scrivi per esempio 09:00, 18:30. Se il computer è spento o in stop a quell'ora, parte appena possibile.", "onbTimes"));
   }
   out.push(el("h3", {}, "Notifiche"), obCheck("notify", "Avvisami quando ci sono nuovi annunci"),
-    el("p", { class: "onb-note" }, "Le notifiche arrivano sul Mac a nome di «Script Editor»."));
+    el("p", { class: "onb-note" }, info.platform === "windows" ? "Le notifiche arrivano come notifiche di Windows." : info.platform === "linux" ? "Le notifiche arrivano con notify-send, se è installato." : "Le notifiche arrivano sul Mac a nome di «Script Editor»."));
   return out;
 }
 
@@ -1896,7 +1896,7 @@ function obStepCv() {
     el("h2", {}, "Il tuo CV (facoltativo)"),
     el("p", { class: "lead" }, "Se carichi il CV, accanto a ogni annuncio vedrai quanto ti somiglia e perché: quali competenze hai in comune e quali mancano."),
     el("ul", { class: "plain" },
-      el("li", {}, el("b", {}, "Resta sul tuo Mac."), " Il confronto è tutto locale, senza servizi esterni."),
+      el("li", {}, el("b", {}, "Resta sul tuo computer."), " Il confronto è tutto locale, senza servizi esterni."),
       el("li", {}, "Ne tengo solo il testo, in un file riservato. Lo elimini quando vuoi dalle Impostazioni.")),
     cvBox(),
     el("p", { class: "onb-note" }, "Puoi saltare questo passo e caricare il CV più tardi."),

@@ -2,6 +2,37 @@
 
 Formato ispirato a [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
+## [0.4.0] - in preparazione
+
+Portabilita' (fase 7): macOS, Windows e Linux. Il numero di versione nel codice resta quello attuale finche' non si pubblica.
+
+### Aggiunto
+- `jobshunter/osinfo.py` (sistema e cartelle dati/log per sistema, `JOBSHUNTER_HOME` invariato), `filelock.py` (blocco di file con fcntl o msvcrt: nessun `import fcntl` fuori da li'), `fsperm.py` (permessi riservati: chmod su POSIX, `icacls` su Windows, mai eccezioni).
+- `jh.bat` per Windows, `requirements-gui.txt` (pywebview per Windows e Linux); `./jh app` ripiega sul browser se pywebview manca o la finestra non parte.
+- Zone protette per la cartella dei report anche su Windows (Windows, Program Files, ProgramData, AppData, radice di unita', cartelle di rete) e Linux (/etc, /usr, /var, /root...), senza distinguere maiuscole su Windows e macOS.
+- Scansione automatica anche su Windows (Utilita' di pianificazione) e Linux (timer `systemd --user`, altrimenti cron); notifiche di Windows (PowerShell) e Linux (`notify-send`). Opzioni `--home` e `scan-auto --log-file`.
+- CI su `windows-latest`.
+
+### Corretto (dopo il collaudo)
+- cron: mai riscritto se non si riesce a leggere; rimosse solo le righe proprie. `scan-auto --log-file` registra gli errori. Home Linux uguale a `/` non ammette tutto. `secure_file`/`secure_dir` solo su file e cartelle veri.
+  `schedule on` senza strumenti non salva niente. Gestore dei file lanciato staccato. Codifica esplicita per i comandi di sistema. `config.toml` con backslash: messaggio chiaro. Prefisso `\\?\` locale, `$` in systemd, notifiche con NUL, metadati del pacchetto, nessun `osascript` vero nei test.
+
+### Corretto (prima suite su Windows)
+- Su Windows `os.replace` e la lettura di config e CV riprovano se il file e' aperto per un attimo (`fsutil`); `cv.json` con un blocco tra thread; `cv.delete()` non fallisce se il file e' aperto; percorsi XDG simulati. I test specifici di macOS o POSIX sono saltati con motivo (`tests/conftest.py`); i test leggono e scrivono in UTF-8; `JOBSHUNTER_TEST_TIME_FACTOR` per le macchine lente.
+
+### Corretto (icacls su Windows)
+- `fsperm`: l'utente si indica per SID (con ripiego su DOMINIO\\utente e sul solo nome se icacls risponde 1332), l'ereditarieta' si toglie solo dopo una concessione riuscita e si controlla di poter ancora aprire il file (altrimenti `/reset`). Prima, fuori dominio, la protezione non veniva mai applicata.
+
+### Corretto (secondo giro, fase 7)
+- `cv.delete()` non dice di aver cancellato se il CV si legge ancora (errore chiaro in GUI e CLI); il temporaneo del salvataggio nasce sotto il blocco. Comandi esterni su Windows senza finestra nera (`proc.py`). Riga cron con bus D-Bus e `DISPLAY` per `notify-send`. Meno test saltati fuori da macOS.
+
+### Cambiato
+- Apri cartelle e link con il programma del sistema (Finder, Esplora risorse, `xdg-open`); testi dell'interfaccia senza "Mac" dove valgono per tutti.
+- Tutti i file di testo si leggono e scrivono in UTF-8 (Windows usa altrimenti una codifica a 8 bit); la console non da' errori con i simboli.
+- Il messaggio "solo macOS" della scansione automatica e' ora per sistema e per strumento mancante.
+
+Non ancora provato su una macchina Windows o Linux vera: vedi `docs/phase7_status.md`.
+
 ## [0.3.0] - 2026-10-28
 
 Categorie personali per profilo (fase 6). Il numero di versione nel codice resta 0.2.0 finche' non si pubblica.
@@ -52,3 +83,8 @@ Rifinitura per la pubblicazione.
 ## [0.1.0]
 
 Versione privata: raccolta da piu' fonti, profili di ricerca e paesi, duplicati, verifica annunci aperti, candidature, scansione automatica, guida di primo avvio, confronto locale con il CV, app per Mac.
+
+### Test su Windows vero (terza esecuzione)
+- I tre test icacls del builder sostituiscono `fsperm._whoami_output` (su Windows `whoami` partiva davvero); `test_ld_ensure_current_con_scansione_attiva...` controlla `0o644` solo fuori da Windows; `test_cv_delete_errore_vero_non_si_nasconde_su_posix` ha lo skipif su Windows. Nessuna modifica al codice di produzione.
+- Copia pulita (senza config.toml, database, settings.json): `test_jh_app_ripiega_sul_browser_con_messaggio_chiaro` usava il config.toml del progetto; ora il figlio ha una cartella dati con config copiato da `config.example.toml`. Nella copia pulita la suite passa intera (2632 passati, 3 saltati per assenza di .venv/.git).
+- **Primo avvio:** se manca `config.toml` e c'e' `config.example.toml`, tutti i comandi (`gui`, `app`, `scan`, `list`, `cv`, `scan-auto`...) lo creano da soli (UTF-8, scrittura atomica, permessi sicuri, blocco tra processi, mai sopra un file esistente) e scrivono una riga: "Creato config.toml dal file di esempio: lo trovi in <percorso>". Un `--config` indicato a mano e inesistente resta un errore. Se manca anche l'esempio l'errore dice di riscaricarlo dal repository. Nei README il passo `cp config.example.toml config.toml` e' facoltativo. Nuovo `tests/builder/test_first_run.py`.

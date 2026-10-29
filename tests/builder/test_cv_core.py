@@ -7,8 +7,11 @@ import stat
 import zipfile
 from pathlib import Path
 
+import sys
+
 import pytest
 
+from conftest import t as tlimit
 from cvguard import _cv_guardia  # noqa: F401  (autouse: home temporanea, niente rete)
 from jobshunter import cv, cvfile, cvmatch, skills
 from jobshunter.db import DB
@@ -89,20 +92,20 @@ def test_vocabolario_ampio():
 
 
 def test_extra_json(home):
-    (home / "skills_extra.json").write_text(json.dumps({"Mia Tecnologia": ["miatec"], "Altra": {"cat": "cloud", "aliases": ["altra cosa"]}}))
+    (home / "skills_extra.json").write_text(json.dumps({"Mia Tecnologia": ["miatec"], "Altra": {"cat": "cloud", "aliases": ["altra cosa"]}}), encoding="utf-8")
     assert "Mia Tecnologia" in skills.find_skills("uso miatec ogni giorno")
     assert "Altra" in skills.find_skills("lavoro con altra cosa")
     assert skills.category_of("Altra") == "cloud"
     sig = skills.vocab_signature()
-    (home / "skills_extra.json").write_text(json.dumps({"Nuova": ["nuovissima"]}))
+    (home / "skills_extra.json").write_text(json.dumps({"Nuova": ["nuovissima"]}), encoding="utf-8")
     assert skills.vocab_signature() != sig
     assert "Nuova" in skills.find_skills("nuovissima")
 
 
 def test_extra_json_rotto_ignorato(home):
-    (home / "skills_extra.json").write_text("{non json")
+    (home / "skills_extra.json").write_text("{non json", encoding="utf-8")
     assert "Python" in skills.find_skills("python")
-    (home / "skills_extra.json").write_text(json.dumps([1, 2, 3]))
+    (home / "skills_extra.json").write_text(json.dumps([1, 2, 3]), encoding="utf-8")
     assert "Python" in skills.find_skills("python")
 
 
@@ -261,13 +264,18 @@ def test_nome_file_non_e_un_percorso(home):
 
 
 # ---------------------------------------------------------------- archiviazione ----
-def test_salva_permessi_600_e_nessun_temporaneo(home):
+def test_salva_e_nessun_temporaneo(home):
     cv.save_text("Python SQL Linux " * 20, "txt")
     p = cv.path()
     assert p.parent == home and p.name == "cv.json"
-    assert stat.S_IMODE(p.stat().st_mode) == 0o600
     assert not list(home.glob(".cv-*.tmp"))
     assert cv.load()["words"] == 60
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
+def test_cv_json_ha_permessi_600(home):
+    cv.save_text("Python SQL Linux " * 20, "txt")
+    assert stat.S_IMODE(cv.path().stat().st_mode) == 0o600
 
 
 def test_elimina_davvero(home):
@@ -316,9 +324,9 @@ def test_senza_cv_non_si_modificano_competenze(home):
 
 
 def test_cv_json_illeggibile(home):
-    cv.path().write_text("{rotto")
+    cv.path().write_text("{rotto", encoding="utf-8")
     assert cv.current() is None
-    cv.path().write_text(json.dumps({"text": ""}))
+    cv.path().write_text(json.dumps({"text": ""}), encoding="utf-8")
     assert cv.current() is None
 
 
@@ -629,7 +637,7 @@ def test_prestazioni_5000_annunci(home):
     t = time.time()
     seen = []
     cvmatch.recompute(db, p, progress=lambda a, b: seen.append((a, b)))
-    assert time.time() - t < 15
+    assert time.time() - t < tlimit(15)
     assert seen[-1] == (5000, 5000)
     assert cvmatch.stale_count(db, p.version) == 0
 
@@ -670,5 +678,5 @@ def test_il_codice_del_cv_non_importa_librerie_di_rete():
     import re
 
     for mod in ("cv.py", "cvfile.py", "cvmatch.py", "skills.py"):
-        src = (Path(cv.__file__).parent / mod).read_text()
+        src = (Path(cv.__file__).parent / mod).read_text(encoding="utf-8")
         assert not re.search(r"^\s*(?:import|from)\s+(?:httpx|requests|urllib|socket|http\.client|aiohttp)\b", src, re.M), mod

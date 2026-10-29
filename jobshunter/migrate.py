@@ -7,7 +7,6 @@
 """
 from __future__ import annotations
 
-import fcntl
 import glob
 import logging
 import os
@@ -16,7 +15,8 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-from . import APP_NAME
+from . import APP_NAME, fsperm, osinfo
+from .filelock import FileLock
 
 log = logging.getLogger("jobshunter.migrate")
 
@@ -27,11 +27,16 @@ _PRIVATE = ("config.toml", "settings.json", "cv.json", "skills_extra.json")
 
 
 def support_dir(name: str = APP_NAME, home: Path | None = None) -> Path:
-    return (home or Path.home()).joinpath(*SUPPORT, name)
+    """Cartella dei dati dell'app. Con `home` esplicita vale il percorso di macOS (lo usano la migrazione e i suoi test); senza, quello del sistema in uso."""
+    if home is not None:
+        return home.joinpath(*SUPPORT, name)
+    return osinfo.data_dir(name)
 
 
 def log_dir(name: str = APP_NAME, home: Path | None = None) -> Path:
-    return (home or Path.home()) / "Library" / "Logs" / name
+    if home is not None:
+        return home / "Library" / "Logs" / name
+    return osinfo.log_dir(name)
 
 
 _KEY_FILES = ("config.toml", "settings.json", "cv.json", "skills_extra.json")
@@ -75,7 +80,7 @@ def _copy_db(src: Path, dst: Path) -> None:
     finally:
         a.close()
         b.close()
-    os.chmod(dst, 0o600)
+    fsperm.secure_file(dst)
 
 
 def _copy_tree(src: Path, dst: Path) -> None:
@@ -108,9 +113,12 @@ def _copy_impl(src: Path, dst: Path, top: bool) -> None:
         else:
             shutil.copy2(item, target)
             if item.name in _PRIVATE:
-                os.chmod(target, 0o600)
+                fsperm.secure_file(target)
     try:  # i permessi della cartella non devono essere piu' larghi dell'originale (ma l'utente deve poterci scrivere)
-        os.chmod(dst, (src.stat().st_mode & 0o777) | 0o700)
+        if osinfo.is_windows():
+            fsperm.secure_dir(dst)
+        else:
+            os.chmod(dst, (src.stat().st_mode & 0o777) | 0o700)
     except OSError:
         pass
 
@@ -128,32 +136,17 @@ def _rewrite_paths(tmp: Path, old: Path, new: Path) -> None:
             log.info("percorsi assoluti in %s riscritti verso %s", name, new)
 
 
-class _Lock:
+class _Lock(FileLock):
     """Blocco tra processi (app e scansione pianificata che partono insieme): chi arriva dopo aspetta e poi trova la cartella nuova."""
-
-    def __init__(self, path: Path):
-        self.path, self.fh = path, None
-
-    def __enter__(self):
-        try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.fh = open(self.path, "w")
-            fcntl.flock(self.fh, fcntl.LOCK_EX)
-        except OSError:
-            self.fh = None
-        return self
-
-    def __exit__(self, *a):
-        if self.fh:
-            try:
-                fcntl.flock(self.fh, fcntl.LOCK_UN)
-            finally:
-                self.fh.close()
 
 
 def migrate_app_data(old: Path | None = None, new: Path | None = None) -> tuple[Path, str]:
     """Ritorna (cartella da usare, esito). Esiti: 'new' (c'era gia' la nuova), 'fresh' (nessuna cartella),
     'copied' (copiata e verificata), 'failed' (copia non riuscita: si usa la vecchia)."""
+    if old is None and new is None and not osinfo.is_mac():
+        # il vecchio nome (JobHunter) esisteva solo su macOS: altrove non c'e' niente da migrare
+        target = support_dir(APP_NAME)
+        return target, ("new" if _has_data(target) else "fresh")
     old = old or support_dir(OLD_APP_NAME)
     new = new or support_dir(APP_NAME)
     if _has_data(new):

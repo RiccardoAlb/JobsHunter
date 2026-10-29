@@ -12,12 +12,12 @@ jobs:
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
-    # Il progetto nasce su macOS: Linux e' provato ma non ancora garantito, quindi non blocca la CI.
+    # Il progetto nasce su macOS: Linux non e' ancora provato su una macchina vera, quindi non blocca la CI (Windows invece si'; vedi docs/phase7_status.md).
     continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
         python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
@@ -26,12 +26,16 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
       - name: Install (in a .venv, like the README says)
+        shell: bash
         run: |
           python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt pytest
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python.exe; else PY=.venv/bin/python; fi
+          echo "PY=$PY" >> "$GITHUB_ENV"
+          "$PY" -m pip install --upgrade pip
+          "$PY" -m pip install -r requirements.txt pytest
       - name: "Tests (no network, the suite forbids it)"
-        run: .venv/bin/python -m pytest -q -m "not slow"
+        shell: bash
+        run: '"$PY" -m pytest -q -m "not slow"'
 
   publishable:
     name: Publishable check

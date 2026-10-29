@@ -28,7 +28,7 @@ o da riga di comando.
 7. [Primo avvio](#primo-avvio)
 8. [Personalizzare il punteggio](#personalizzare-il-punteggio)
 9. [Report per Obsidian](#report-per-obsidian)
-10. [App per Mac](#app-per-mac)
+10. [App per Mac e finestra nativa](#app-per-mac)
 11. [Scan automatico](#scan-automatico)
 12. [Sicurezza e privacy](#sicurezza-e-privacy)
 13. [Stato del progetto e prossimi passi](#stato-del-progetto-e-prossimi-passi)
@@ -341,29 +341,73 @@ Interfaccia di servizio (`jobshunter/gui/app.py`, logica in `jobshunter/onboardi
 
 ## Installazione
 
-Serve **Python 3.11 o superiore** (testato su macOS con Python 3.14).
+Serve **Python 3.11 o superiore**. JobsHunter gira da sorgente su **macOS**, **Windows** e **Linux**; la finestra nativa e la scansione automatica dipendono dal sistema (vedi la tabella sotto).
+
+### macOS e Linux
 
 ```bash
 git clone <indirizzo-del-repository> jobshunter
 cd jobshunter
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+# (facoltativo: al primo avvio config.toml si crea da solo dal file di esempio)
 cp config.example.toml config.toml
-```
-
-Poi apri `config.toml` e inserisci le tue chiavi (vedi sotto). Si lancia con lo script `./jh`:
-
-```bash
 ./jh scan
 ./jh gui
 ```
+
+### Windows (PowerShell o Prompt dei comandi)
+
+```bat
+git clone <indirizzo-del-repository> jobshunter
+cd jobshunter
+py -3 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+REM (facoltativo: lo crea da solo al primo avvio)
+copy config.example.toml config.toml
+jh.bat scan
+jh.bat gui
+```
+
+`jh.bat` equivale a `./jh`: usa `.venv\Scripts\python.exe` e non dipende dalla cartella corrente. Ovunque vale anche `python -m jobshunter ...`.
+Nei percorsi di `config.toml` su Windows usa gli apici singoli (`dir = 'D:\Lavori\Report'`) oppure le barre normali (`D:/Lavori/Report`): le doppie virgolette trattano `\` come un carattere speciale.
+
+Poi apri `config.toml` e inserisci le tue chiavi (vedi sotto), oppure usa la procedura guidata al primo avvio.
 
 > Si usa `./jh` e non l'installazione "editable" (`pip install -e .`): su macOS, se la cartella è sul Desktop o
 > sincronizzata con iCloud, il sistema può nascondere il file che rende il pacchetto importabile e il comando
 > `jobshunter` smette di funzionare. `./jh` non ne ha bisogno.
 
-**Linux:** dovrebbe funzionare allo stesso modo. **Windows:** non testato; usa
-`.venv\Scripts\python -m jobshunter ...` al posto di `./jh`.
+### Dove stanno i dati
+
+Da sorgente i dati stanno nella cartella del progetto (o in `JOBSHUNTER_HOME`, se la imposti). Nell'app con finestra (`./jh app`) stanno nella cartella dell'app del sistema:
+
+| Sistema | Dati | Log |
+|---|---|---|
+| macOS | `~/Library/Application Support/JobsHunter` | `~/Library/Logs/JobsHunter` |
+| Windows | `%APPDATA%\JobsHunter` | `%LOCALAPPDATA%\JobsHunter\Logs` |
+| Linux | `$XDG_DATA_HOME/jobshunter` (o `~/.local/share/jobshunter`) | `$XDG_STATE_HOME/jobshunter` (o `~/.local/state/jobshunter`) |
+
+Database, impostazioni, chiavi e CV sono riservati all'utente: su macOS e Linux con permessi `600`; su Windows con `icacls` (accesso solo al tuo utente, a tentativi: se non riesce lo scrive nel log). Su Windows non si può garantire come su Unix: tieni i dati nella tua cartella utente. L'utente è indicato per SID (funziona con account locali, Microsoft, di dominio e di gruppo di lavoro) e nessun altro account, nemmeno SYSTEM, resta nell'elenco: i programmi di backup di sistema potrebbero quindi non leggere i file dei dati.
+
+### Cosa c'è su ogni sistema
+
+| Funzione | macOS | Windows | Linux |
+|---|---|---|---|
+| Da riga di comando (`jh`, `jh.bat`) e GUI nel browser (`gui`) | sì (provato) | in verifica (vedi `docs/phase7_status.md`) | non ancora provato su un Linux vero |
+| Finestra nativa (`app`, pywebview: `pip install -r requirements-gui.txt`) | sì (provato) | WebView2: non ancora provato | GTK o Qt: non ancora provato |
+| Senza pywebview | `app` apre il browser | `app` apre il browser | `app` apre il browser |
+| Scansione automatica | LaunchAgent (provato) | Utilità di pianificazione (`schtasks`): provata solo con comandi finti | timer `systemd --user`, o `cron` se manca: provata solo con comandi finti |
+| Notifiche | `osascript` (provato) | toast di Windows via PowerShell: non ancora provato | `notify-send`, se c'è: non ancora provato |
+| Apri la cartella dall'app | Finder | Esplora risorse | `xdg-open` |
+
+Dove una cosa non è provata su un sistema lo diciamo: i test automatici simulano Windows e Linux (percorsi, permessi, pianificazione con comandi finti) ma non sostituiscono una prova su una macchina vera.
+
+### Avvisi di sicurezza al primo avvio
+
+- **Windows:** al primo avvio il Firewall di Windows può chiedere se consentire Python in rete: JobsHunter ascolta **solo su 127.0.0.1**, quindi puoi scegliere "Annulla" / rete privata e non serve aprire niente. SmartScreen può avvisare per un'app non firmata (solo per i pacchetti futuri: da sorgente non succede).
+- **macOS:** l'app non è firmata né notarizzata: il primo avvio può chiedere di confermarla da Impostazioni di Sistema, Privacy e sicurezza.
+- **Linux:** niente di particolare; per la finestra nativa servono i pacchetti di sistema GTK o Qt (vedi `requirements-gui.txt`).
 
 ## Configurazione
 
@@ -551,7 +595,7 @@ terminale.
 
 ## Scan automatico
 
-JobsHunter può cercare da solo, anche con l'app chiusa, e avvisarti quando ci sono novità.
+JobsHunter può cercare da solo, anche con l'app chiusa, e avvisarti quando ci sono novità. Usa lo strumento del sistema: **LaunchAgent** su macOS, **Utilità di pianificazione** (`schtasks`, attività dell'utente "JobsHunter scan", niente privilegi di amministratore) su Windows, **timer `systemd --user`** su Linux (o **cron**, con una riga marcata `# JobsHunter`, se systemd non c'è). Se nessuno è disponibile lo dice. Su Windows e Linux è provata solo con comandi finti nei test.
 
 - **Come si attiva:** Impostazioni, blocco **Scansione automatica**: spunta "attiva", scegli gli orari (da 1 a 4 al giorno, ad
   esempio `09:00, 18:30`) oppure "ogni N ore", e premi **Applica**. Da terminale: `./jh schedule on --at "09:00, 18:30"`,

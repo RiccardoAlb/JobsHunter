@@ -292,27 +292,71 @@ Service interface (`jobshunter/gui/app.py`, logic in `jobshunter/onboarding.py`)
 
 ## Installation
 
-You need **Python 3.11 or later** (tested on macOS with Python 3.14).
+You need **Python 3.11 or later**. JobsHunter runs from source on **macOS**, **Windows** and **Linux**; the native window and the automatic scan depend on the system (see the table below).
+
+### macOS and Linux
 
 ```bash
 git clone <repository-address> jobshunter
 cd jobshunter
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
+# (optional: on first run config.toml is created automatically from the example)
 cp config.example.toml config.toml
-```
-
-Then open `config.toml` and enter your keys (see below). You launch it with the `./jh` script:
-
-```bash
 ./jh scan
 ./jh gui
 ```
 
-> Use `./jh` and not the "editable" install (`pip install -e .`): on macOS, if the folder is on the Desktop or synced with iCloud, the system may hide the file that makes the package importable and the `jobshunter`
-> command stops working. `./jh` does not need it.
+### Windows (PowerShell or Command Prompt)
 
-**Linux:** should work the same way. **Windows:** not tested; use `.venv\Scripts\python -m jobshunter ...` instead of `./jh`.
+```bat
+git clone <repository-address> jobshunter
+cd jobshunter
+py -3 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+REM (optional: created automatically on first run)
+copy config.example.toml config.toml
+jh.bat scan
+jh.bat gui
+```
+
+`jh.bat` is the same as `./jh`: it uses `.venv\Scripts\python.exe` and does not depend on the current folder. `python -m jobshunter ...` works everywhere.
+In `config.toml` paths on Windows use single quotes (`dir = 'D:\Work\Reports'`) or forward slashes (`D:/Work/Reports`): double quotes treat `\` as a special character.
+
+Then open `config.toml` and enter your keys (see below), or use the guided first run.
+
+> Use `./jh` and not the "editable" install (`pip install -e .`): on macOS, if the folder is on the Desktop or synced with iCloud, the system may hide the file that makes the package importable and the `jobshunter` command stops working. `./jh` does not need it.
+
+### Where the data lives
+
+From source the data lives in the project folder (or in `JOBSHUNTER_HOME`, if you set it). In the windowed app (`./jh app`) it lives in the system's app folder:
+
+| System | Data | Logs |
+|---|---|---|
+| macOS | `~/Library/Application Support/JobsHunter` | `~/Library/Logs/JobsHunter` |
+| Windows | `%APPDATA%\JobsHunter` | `%LOCALAPPDATA%\JobsHunter\Logs` |
+| Linux | `$XDG_DATA_HOME/jobshunter` (or `~/.local/share/jobshunter`) | `$XDG_STATE_HOME/jobshunter` (or `~/.local/state/jobshunter`) |
+
+Database, settings, keys and CV are private to the user: mode `600` on macOS and Linux; on Windows through `icacls` (access only for your user, best effort: if it fails it is written to the log). On Windows this cannot be guaranteed the way it is on Unix: keep the data in your own user folder. Your user is identified by SID (works with local, Microsoft, domain and workgroup accounts) and no other account, not even SYSTEM, stays on the list: system backup programs may therefore be unable to read the data files.
+
+### What works on each system
+
+| Feature | macOS | Windows | Linux |
+|---|---|---|---|
+| Command line (`jh`, `jh.bat`) and GUI in the browser (`gui`) | yes (tested) | being verified (see `docs/phase7_status.md`) | not yet tried on a real Linux |
+| Native window (`app`, pywebview: `pip install -r requirements-gui.txt`) | yes (tested) | WebView2: not yet tried | GTK or Qt: not yet tried |
+| Without pywebview | `app` opens the browser | `app` opens the browser | `app` opens the browser |
+| Automatic scan | LaunchAgent (tested) | Task Scheduler (`schtasks`): tested only with fake commands | `systemd --user` timer, or `cron` if missing: tested only with fake commands |
+| Notifications | `osascript` (tested) | Windows toast via PowerShell: not yet tried | `notify-send`, if present: not yet tried |
+| Open the folder from the app | Finder | File Explorer | `xdg-open` |
+
+Where something is not proven on a system we say so: the automated tests simulate Windows and Linux (paths, permissions, scheduling with fake commands) but they do not replace a try on a real machine.
+
+### Security notices at first start
+
+- **Windows:** at first start Windows Firewall may ask whether to allow Python on the network: JobsHunter listens **only on 127.0.0.1**, so you can cancel / choose the private network and nothing needs to be opened. SmartScreen may warn about an unsigned app (only for future packages: from source it does not happen).
+- **macOS:** the app is neither signed nor notarised: the first start may ask you to confirm it in System Settings, Privacy and Security.
+- **Linux:** nothing special; the native window needs the system GTK or Qt packages (see `requirements-gui.txt`).
 
 ## Configuration
 
@@ -481,7 +525,7 @@ Besides the terminal and the browser, JobsHunter can be packaged as a real **mac
 
 ## Automatic scans
 
-JobsHunter can search on its own, even with the app closed, and tell you when there is news.
+JobsHunter can search on its own, even with the app closed, and tell you when there is news. It uses the system's own tool: a **LaunchAgent** on macOS, **Task Scheduler** (`schtasks`, a per-user task "JobsHunter scan", no administrator rights) on Windows, a **`systemd --user` timer** on Linux (or **cron**, with a line marked `# JobsHunter`, if systemd is missing). If none is available it says so. On Windows and Linux it is tested only with fake commands.
 
 - **How to turn it on:** Settings, **Automatic scan** block: tick "on", choose the times (1 to 4 per day, for example `09:00, 18:30`) or "every N hours", and press **Apply**. From the terminal: `./jh schedule on --at "09:00, 18:30"`,
   `./jh schedule status`, `./jh schedule off`.

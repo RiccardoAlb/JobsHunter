@@ -3,6 +3,8 @@ import re
 import stat
 from pathlib import Path
 
+import sys
+
 import pytest
 
 from qa.qa_helpers import H, call, jget
@@ -139,6 +141,7 @@ def test_nessun_segreto_nei_log(client, home, caplog):
     assert logging.getLogger("httpx").level >= logging.WARNING
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_permessi_riservati_su_config_settings_db_cv(client, home):
     client.post("/api/settings", headers=H, json={"values": {"general.min_score": 20}})
     client.get("/api/stats", headers=H)

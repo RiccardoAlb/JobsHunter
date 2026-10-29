@@ -33,7 +33,7 @@ def _load_script(name):
 # ------------------------------------------------------------------------------ nome e versione ----
 def test_nome_e_versione():
     assert APP_NAME == "JobsHunter" and __version__ == "0.3.0"
-    meta = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert meta["name"] == "jobshunter" and meta["version"] == __version__
     assert meta["requires-python"] == ">=3.11" and meta["classifiers"] and meta["description"]
     assert (ROOT / "jobshunter" / "__init__.py").exists() and not (ROOT / "jobhunter").exists()
@@ -85,7 +85,7 @@ def test_user_agent_non_valido_nel_file_e_ignorato():
 
 
 def test_load_config_imposta_lo_user_agent(home):
-    (home / "config.toml").write_text('[general]\ndb_path="x.db"\n[net]\ncontact = "me@example.org"\n')
+    (home / "config.toml").write_text('[general]\ndb_path="x.db"\n[net]\ncontact = "me@example.org"\n', encoding="utf-8")
     settings.load_config()
     assert "contact: me@example.org" in net.user_agent()
     settings.save_overrides(home / "config.toml", {"net.contact": "altro@example.org"})
@@ -164,11 +164,11 @@ def _make_old(base: Path) -> Path:
     con.execute("insert into jobs values ('a1', 'SOC Analyst')")
     con.commit()
     con.close()
-    (old / "config.toml").write_text('[general]\ndb_path = "jobhunter.db"\n')
-    (old / "settings.json").write_text('{"home": "Bologna"}')
-    (old / "cv.json").write_text('{"text": "cv finto"}')
-    (old / "webview" / "x.txt").write_text("storage")
-    (old / "scan.lock").write_text("")
+    (old / "config.toml").write_text('[general]\ndb_path = "jobhunter.db"\n', encoding="utf-8")
+    (old / "settings.json").write_text('{"home": "Bologna"}', encoding="utf-8")
+    (old / "cv.json").write_text('{"text": "cv finto"}', encoding="utf-8")
+    (old / "webview" / "x.txt").write_text("storage", encoding="utf-8")
+    (old / "scan.lock").write_text("", encoding="utf-8")
     for f in ("config.toml", "settings.json", "cv.json"):
         os.chmod(old / f, 0o600)
     return old
@@ -184,19 +184,25 @@ def test_migrazione_copia_senza_toccare_l_originale(tmp_path):
     use, outcome = migrate.migrate_app_data(old, new)
     assert (use, outcome) == (new, "copied")
     assert _snap(old) == before, "l'originale non deve cambiare"
-    assert (new / "config.toml").read_text() == (old / "config.toml").read_text()
+    assert (new / "config.toml").read_text(encoding="utf-8") == (old / "config.toml").read_text(encoding="utf-8")
     assert (new / "webview" / "x.txt").exists() and not (new / "scan.lock").exists()
     assert migrate.db_ok(new / "jobhunter.db")
     assert sqlite3.connect(new / "jobhunter.db").execute("select title from jobs").fetchone() == ("SOC Analyst",)
+    assert not list(new.parent.glob("*.migrating-*")), "nessun residuo temporaneo"
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
+def test_migrazione_copia_con_permessi_600(tmp_path):
+    old, new = _make_old(tmp_path), tmp_path / "Application Support" / "JobsHunter"
+    migrate.migrate_app_data(old, new)
     for f in ("config.toml", "settings.json", "cv.json", "jobhunter.db"):
         assert stat.S_IMODE((new / f).stat().st_mode) == 0o600, f
-    assert not list(new.parent.glob("*.migrating-*")), "nessun residuo temporaneo"
 
 
 def test_migrazione_e_idempotente(tmp_path):
     old, new = _make_old(tmp_path), tmp_path / "Application Support" / "JobsHunter"
     migrate.migrate_app_data(old, new)
-    (new / "settings.json").write_text('{"home": "Torino"}')  # l'utente ha continuato a lavorare nella nuova
+    (new / "settings.json").write_text('{"home": "Torino"}', encoding="utf-8")  # l'utente ha continuato a lavorare nella nuova
     after = _snap(new)
     assert migrate.migrate_app_data(old, new) == (new, "new")
     assert _snap(new) == after, "la seconda volta non si copia piu' nulla"
@@ -205,7 +211,7 @@ def test_migrazione_e_idempotente(tmp_path):
 def test_se_esistono_entrambe_si_usa_la_nuova(tmp_path):
     old, new = _make_old(tmp_path), tmp_path / "Application Support" / "JobsHunter"
     new.mkdir(parents=True)
-    (new / "config.toml").write_text("# nuova")
+    (new / "config.toml").write_text("# nuova", encoding="utf-8")
     before_old, before_new = _snap(old), _snap(new)
     assert migrate.migrate_app_data(old, new) == (new, "new")
     assert _snap(old) == before_old and _snap(new) == before_new
@@ -373,6 +379,7 @@ def test_campi_rete_nelle_impostazioni(home):
         settings.clean_values({"net.user_agent": "x" * 500})
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_permessi_600_per_la_config_creata(home):
     settings.load_config(create_if_missing=True)
     assert stat.S_IMODE((home / "config.toml").stat().st_mode) == 0o600
@@ -380,6 +387,7 @@ def test_permessi_600_per_la_config_creata(home):
     assert stat.S_IMODE((home / "settings.json").stat().st_mode) == 0o600
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_database_nuovo_con_permessi_600(tmp_path):
     from jobshunter.db import DB
 
@@ -389,7 +397,7 @@ def test_database_nuovo_con_permessi_600(tmp_path):
 
 # ------------------------------------------------------------------------------ pubblicazione ----
 def test_config_example_neutra_e_valida():
-    text = (ROOT / "config.example.toml").read_text()
+    text = (ROOT / "config.example.toml").read_text(encoding="utf-8")
     cfg = tomllib.loads(text)
     assert cfg["location"]["home_names"] == []
     assert cfg["sources"]["adzuna"]["home"] == "" and cfg["sources"]["jooble"]["home"] == ""
@@ -410,6 +418,8 @@ def test_greenhouse_e_lever_solo_per_profili_cyber():
     assert source_wanted("adzuna", [dev])
 
 
+@pytest.mark.skipif(not (ROOT / ".git").exists() and not (ROOT / ".publish-forbidden.txt").exists(),
+                    reason="serve un clone (con .git) o la cartella dell'autore (con .publish-forbidden.txt): in una semplice copia il controllo non e' affidabile")
 def test_check_publishable_passa_sul_progetto():
     mod = _load_script("check_publishable")
     problems = mod.check(ROOT)
@@ -418,14 +428,14 @@ def test_check_publishable_passa_sul_progetto():
 
 def test_check_publishable_trova_segreti_percorsi_ed_email(tmp_path):
     mod = _load_script("check_publishable")
-    (tmp_path / ".gitignore").write_text("config.toml\njobshunter.db\njobhunter.db\nsettings.json\nreports/\ncv.json\n")
-    (tmp_path / "ok.py").write_text('x = "me@example.org"\nPATH = "/Users/x/Rep"\napp_key = "finta-xxxxxxxx"\n')
+    (tmp_path / ".gitignore").write_text("config.toml\njobshunter.db\njobhunter.db\nsettings.json\nreports/\ncv.json\n", encoding="utf-8")
+    (tmp_path / "ok.py").write_text('x = "me@example.org"\nPATH = "/Users/x/Rep"\napp_key = "finta-xxxxxxxx"\n', encoding="utf-8")
     assert mod.check(tmp_path) == []
     (tmp_path / "bad.py").write_text(
         'app_key = "9f3a7c1e5b2d4f60a8c1e3b5d7f90246"\n'
         'api_key = "9f3a7c1e-5b2d-4f60-a8c1-e3b5d7f90246"\n'
         'p = "/Users/mario/Desktop"\nmail = "mario.rossi@gmail.com"\n'
-        'tok = "ghp_' + "a1B2c3D4" * 4 + '"\n')
+        'tok = "ghp_' + "a1B2c3D4" * 4 + '"\n', encoding="utf-8")
     out = "\n".join(mod.check(tmp_path))
     for needle in ("chiave Adzuna", "chiave Jooble", "percorso personale", "indirizzo email", "token GitHub"):
         assert needle in out, (needle, out)
@@ -433,19 +443,19 @@ def test_check_publishable_trova_segreti_percorsi_ed_email(tmp_path):
 
 def test_check_publishable_pretende_gitignore_dei_dati(tmp_path):
     mod = _load_script("check_publishable")
-    (tmp_path / ".gitignore").write_text("*.pyc\n")
+    (tmp_path / ".gitignore").write_text("*.pyc\n", encoding="utf-8")
     out = "\n".join(mod.check(tmp_path))
     for item in ("config.toml", "jobshunter.db", "settings.json", "reports/"):
         assert item in out
-    (tmp_path / ".gitignore").write_text("config.toml\n*.db\nsettings.json\nreports/\ncv.json\n")
+    (tmp_path / ".gitignore").write_text("config.toml\n*.db\nsettings.json\nreports/\ncv.json\n", encoding="utf-8")
     assert mod.check(tmp_path) == []
 
 
 def test_check_publishable_ignora_le_cartelle_ignorate(tmp_path):
     mod = _load_script("check_publishable")
-    (tmp_path / ".gitignore").write_text("config.toml\n*.db\nsettings.json\nreports/\ncv.json\nnote/\n")
+    (tmp_path / ".gitignore").write_text("config.toml\n*.db\nsettings.json\nreports/\ncv.json\nnote/\n", encoding="utf-8")
     (tmp_path / "note").mkdir()
-    (tmp_path / "note" / "x.md").write_text("/Users/mario/segreto mario@gmail.com")
+    (tmp_path / "note" / "x.md").write_text("/Users/mario/segreto mario@gmail.com", encoding="utf-8")
     assert mod.check(tmp_path) == []
 
 
@@ -470,12 +480,12 @@ def test_dati_di_prova_sono_sintetici():
 
 
 def test_third_party_notices_presente():
-    text = (ROOT / "THIRD_PARTY_NOTICES.md").read_text()
+    text = (ROOT / "THIRD_PARTY_NOTICES.md").read_text(encoding="utf-8")
     assert "GeoNames" in text and "CC" in text and "httpx" in text.lower() and "Flask" in text
 
 
 def test_readme_ha_avvertenze_e_link_incrociati():
-    it, en = (ROOT / "README.md").read_text(), (ROOT / "README.en.md").read_text()
+    it, en = (ROOT / "README.md").read_text(encoding="utf-8"), (ROOT / "README.en.md").read_text(encoding="utf-8")
     assert "README.en.md" in it[:600] and "README.md" in en[:600]
     assert "## Avvertenze" in it and "## Disclaimer" in en
     for needle in ("Adzuna", "Jooble", "LinkedIn", "Indeed", "GeoNames", "CC BY 4.0"):
@@ -548,11 +558,11 @@ def test_gui_chiama_serve(monkeypatch):
 
 
 def test_pywebview_come_extra_per_mac():
-    meta = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert any("pywebview" in d for d in meta["optional-dependencies"]["mac"])
-    assert "pywebview" in (ROOT / "requirements-mac.txt").read_text()
+    assert "pywebview" in (ROOT / "requirements-mac.txt").read_text(encoding="utf-8")
 
 
 def test_launcher_e_launchagent_trovano_il_pacchetto():
-    assert "PYTHONPATH" in (ROOT / "jh").read_text()
+    assert "PYTHONPATH" in (ROOT / "jh").read_text(encoding="utf-8")
     assert scheduler.build_plist("daily", [(9, 0)], 6)["EnvironmentVariables"]["PYTHONPATH"] == str(settings.SOURCE_ROOT)

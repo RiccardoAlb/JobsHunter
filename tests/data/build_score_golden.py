@@ -73,6 +73,6 @@ if __name__ == "__main__":
         out.append({"title": t, "company": c, "location": loc, "description": d, "remote": rem,
                     "expected": None if r is None else {"score": r.score, "category": r.category, "matched": r.matched,
                                                          "near_home": r.near_home}})
-    (Path(__file__).with_name("score_golden.json")).write_text(json.dumps(out, ensure_ascii=False, indent=1))
+    (Path(__file__).with_name("score_golden.json")).write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
     kept = sum(1 for o in out if o["expected"])
     print(len(out), "annunci,", kept, "con punteggio")

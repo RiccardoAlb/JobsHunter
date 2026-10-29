@@ -15,7 +15,7 @@ H = {"Host": "127.0.0.1:8765"}
 
 def edit_config(home: Path, fn) -> None:
     p = home / "config.toml"
-    p.write_text(fn(p.read_text()))
+    p.write_text(fn(p.read_text(encoding="utf-8")), encoding="utf-8")
 
 
 def jget(r):

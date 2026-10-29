@@ -62,7 +62,7 @@ def closure(roots: list[str]) -> dict[str, metadata.Distribution]:
 
 
 def main() -> int:
-    deps = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["dependencies"]
+    deps = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["dependencies"]
     direct = [requirement_name(d)[0] for d in deps]
     runtime = closure(direct)
     build = {n: d for n, d in closure([b for b in BUILD_ONLY]).items() if n not in runtime}

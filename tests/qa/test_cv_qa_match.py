@@ -462,14 +462,14 @@ def test_nomi_di_competenza_che_si_confondono_tra_loro():
 
 def test_vocabolario_estendibile_con_skills_extra_cambia_la_firma(home):
     sig = skills.vocab_signature()
-    (home / "skills_extra.json").write_text(json.dumps({"Terraform Cloud": ["terraform cloud"]}))
+    (home / "skills_extra.json").write_text(json.dumps({"Terraform Cloud": ["terraform cloud"]}), encoding="utf-8")
     assert skills.vocab_signature() != sig
     assert "Terraform Cloud" in skills.find_skills("uso terraform cloud")
 
 
 def test_skills_extra_malformato_non_blocca(home):
     for content in ["{", "[]", '{"a": 5}', '{"x": {"cat": "boh", "aliases": [1, null]}}', json.dumps({f"s{i}": ["a"] for i in range(5000)}), "\x00\x00"]:
-        (home / "skills_extra.json").write_text(content)
+        (home / "skills_extra.json").write_text(content, encoding="utf-8")
         skills.find_skills("Python e Linux")
         skills.vocab_signature()
 

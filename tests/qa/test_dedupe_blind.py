@@ -1,6 +1,7 @@
 """Terzo set (CIECO, scritto fuori dal progetto e copiato qui a fine giro 2): sinonimi, composti tedeschi, refusi, abbreviazioni, code lunghe,
 una parola che cambia il ruolo, nl/pl/pt. Tipi: syn (traduzioni: limite noto, non richiesto), comp, typo, abbr, tail, soc, one (falsi: 1 parola), lvl, city, co, far, aff."""
 import pytest
+from conftest import t as tlimit
 
 from qa import dedupe_eval as ev
 
@@ -41,4 +42,4 @@ def test_blind_tempi_e_nessuna_regressione_sui_set_precedenti(tmp_path, cfg):
     cases = ev.load_cases(blind=True)
     t = time.perf_counter()
     ev.predict_find_duplicates(cases[:60], cfg, tmp_path)
-    assert time.perf_counter() - t < 30
+    assert time.perf_counter() - t < tlimit(30)

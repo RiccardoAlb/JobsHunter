@@ -261,7 +261,7 @@ def test_il_testo_del_cv_non_esce_da_api_log_ne_file(client, dbx, home, caplog):
     assert SECRET not in json.dumps([dict(r) for r in dbx.conn.execute("SELECT * FROM cv_match")])
     assert SECRET not in "".join(str(tuple(r)) for r in dbx.conn.execute("SELECT * FROM kv"))
     assert leak_files(home, SECRET) == []
-    assert SECRET in cv.path().read_text()  # il testo sta solo li'
+    assert SECRET in cv.path().read_text(encoding="utf-8")  # il testo sta solo li'
 
 
 def test_nessun_testo_nel_report_e_nella_esportazione(client, dbx, home):
@@ -273,12 +273,12 @@ def test_nessun_testo_nel_report_e_nella_esportazione(client, dbx, home):
     cfg = settings.load_config()
     res = build_report(cfg, dbx, min_score=0, limit=10)
     if res and res[0]:
-        assert SECRET not in Path(res[0]).read_text()
+        assert SECRET not in Path(res[0]).read_text(encoding="utf-8")
     from click.testing import CliRunner
     from jobshunter.cli import main
 
     out = CliRunner().invoke(main, ["export", str(home / "x.csv")])
-    assert SECRET not in out.output and SECRET not in (home / "x.csv").read_text()
+    assert SECRET not in out.output and SECRET not in (home / "x.csv").read_text(encoding="utf-8")
 
 
 def test_nomi_file_temporanei_non_legati_al_cv(home):
@@ -338,7 +338,7 @@ def test_cli_non_stampa_il_testo(home):
     from jobshunter.cli import main
 
     f = home / "cv.txt"
-    f.write_text(f"Python SQL Linux Docker Git {SECRET} lavoro " * 10)
+    f.write_text(f"Python SQL Linux Docker Git {SECRET} lavoro " * 10, encoding="utf-8")
     out = CliRunner().invoke(main, ["cv", "set", str(f)])
     assert out.exit_code == 0 and SECRET not in out.output
     assert SECRET not in CliRunner().invoke(main, ["cv", "show"]).output

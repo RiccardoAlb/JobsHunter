@@ -16,7 +16,10 @@ import time
 import zipfile
 from pathlib import Path
 
+import sys
+
 import pytest
+from conftest import t as tlimit
 
 from jobshunter import cv as cvmod, cvfile, cvmatch, settings
 from jobshunter.db import DB
@@ -86,7 +89,7 @@ def add_job(db, uid, title, desc, source="adzuna", full=None):
 
 
 LONG = " Offriamo un ambiente dinamico e un percorso di crescita nel team, con formazione continua e sede a Milano." * 3
-CV_SECRET = (DATA / "cyber_junior.txt").read_text() + f"\nProgetto riservato {SECRET} con Splunk e Python.\n"
+CV_SECRET = (DATA / "cyber_junior.txt").read_text(encoding="utf-8") + f"\nProgetto riservato {SECRET} con Splunk e Python.\n"
 
 
 def all_text_in(home: Path, secret: bytes = SECRET.encode(), skip=()) -> list[str]:
@@ -181,22 +184,24 @@ def test_nome_file_con_segreto_non_finisce_da_nessuna_parte(client, home):
     assert SECRET not in body  # nemmeno l'eco del nome
     wait_idle(client)
     assert all_text_in(home, skip=("cv.json",)) == []
-    doc = json.loads((home / "cv.json").read_text())
+    doc = json.loads((home / "cv.json").read_text(encoding="utf-8"))
     assert SECRET + ".txt" not in json.dumps({k: v for k, v in doc.items() if k != "text"})
 
 
 def test_permessi_cv_json_600_dopo_ogni_operazione(client, home):
+    posix = not sys.platform.startswith("win")  # su Windows i bit POSIX non esistono: restano i controlli sui file temporanei
     p = home / "cv.json"
     post_file(client, "a.txt", CV_SECRET.encode())
-    assert oct(p.stat().st_mode & 0o777) == "0o600"
+    assert not posix or oct(p.stat().st_mode & 0o777) == "0o600"
     client.post("/api/cv/skills", json={"add": ["Docker"]}, headers=H)
-    assert oct(p.stat().st_mode & 0o777) == "0o600"
+    assert not posix or oct(p.stat().st_mode & 0o777) == "0o600"
     post_text(client, CV_SECRET)
-    assert oct(p.stat().st_mode & 0o777) == "0o600"
+    assert not posix or oct(p.stat().st_mode & 0o777) == "0o600"
     leftovers = [x.name for x in home.iterdir() if x.name.startswith(".cv-")]
     assert leftovers == []
 
 
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
 def test_umask_permissiva_non_apre_il_cv_agli_altri(client, home):
     old = os.umask(0o000)
     try:
@@ -626,7 +631,7 @@ def test_pdf_cifrato_solo_proprietario_password_utente_vuota_si_legge(k):
 
 
 def test_cryptography_e_tra_le_dipendenze_se_pypdf_legge_pdf_cifrati():
-    req = (PROJECT / "requirements.txt").read_text().lower() + (PROJECT / "pyproject.toml").read_text().lower()
+    req = (PROJECT / "requirements.txt").read_text(encoding="utf-8").lower() + (PROJECT / "pyproject.toml").read_text(encoding="utf-8").lower()
     assert "cryptography" in req or "pypdf[crypto]" in req or "pypdf[full]" in req
 
 
@@ -703,7 +708,7 @@ def test_upload_concorrenti_lasciano_un_cv_valido(client, home):
     [t.start() for t in ts]
     [t.join() for t in ts]
     assert all(s == 200 for s in res), res
-    json.loads((home / "cv.json").read_text())
+    json.loads((home / "cv.json").read_text(encoding="utf-8"))
     assert [p.name for p in home.iterdir() if p.name.startswith(".cv-")] == []
     d = wait_idle(client)
     assert d["present"]
@@ -846,11 +851,11 @@ def test_5000_annunci_ricalcolo_veloce_e_api_reattiva(client, qdb):
     post_text(client, CV_SECRET)
     d = wait_idle(client, 600)
     dt = time.time() - t0
-    assert dt < 20, f"{dt:.1f}s"
+    assert dt < tlimit(20), f"{dt:.1f}s"
     assert qdb.conn.execute("SELECT COUNT(*) FROM cv_match").fetchone()[0] == 5000
     t0 = time.time()
     r = client.get("/api/jobs?limit=500&sort=cv&cv_min=30", headers=H)
-    assert r.status_code == 200 and time.time() - t0 < 3
+    assert r.status_code == 200 and time.time() - t0 < tlimit(3)
     js = r.get_json()
     sc = [j["cv"] for j in js]
     assert sc == sorted(sc, reverse=True) and all(s >= 30 for s in sc)
@@ -1021,7 +1026,7 @@ def _cli(*args):
 
 def test_cli_cv_set_show_match_clear_senza_perdite(cfg, home, tmp_path, capfd):
     f = tmp_path / f"cv-{'q'}.txt"
-    f.write_text(CV_SECRET)
+    f.write_text(CV_SECRET, encoding="utf-8")
     db = DB(settings.resolve_path(cfg["general"]["db_path"]))
     add_job(db, "2" * 40, "SOC Analyst", "Splunk SIEM EDR Python " * 30)
     out = ""

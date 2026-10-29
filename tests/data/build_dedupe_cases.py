@@ -264,6 +264,6 @@ enrich(CASES)
 
 if __name__ == "__main__":
     out = Path(__file__).with_name("dedupe_cases.json")
-    out.write_text(json.dumps(CASES, ensure_ascii=False, indent=1))
+    out.write_text(json.dumps(CASES, ensure_ascii=False, indent=1), encoding="utf-8")
     d = sum(c["label"] == "dup" for c in CASES)
     print(f"{len(CASES)} casi: {d} duplicati, {len(CASES) - d} non duplicati -> {out}")

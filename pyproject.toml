@@ -1,15 +1,16 @@
 [project]
 name = "jobshunter"
 version = "0.3.0"
-description = "Personal job-search radar for macOS: collects postings from several sources, scores them, removes duplicates and checks they are still open. Local-first, no telemetry."
+description = "Personal job-search radar (macOS, Windows, Linux): collects postings from several sources, scores them, removes duplicates and checks they are still open. Local-first, no telemetry."
 readme = "README.en.md"
 requires-python = ">=3.11"
-keywords = ["job search", "job board", "adzuna", "jooble", "local-first", "macos"]
+keywords = ["job search", "job board", "adzuna", "jooble", "local-first", "macos", "windows", "linux"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Web Environment",
     "Intended Audience :: End Users/Desktop",
     "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -32,6 +33,7 @@ Changelog = "https://github.com/RiccardoAlb/JobsHunter/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 branding = ["pillow"]
 mac = ["pywebview; sys_platform == 'darwin'"]  # finestra nativa (./jh app e build dell'app Mac)
+gui = ["pywebview"]  # finestra nativa su Windows e Linux (vedi requirements-gui.txt)
 dev = ["pytest"]
 
 [project.scripts]

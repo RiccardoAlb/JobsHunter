@@ -232,12 +232,21 @@ def test_backup_permessi_600_e_ultime_tre(client, qdb, home):
     files = sorted(glob.glob(str(folder / "jobshunter-prima-del-ricalcolo-*.db")))
     assert len(files) == 3, files
     newest = files[-1]
-    assert "2020" not in newest and stat.S_IMODE(os.stat(newest).st_mode) == 0o600
+    assert "2020" not in newest
     import sqlite3
 
     c = sqlite3.connect(newest)
     assert c.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 1  # un backup vero, apribile
     c.close()
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
+def test_backup_ha_permessi_600(client, qdb, home):
+    p = mkprofile(client, name="Cucina", preset="custom", titles=["cuoco"])
+    addjob(qdb, "aaaaaaaa", "Cuoco", "cucina")
+    _post(client, p["id"], {**profile_body(name="Cucina", preset="custom", titles=["cuoco"]), "categories": [{"label": "A", "terms": ["cuoco"]}]})
+    newest = sorted(glob.glob(str(home / "backups" / "jobshunter-prima-del-ricalcolo-*.db")))[-1]
+    assert stat.S_IMODE(os.stat(newest).st_mode) == 0o600
 
 
 def test_B67_due_salvataggi_nello_stesso_secondo_fanno_due_backup(client, qdb, home):
@@ -320,7 +329,7 @@ def test_B77_dopo_un_ricalcolo_fallito_il_database_non_resta_bloccato(home, tmp_
     sock.close()
     env = dict(os.environ, HOME=str(tmp_path), JOBSHUNTER_HOME=str(tmp_path / "srv"))
     script = tmp_path / "srv.py"
-    script.write_text(_SERVER_FAIL)
+    script.write_text(_SERVER_FAIL, encoding="utf-8")
     proc = subprocess.Popen([sys.executable, str(script), str(ROOT), str(port)], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=str(tmp_path))
     base = {"name": "Cucina", "preset": "custom", "titles": ["cuoco"]}
 

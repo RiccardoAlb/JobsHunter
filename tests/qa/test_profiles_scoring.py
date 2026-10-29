@@ -10,7 +10,7 @@ DATA = Path(__file__).resolve().parent.parent / "data"
 
 
 def golden():
-    return json.loads((DATA / "score_golden.json").read_text())
+    return json.loads((DATA / "score_golden.json").read_text(encoding="utf-8"))
 
 
 def as_job(g):

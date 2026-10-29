@@ -1,0 +1,6 @@
+# Finestra nativa (./jh app, jh.bat app): pip install -r requirements-gui.txt
+# Senza questo file l'app funziona lo stesso: `gui` e `app` aprono il browser predefinito.
+#  - Windows: usa WebView2 (gia' presente su Windows 11; su Windows 10 serve il "WebView2 Runtime" di Microsoft).
+#  - macOS: usa WebKit di sistema (vedi anche requirements-mac.txt per costruire l'app).
+#  - Linux: servono anche i pacchetti di sistema GTK (es. python3-gi, gir1.2-webkit2-4.1) oppure Qt (pip install "pywebview[qt]").
+pywebview

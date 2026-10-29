@@ -17,6 +17,7 @@ from pathlib import Path
 import httpx
 
 from . import geo as geomod
+from . import osinfo
 from . import profiles as prof
 from . import net, scheduler, settings
 
@@ -83,7 +84,7 @@ def state(cfg: dict, db) -> dict:
         "needed": needed, "done": done, "has_keys": keys, "has_data": data, "has_profiles": has_profiles, "has_settings": has_settings,
         "step_hint": "welcome" if needed else ("rerun" if done else "none"),
         "suggested_report_dir": str(Path.home() / "Documents" / "JobsHunter"),
-        "can_schedule": sys.platform == "darwin",
+        "can_schedule": scheduler.supported(), "platform": osinfo.current(),
         "prefill": {
             "home": az.get("home", "") or "", "radius_km": int(az.get("radius_km", 100) or 100),
             "has_adzuna": bool(az.get("app_key")), "has_jooble": bool(jo.get("api_key")),
@@ -359,9 +360,9 @@ def prepare(payload, cfg: dict, store: prof.ProfileStore) -> Plan:
             plan_sched = scheduler.parse_request(sched)
         except ValueError as e:
             raise OnboardingError(str(e).capitalize(), "schedule") from None
-        if plan_sched["enabled"] and sys.platform != "darwin":
+        if plan_sched["enabled"] and not scheduler.supported():
             plan_sched["enabled"] = False
-            notes.append("La scansione automatica funziona solo su Mac: non l'ho attivata.")
+            notes.append("La scansione automatica non e' disponibile su questo computer: non l'ho attivata.")
         ov.update({"schedule.enabled": plan_sched["enabled"], "schedule.kind": plan_sched["kind"],
                    "schedule.times": scheduler.format_times(plan_sched["times"]), "schedule.hours": plan_sched["hours"],
                    "schedule.notify": plan_sched["notify"]})

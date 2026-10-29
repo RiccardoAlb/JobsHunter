@@ -5,15 +5,16 @@ scansione alla volta tocca il database e ogni esecuzione finisce nella cronologi
 """
 from __future__ import annotations
 
-import fcntl
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
 
-from . import APP_NAME, settings
+from . import APP_NAME, osinfo, proc, settings
+from .filelock import FileLock
 from .db import DB
 from .notify import send_ntfy
 from .scanner import ScanResult, run_scan
@@ -26,41 +27,58 @@ class ScanLock:
 
     def __init__(self) -> None:
         self.path = settings.home() / "scan.lock"
-        self.fh = None
+        self._lock = FileLock(self.path)
+
+    @property
+    def fh(self):
+        return self._lock.fh
 
     def acquire(self) -> bool:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.fh = open(self.path, "w")
-        try:
-            fcntl.flock(self.fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return True
-        except OSError:
-            self.fh.close()
-            self.fh = None
-            return False
+        return self._lock.acquire(blocking=False)
 
     def release(self) -> None:
-        if self.fh:
-            try:
-                fcntl.flock(self.fh, fcntl.LOCK_UN)
-            finally:
-                self.fh.close()
-                self.fh = None
+        self._lock.release()
+
+
+_REAL_SUBPROCESS_RUN = subprocess.run
+
+_TOAST_SCRIPT = (
+    "$ErrorActionPreference='Stop';"
+    "[void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType=WindowsRuntime];"
+    "$x=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02);"
+    "$t=$x.GetElementsByTagName('text');"
+    "[void]$t.Item(0).AppendChild($x.CreateTextNode($env:JH_TITLE));"
+    "[void]$t.Item(1).AppendChild($x.CreateTextNode($env:JH_BODY));"
+    "$id='{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe';"
+    "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($id).Show([Windows.UI.Notifications.ToastNotification]::new($x))"
+)
 
 
 def notify_native(title: str, body: str) -> bool:
-    """Notifica di macOS (tramite osascript). False se non disponibile."""
-    if sys.platform != "darwin":
-        return False
-
-    def esc(s: str) -> str:
-        return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
-
-    script = f'display notification "{esc(body)[:220]}" with title "{esc(title)[:80]}"'
+    """Notifica del sistema: macOS (osascript), Windows (toast tramite PowerShell), Linux (notify-send). Sempre best effort: False se non disponibile."""
+    system = osinfo.current()
+    if os.environ.get("PYTEST_CURRENT_TEST") and subprocess.run is _REAL_SUBPROCESS_RUN:
+        return False  # sotto pytest nessuna notifica vera (nemmeno osascript su macOS), a meno che il test non sostituisca subprocess.run
+    title, body = str(title).replace("\x00", ""), str(body).replace("\x00", "")  # un NUL farebbe rifiutare il comando al sistema
     try:
-        subprocess.run(["osascript", "-e", script], check=True, capture_output=True, timeout=10)
-        return True
-    except (OSError, subprocess.SubprocessError):
+        if system == "mac":
+            def esc(s: str) -> str:
+                return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+
+            script = f'display notification "{esc(body)[:220]}" with title "{esc(title)[:80]}"'
+            subprocess.run(["osascript", "-e", script], check=True, capture_output=True, timeout=10)
+            return True
+        if system == "windows":
+            if not shutil.which("powershell"):
+                return False
+            env = {**os.environ, "JH_TITLE": title[:80], "JH_BODY": body[:220]}  # per variabile d'ambiente: nessun problema di virgolette
+            r = proc.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", _TOAST_SCRIPT], env=env, capture_output=True, timeout=20)
+            return r.returncode == 0
+        if shutil.which("notify-send"):
+            r = subprocess.run(["notify-send", "--app-name", APP_NAME, "--", title[:80], body[:220]], capture_output=True, timeout=10)
+            return r.returncode == 0
+        return False
+    except (OSError, ValueError, subprocess.SubprocessError):
         return False
 
 
@@ -113,7 +131,7 @@ def run_auto(cfg: dict, db: DB, *, kind: str = "auto", cancel=None, on_event=Non
 
 def run_headless(kind: str = "auto") -> int:
     """Punto d'ingresso senza finestra: lo usano `./jh scan-auto` e `JobsHunter --scan-once`."""
-    cfg = settings.load_config(create_if_missing=bool(os.environ.get("JOBSHUNTER_HOME")))
+    cfg = settings.load_config(create_if_missing=settings.auto_create())
     db = DB(settings.resolve_path(cfg["general"]["db_path"]))
     res, info = run_auto(cfg, db, kind=kind)
     if info.get("skipped"):
@@ -135,7 +153,7 @@ def main_scan_once() -> None:
     os.environ.setdefault("JOBSHUNTER_HOME", str(data_dir))
     log_dir = migrate.log_dir()
     log_dir.mkdir(parents=True, exist_ok=True)
-    logging.basicConfig(filename=log_dir / "scan.log", level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(filename=log_dir / "scan.log", level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", encoding="utf-8")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     try:
         sys.exit(run_headless())

@@ -16,7 +16,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 from rich.table import Table
 from rich.text import Text
 
-from . import __version__, availability, cv as cvmod, cvfile, cvmatch, profiles as prof, settings
+from . import __version__, availability, fsperm, cv as cvmod, cvfile, cvmatch, profiles as prof, settings
 from .db import DB
 from .fulltext import fetch_full
 from .report import build_report
@@ -48,9 +48,16 @@ def banner() -> None:
 
 def load_cfg(path: str | None) -> dict:
     try:
-        return settings.load_config(path, create_if_missing=bool(os.environ.get("JOBSHUNTER_HOME")))
+        return settings.load_config(path, create_if_missing=settings.auto_create(path))
+    except settings.ConfigError as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        sys.exit(1)
     except FileNotFoundError as e:
-        console.print(f"[red]Config non trovata:[/] {e}\n[dim]Copia config.example.toml in config.toml.[/]")
+        if (settings.bundled_root() / "config.example.toml").exists():
+            hint = "Copia config.example.toml in config.toml."
+        else:
+            hint = "Manca anche config.example.toml: scaricalo di nuovo dal repository e copialo in config.toml."
+        console.print(f"[red]Config non trovata:[/] {escape(str(e))}\n[dim]{hint}[/]")
         sys.exit(1)
 
 
@@ -101,9 +108,15 @@ def score_bar(score: int) -> Text:
 
 @click.group()
 @click.option("-c", "--config", "config_path", default=None, help="Percorso config.toml")
+@click.option("--home", "home_dir", default=None, help="Cartella dei dati (come la variabile JOBSHUNTER_HOME)")
 @click.pass_context
-def main(ctx, config_path):
+def main(ctx, config_path, home_dir):
     """JobsHunter: radar annunci di lavoro per profili di ricerca (cybersecurity, IT, sviluppo, dati, ufficio, vendite o su misura)."""
+    from . import osinfo
+
+    osinfo.ensure_utf8_streams()
+    if home_dir:
+        os.environ["JOBSHUNTER_HOME"] = str(Path(home_dir).expanduser())
     ctx.obj = load_cfg(config_path)
 
 
@@ -120,12 +133,7 @@ def gui(cfg, port, no_browser):
 
 @main.command("app")
 def app_window():
-    """Apre la finestra nativa (come JobsHunter.app, senza impacchettare). Richiede macOS e `pip install pywebview`."""
-    try:
-        import webview  # noqa: F401
-    except ImportError:
-        console.print("[red]Manca pywebview.[/] Installalo con: [bold].venv/bin/pip install pywebview[/]  (solo macOS)")
-        sys.exit(1)
+    """Apre la finestra nativa (pywebview); se manca o non parte, apre il browser predefinito con lo stesso motore locale."""
     from .macapp import main as app_main
 
     app_main()
@@ -197,16 +205,25 @@ def scan(cfg, no_notify, profile_names):
 
 @main.command("scan-auto")
 @click.option("--no-notify", is_flag=True, help="Non inviare notifiche")
+@click.option("--log-file", default=None, help="Scrive il registro in questo file (lo usa la pianificazione di Windows)")
 @click.pass_obj
-def scan_auto(cfg, no_notify):
+def scan_auto(cfg, no_notify, log_file):
     """Scansione senza interfaccia (quella che lancia la pianificazione): blocco, cronologia e notifiche."""
     import logging
 
     from .autoscan import run_auto
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if log_file:
+        Path(log_file).parent.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(filename=log_file, level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s", encoding="utf-8")
+    else:
+        logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
-    res, info = run_auto(cfg, open_db(cfg), kind="auto", notify=not no_notify)
+    try:
+        res, info = run_auto(cfg, open_db(cfg), kind="auto", notify=not no_notify)
+    except Exception:  # noqa: BLE001 - con pythonw non c'e' stderr: l'errore deve restare nel registro
+        logging.getLogger("jobshunter.autoscan").exception("scansione automatica fallita")
+        raise SystemExit(1) from None
     if info.get("skipped"):
         logging.info("scansione saltata: %s", info["message"])
         return
@@ -217,7 +234,7 @@ def scan_auto(cfg, no_notify):
 
 @main.group()
 def schedule():
-    """Scansione automatica su macOS (parte anche con l'app chiusa)."""
+    """Scansione automatica (parte anche con l'app chiusa): launchd su macOS, Utilità di pianificazione su Windows, systemd o cron su Linux."""
 
 
 @schedule.command("status")
@@ -228,11 +245,11 @@ def schedule_status(cfg):
 
     st = scheduler.status(cfg)
     if not st["supported"]:
-        console.print("[yellow]Disponibile solo su macOS.[/]")
+        console.print(f"[yellow]{escape(st['reason'])}[/]")
         return
     state = "[green]attiva[/]" if st["installed"] else ("[yellow]impostata ma non caricata[/]" if st["enabled"] else "[dim]spenta[/]")
     when = f"ogni giorno alle {st['times']}" if st["kind"] == "daily" else f"ogni {st['hours']} ore"
-    console.print(f"Scansione automatica: {state}  ({when}; notifiche {'si' if st['notify'] else 'no'})")
+    console.print(f"Scansione automatica: {state}  ({when}; notifiche {'si' if st['notify'] else 'no'}; strumento: {escape(st['method'])})")
     if st["next"]:
         console.print(f"Prossima: {st['next']}")
 
@@ -252,10 +269,18 @@ def schedule_on(cfg, times, hours, no_notify):
         console.print(f"[red]{e}[/]")
         sys.exit(1)
     kind = "every" if hours else "daily"
+    if not scheduler.supported():  # prima di salvare qualsiasi cosa
+        console.print(f"[red]{escape(scheduler.unsupported_reason())}[/]")
+        sys.exit(1)
     settings.save_overrides(Path(cfg["_config_path"]), {
         "schedule.enabled": True, "schedule.kind": kind, "schedule.times": scheduler.format_times(parsed),
         "schedule.hours": int(hours or 6), "schedule.notify": not no_notify})
-    scheduler.install(kind, parsed, int(hours or 6))
+    try:
+        scheduler.install(kind, parsed, int(hours or 6))
+    except RuntimeError as e:
+        settings.save_overrides(Path(cfg["_config_path"]), {"schedule.enabled": False})  # non deve restare "attiva" una pianificazione che non esiste
+        console.print(f"[red]Non sono riuscito ad attivare la scansione automatica:[/] {escape(str(e))}")
+        sys.exit(1)
     console.print("[green]Scansione automatica attivata.[/] Si toglie con [bold]./jh schedule off[/].")
 
 
@@ -720,13 +745,13 @@ def app_import(force):
     with dst:
         src.backup(dst)
     src.close(); dst.close()
-    os.chmod(dst_db, 0o600)
+    fsperm.secure_file(dst_db)
     shutil.copyfile(src_cfg, APP_DIR / "config.toml")
-    os.chmod(APP_DIR / "config.toml", 0o600)
+    fsperm.secure_file(APP_DIR / "config.toml")
     ov = settings.overrides_path(src_cfg)
     if ov.exists():
         shutil.copyfile(ov, APP_DIR / "settings.json")
-        os.chmod(APP_DIR / "settings.json", 0o600)
+        fsperm.secure_file(APP_DIR / "settings.json")
     console.print(Panel(f"Dati copiati in [underline]{APP_DIR}[/]\n[dim]Gli originali sono rimasti dove erano.[/]",
                         title="Importazione completata", border_style="green", expand=False))
 
@@ -743,7 +768,7 @@ def _csv_safe(v):
 def export(cfg, out, min_score):
     """Esporta gli annunci in CSV."""
     rows = open_db(cfg).query(min_score=min_score, limit=100000)
-    with open(out, "w", newline="") as f:
+    with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["score", "category", "title", "company", "location", "status", "url", "attribution"])
         for r in rows:
@@ -822,7 +847,11 @@ def cv_clear(cfg, yes):
         return
     if not yes and not click.confirm("Elimino il CV e i confronti con gli annunci?"):
         return
-    cvmod.delete()
+    try:
+        cvmod.delete()
+    except cvmod.CvDeleteError as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        sys.exit(1)
     cvmatch.clear(open_db(cfg))
     console.print("[green]CV eliminato.[/]")
 

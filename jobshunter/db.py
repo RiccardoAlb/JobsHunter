@@ -6,6 +6,7 @@ import time
 from datetime import date, datetime, timezone
 from pathlib import Path
 
+from . import fsperm
 from .models import Job
 
 SCHEMA = """
@@ -138,10 +139,7 @@ class DB:
         existed = str(path) == ":memory:" or Path(path).exists()
         self.conn = sqlite3.connect(path, timeout=30)  # scansione automatica e GUI possono scrivere insieme
         if not existed:
-            try:
-                os.chmod(path, 0o600)  # il database contiene candidature e testi: solo per l'utente
-            except OSError:
-                pass
+            fsperm.secure_file(path)  # il database contiene candidature e testi: solo per l'utente
         self.conn.row_factory = sqlite3.Row
         # alla prima apertura piu' processi o richieste possono prepararsi lo schema insieme: si riprova se e' occupato
         for attempt in range(60):
@@ -256,7 +254,7 @@ class DB:
                     self.conn.backup(out)
             finally:
                 out.close()
-            os.chmod(dst, 0o600)
+            fsperm.secure_file(dst)
             old = sorted(folder.glob(f"jobshunter-{tag}-*.db"))
             for f in old[:-keep]:
                 f.unlink(missing_ok=True)

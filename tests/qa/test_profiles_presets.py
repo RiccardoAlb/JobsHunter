@@ -88,7 +88,7 @@ def test_etichette_dei_preset_secondo_la_spec(client):
 
 
 def test_cybersecurity_conserva_le_keyword_del_config_di_oggi(client):
-    cfgfile = tomllib.loads((ROOT / "config.example.toml").read_text())
+    cfgfile = tomllib.loads((ROOT / "config.example.toml").read_text(encoding="utf-8"))
     expected = {c["label"]: c["terms"] for c in cfgfile["keywords"].values()}
     st, d = call(client, "get", "/api/presets")
     groups = {g["label"]: g["terms"] for g in next(p for p in d if p["key"] == "cybersecurity")["groups"]}
@@ -100,7 +100,7 @@ def test_cybersecurity_conserva_le_keyword_del_config_di_oggi(client):
 
 
 def test_cybersecurity_conserva_la_blacklist_di_oggi():
-    cfgfile = tomllib.loads((ROOT / "config.example.toml").read_text())
+    cfgfile = tomllib.loads((ROOT / "config.example.toml").read_text(encoding="utf-8"))
     bl = {b.lower() for b in presets()["cybersecurity"]["blacklist"]}
     assert set(cfgfile["penalties"]["blacklist"]) <= bl
 

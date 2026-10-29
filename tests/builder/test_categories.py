@@ -2,9 +2,12 @@
 
 Home temporanea e nessuna rete (guardia di cvguard). Compatibile con Python 3.11 e Linux."""
 import copy
+import os
 import csv
 import json
 from pathlib import Path
+
+import sys
 
 import pytest
 
@@ -332,5 +335,11 @@ def test_snapshot_crea_copia_e_tiene_le_ultime_tre(db, home):
         time.sleep(1.05)
         names.append(db.snapshot())
     files = sorted((home / "backups").glob("jobshunter-prima-del-ricalcolo-*.db"))
-    assert len(files) == 3 and all(f.stat().st_mode & 0o777 == 0o600 for f in files)
+    assert len(files) == 3
     assert DB(files[-1]).kv_get("k") == "4"
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode/umask): su Windows la protezione e' icacls (provata in test_portability)")
+def test_snapshot_ha_permessi_600(db, home):
+    path = db.snapshot()
+    assert path and os.stat(path).st_mode & 0o777 == 0o600

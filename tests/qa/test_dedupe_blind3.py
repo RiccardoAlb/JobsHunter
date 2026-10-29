@@ -14,7 +14,7 @@ SETS = ["dedupe_cases.json", "dedupe_holdout.json", "dedupe_blind.json", "dedupe
 @pytest.mark.parametrize("name", SETS)
 def test_conferma_automatica_solo_su_veri_duplicati(name):
     """pct >= 100 nasconde un annuncio senza che l'utente lo veda: nessun falso duplicato ammesso."""
-    cases = json.loads((Path(ev.DATA).parent / name).read_text())
+    cases = json.loads((Path(ev.DATA).parent / name).read_text(encoding="utf-8"))
     pred = ev.predict_similarity(cases, 100)
     bad = [(c["a"]["title"], c["a"]["company"], c["b"]["company"], c["_pct"]) for c in cases if pred[c["id"]] and c["label"] == "nodup"]
     assert not bad, bad

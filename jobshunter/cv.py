@@ -10,17 +10,25 @@ import json
 import os
 import re
 import secrets
+import threading
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from . import settings, skills
+from . import fsperm, fsutil, settings, skills
 from .cvfile import CvError, count_words
+
+class CvDeleteError(CvError, PermissionError):
+    """Il CV non si e' potuto cancellare (ne' azzerare): il messaggio, in italiano, dice perche'."""
+
 
 CV_FILENAME = "cv.json"
 CV_FORMAT = 1
 MAX_MANUAL = 80
 CVMATCH_VERSION = 3  # aumentalo se cambiano le regole che producono il profilo o il punteggio
+
+
+_LOCK = threading.RLock()  # un solo thread alla volta legge/scrive/cancella cv.json (su Windows un file aperto non si sostituisce)
 
 
 def path() -> Path:
@@ -31,7 +39,8 @@ def path() -> Path:
 def load() -> dict | None:
     """Il documento salvato, oppure None se non c'e' o non e' leggibile."""
     try:
-        doc = json.loads(path().read_text(encoding="utf-8"))
+        with _LOCK:
+            doc = json.loads(fsutil.read_text(path()))
     except (OSError, ValueError):
         return None
     if not isinstance(doc, dict) or not isinstance(doc.get("text"), str) or not doc["text"].strip():
@@ -46,31 +55,35 @@ def _write(doc: dict) -> None:
     p = path()
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_name(f".cv-{secrets.token_hex(6)}.tmp")
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(doc, f, ensure_ascii=False)
-        os.chmod(tmp, 0o600)
-        _wipe(p)  # il file che si sta per sostituire: i suoi blocchi non devono restare con il vecchio CV
-        os.replace(tmp, p)
-    except BaseException:
+    with _LOCK:  # anche il file temporaneo nasce sotto il blocco: delete() non puo' toglierlo a un salvataggio in corso
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(doc, f, ensure_ascii=False)
+            fsperm.secure_file(tmp)
+            _wipe(p)  # il file che si sta per sostituire: i suoi blocchi non devono restare con il vecchio CV
+            fsutil.replace(tmp, p)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
 
 
-def _wipe(p: Path) -> None:
-    """Sovrascrive con zeri il contenuto di un file esistente (se c'e'); mai un errore."""
+def _wipe(p: Path) -> bool:
+    """Sovrascrive con zeri il contenuto di un file esistente (se c'e'); mai un errore. True se il file non c'e' o e' stato azzerato."""
     try:
         size = p.stat().st_size
         with open(p, "r+b") as f:
             f.write(b"\x00" * size)
             f.flush()
             os.fsync(f.fileno())
+        return True
+    except FileNotFoundError:
+        return True
     except OSError:
-        pass
+        return False
 
 
 def save_text(text: str, source: str) -> dict:
@@ -83,18 +96,30 @@ def save_text(text: str, source: str) -> dict:
 
 def delete() -> bool:
     """Cancella davvero il CV: il contenuto del file viene prima sovrascritto, poi il file e' rimosso."""
+    from . import osinfo
+
     p = path()
-    existed = p.exists()
-    _wipe(p)
-    try:
-        p.unlink()
-    except FileNotFoundError:
-        pass
-    for tmp in p.parent.glob(".cv-*.tmp"):
+    with _LOCK:
+        existed = p.exists()
+        wiped = _wipe(p)
         try:
-            tmp.unlink()
-        except OSError:
+            fsutil.unlink(p, missing_ok=False)
+        except FileNotFoundError:
             pass
+        except PermissionError:
+            if not osinfo.is_windows():
+                raise
+            if not wiped:
+                # ne' azzerato ne' cancellato: il CV e' ancora leggibile. Non si dice di averlo cancellato.
+                raise CvDeleteError("Non sono riuscito a cancellare il CV: il file e' aperto da un altro programma (un antivirus, un editor...). "
+                                    "Chiudilo e riprova.") from None
+            # Windows: il file e' aperto da un altro programma ma il contenuto e' gia' azzerato (non e' piu' un CV valido):
+            # il file vuoto resta e sparisce alla prossima occasione.
+        for tmp in p.parent.glob(".cv-*.tmp"):  # sotto lo stesso blocco: non si toglie il temporaneo di un salvataggio in corso
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
     return existed
 
 
@@ -337,6 +362,11 @@ def clean_skill_name(raw) -> str:
 
 
 def change_skills(add=(), remove=(), restore=()) -> dict:
+    with _LOCK:  # leggere, cambiare e riscrivere senza che un altro thread si infili in mezzo
+        return _change_skills(add, remove, restore)
+
+
+def _change_skills(add, remove, restore) -> dict:
     """Aggiunge competenze a mano, toglie quelle sbagliate, ripristina quelle tolte. Ritorna il documento aggiornato."""
     doc = load()
     if doc is None:

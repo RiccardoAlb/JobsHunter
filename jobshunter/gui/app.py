@@ -54,7 +54,7 @@ def to_int(value, default: int = 0, lo: int | None = None, hi: int | None = None
 
 
 def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
-    cfg = settings.load_config(config_path, create_if_missing=bool(os.environ.get("JOBSHUNTER_HOME")))
+    cfg = settings.load_config(config_path, create_if_missing=settings.auto_create(config_path))
     cfg_file = Path(cfg["_config_path"])
 
     def db_file() -> Path:
@@ -367,8 +367,8 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
 
     @app.post("/api/schedule")
     def schedule_set():
-        if sys.platform != "darwin":
-            abort(400, description="disponibile solo su macOS")
+        if not scheduler.supported():
+            abort(400, description=scheduler.unsupported_reason())
         b = request.get_json(silent=True) or {}
         try:
             req = scheduler.parse_request(b)
@@ -750,7 +750,10 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         with lock:
             if cvm["cancel"] is not None:
                 cvm["cancel"].set()
-        cvmod.delete()
+        try:
+            cvmod.delete()
+        except cvmod.CvDeleteError as e:  # Windows: file aperto da un altro programma e non azzerabile
+            return jsonify(ok=False, error=str(e)), 409
         cvmatch.clear(open_db())
         return jsonify(ok=True, cv={"present": False})
 

@@ -186,5 +186,5 @@ N(MED,"es","aff","stessa azienda",("Redactor","Prisa Media","Madrid",AD),("Fotog
 N(AGR,"nl","aff","stessa azienda",("Tuinbouwmedewerker","Koppert","Berkel",AD),("Tuinbouwadviseur","Koppert","Berkel",AD))
 for c in b.CASES: c["id"]="z"+c["id"][1:]
 b.enrich(b.CASES)
-json.dump(b.CASES, open(__import__("pathlib").Path(__file__).with_name("dedupe_blind.json"),"w"), ensure_ascii=False, indent=1)
+json.dump(b.CASES, open(__import__("pathlib").Path(__file__).with_name("dedupe_blind.json"),"w", encoding="utf-8"), ensure_ascii=False, indent=1)
 d=sum(c["label"]=="dup" for c in b.CASES); print(len(b.CASES), d, len(b.CASES)-d)
