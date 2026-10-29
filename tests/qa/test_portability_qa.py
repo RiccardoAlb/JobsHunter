@@ -1097,7 +1097,7 @@ def test_cli_home_e_log_file_di_scan_auto(tmp_path, monkeypatch):
     (home / "config.toml").write_text(cfg, encoding="utf-8")
     log = tmp_path / "log è" / "scan.log"
     env = {k: v for k, v in os.environ.items() if k not in ("JOBSHUNTER_HOME", OLD_ENV, "PYTEST_CURRENT_TEST")}
-    env.update(HOME=str(tmp_path / "h"), PYTHONPATH=str(ROOT))
+    env.update(child_home_env(tmp_path / "h"), PYTHONPATH=str(ROOT))
     (tmp_path / "h").mkdir()
     r = subprocess.run([sys.executable, "-m", "jobshunter", "--home", str(home), "scan-auto", "--no-notify", "--log-file", str(log)],
                        cwd=tmp_path, env=env, capture_output=True, text=True, errors="replace", encoding="utf-8", timeout=120)
@@ -1264,6 +1264,14 @@ def test_open_url_solo_http_e_senza_eccezioni(monkeypatch):
     assert macapp.open_url("https://example.org") is False
 
 
+
+def child_home_env(home: Path) -> dict:
+    """Variabili che dicono a un processo figlio DOVE sta la sua HOME su ogni sistema (macOS/Windows/Linux): dati e log finiscono tutti
+    dentro `home` e non nella HOME finta globale della guardia di conftest (che su Linux imposta anche XDG_*)."""
+    return {"HOME": str(home), "USERPROFILE": str(home), "APPDATA": str(home / "AppData" / "Roaming"),
+            "LOCALAPPDATA": str(home / "AppData" / "Local"), "XDG_DATA_HOME": str(home / ".local" / "share"),
+            "XDG_STATE_HOME": str(home / ".local" / "state"), "XDG_CONFIG_HOME": str(home / ".config")}
+
 APP_SCRIPT = r"""
 import sys, webbrowser
 webbrowser.open = lambda *a, **k: print("BROWSER_APERTO", a, flush=True) or True
@@ -1309,7 +1317,7 @@ def test_jh_app_ripiega_sul_browser_con_messaggio_chiaro(tmp_path, mode):
     data = home / "Library" / "Application Support" / "JobsHunter" if osinfo.current() == "mac" else tmp_path / "dati"
     data.mkdir(parents=True)
     shutil.copy(ROOT / "config.example.toml", data / "config.toml")
-    env.update(HOME=str(home), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), BROWSER="/usr/bin/true", PYTHONUNBUFFERED="1", JOBSHUNTER_ENGINE_TIMEOUT="90")
+    env.update(child_home_env(home), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), BROWSER="/usr/bin/true", PYTHONUNBUFFERED="1", JOBSHUNTER_ENGINE_TIMEOUT="90")
     p = subprocess.Popen([sys.executable, "-c", APP_SCRIPT, mode], cwd=tmp_path, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace", encoding="utf-8")
     try:
         deadline, err, out = time.time() + 120, "", ""  # su un runner lento il motore puo' metterci di piu'
@@ -1380,7 +1388,7 @@ def test_jh_app_si_ferma_in_modo_ordinato_con_i_segnali(tmp_path, mode, sig, ign
     data.mkdir(parents=True)
     shutil.copy(ROOT / "config.example.toml", data / "config.toml")
     env = {k: v for k, v in os.environ.items() if k not in (OLD_ENV, "PYTEST_CURRENT_TEST")}
-    env.update(HOME=str(home), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), BROWSER="/usr/bin/true", PYTHONUNBUFFERED="1",
+    env.update(child_home_env(home), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), BROWSER="/usr/bin/true", PYTHONUNBUFFERED="1",
                JOBSHUNTER_ENGINE_TIMEOUT="90")
     pre = (lambda: signal.signal(signal.SIGINT, signal.SIG_IGN)) if ignora_sigint else None
     p = subprocess.Popen([sys.executable, "-c", APP_SCRIPT, mode], cwd=tmp_path, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -1421,7 +1429,7 @@ def test_jh_gui_si_ferma_in_modo_ordinato_con_i_segnali(tmp_path, sig, ignora_si
         so.bind(("127.0.0.1", 0))
         port = so.getsockname()[1]
     env = {k: v for k, v in os.environ.items() if k not in (OLD_ENV, "PYTEST_CURRENT_TEST")}
-    env.update(HOME=str(tmp_path), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), PYTHONUNBUFFERED="1")
+    env.update(child_home_env(tmp_path), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), PYTHONUNBUFFERED="1")
     pre = (lambda: signal.signal(signal.SIGINT, signal.SIG_IGN)) if ignora_sigint else None
     p = subprocess.Popen([sys.executable, "-m", "jobshunter", "gui", "--no-browser", "--port", str(port)], cwd=tmp_path, env=env,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", preexec_fn=pre)
@@ -1534,7 +1542,7 @@ def seeded(tmp_path):
 def test_cli_con_simboli_e_emoji_in_console_non_utf8(seeded, tmp_path, enc, lang):
     seeded, uid = seeded
     env = {k: v for k, v in os.environ.items() if k not in ("JOBSHUNTER_HOME", OLD_ENV, "PYTEST_CURRENT_TEST", "PYTHONUTF8")}
-    env.update(HOME=str(tmp_path / "h"), PYTHONPATH=str(ROOT), PYTHONIOENCODING=enc, LANG=lang, LC_ALL=lang, NO_COLOR="1", COLUMNS="200")
+    env.update(child_home_env(tmp_path / "h"), PYTHONPATH=str(ROOT), PYTHONIOENCODING=enc, LANG=lang, LC_ALL=lang, NO_COLOR="1", COLUMNS="200")
     (tmp_path / "h").mkdir(exist_ok=True)
     for args in (["list"], ["show", uid[:8]], ["stats"], ["profiles", "list"], ["schedule", "status"], ["check", "--help"], ["--help"], ["export", "-o", str(tmp_path / "e è.csv")],
                  ["list", "--help"], ["report", "--help"]):

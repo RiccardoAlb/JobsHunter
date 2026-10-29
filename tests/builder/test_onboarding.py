@@ -184,13 +184,17 @@ def test_limite_una_prova_ogni_5_secondi(client, fake_http):
     assert len(fake_http.seen) == 1
 
 
-def test_limiter_riapre_dopo_l_intervallo():
+def test_limiter_riapre_dopo_l_intervallo(monkeypatch):
+    """Orologio finto: su Windows la risoluzione di sleep/monotonic (~15 ms) e i runner lenti rendevano instabile un sleep(0.06)."""
+    now = [1000.0]
+    monkeypatch.setattr(onboarding.time, "monotonic", lambda: now[0])
     lim = onboarding.Limiter(interval=0.05)
     assert lim.allow() and not lim.allow()
-    import time
-
-    time.sleep(0.06)
-    assert lim.allow()
+    now[0] += 0.049
+    assert not lim.allow()  # non ancora trascorso l'intervallo
+    now[0] += 0.002
+    assert lim.allow()  # trascorso
+    assert not lim.allow()
 
 
 def test_caratteri_strani_nelle_chiavi_non_partono(client, fake_http):
