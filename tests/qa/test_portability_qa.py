@@ -1270,6 +1270,18 @@ webbrowser.open = lambda *a, **k: print("BROWSER_APERTO", a, flush=True) or True
 mode = sys.argv[1]
 if mode == "nowebview":
     sys.modules["webview"] = None
+elif mode == "window":
+    import types, threading
+    m = types.ModuleType("webview")
+    m.FOLDER_DIALOG = 20
+    closed = threading.Event()
+    class W:
+        def destroy(self): closed.set()
+    m.create_window = lambda *a, **k: W()
+    def start(*a, **k):
+        while not closed.wait(0.2): pass   # la finestra "resta aperta" finche' non viene chiusa
+    m.start = start
+    sys.modules["webview"] = m
 elif mode == "startfails":
     import types
     m = types.ModuleType("webview")
@@ -1340,9 +1352,103 @@ def test_jh_app_ripiega_sul_browser_con_messaggio_chiaro(tmp_path, mode):
                 p.wait(15)
             except subprocess.TimeoutExpired:
                 p.kill()
+                p.wait()
+                pytest.fail("il processo non ha risposto a SIGINT entro 15 s")
     assert p.returncode == 0, (p.returncode, p.stderr.read()[-500:])
     assert not (Path.home() / "Library").exists() or "casa" not in str(Path.home())  # niente scritture fuori dalla HOME finta
     assert (home / "Library" / "Application Support" / "JobsHunter").exists() or osinfo.current() != "mac"
+
+
+def _app_port_dal_log(home, p, deadline):
+    while time.time() < deadline and p.poll() is None:
+        for lg in home.rglob("app.log"):
+            m = re.search(r"motore locale su porta (\d+)", lg.read_text(encoding="utf-8", errors="replace"))
+            if m:
+                return int(m.group(1))
+        time.sleep(0.2)
+    return None
+
+
+@pytest.mark.skipif(os.name != "posix", reason="segnali POSIX")
+@pytest.mark.parametrize("ignora_sigint", [False, True], ids=["sigint_normale", "sigint_ignorato"])
+@pytest.mark.parametrize("sig", ["SIGINT", "SIGTERM"])
+@pytest.mark.parametrize("mode", ["nowebview", "startfails", "window"])
+def test_jh_app_si_ferma_in_modo_ordinato_con_i_segnali(tmp_path, mode, sig, ignora_sigint):
+    """Come in CI/nohup/systemd: il figlio puo' ereditare SIGINT IGNORATO. Deve uscire comunque con codice 0 e senza traceback."""
+    home = tmp_path / "casa"
+    data = home / "dati"
+    data.mkdir(parents=True)
+    shutil.copy(ROOT / "config.example.toml", data / "config.toml")
+    env = {k: v for k, v in os.environ.items() if k not in (OLD_ENV, "PYTEST_CURRENT_TEST")}
+    env.update(HOME=str(home), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), BROWSER="/usr/bin/true", PYTHONUNBUFFERED="1",
+               JOBSHUNTER_ENGINE_TIMEOUT="90")
+    pre = (lambda: signal.signal(signal.SIGINT, signal.SIG_IGN)) if ignora_sigint else None
+    p = subprocess.Popen([sys.executable, "-c", APP_SCRIPT, mode], cwd=tmp_path, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         text=True, encoding="utf-8", errors="replace", preexec_fn=pre)
+    try:
+        port = _app_port_dal_log(home, p, time.time() + 120)
+        assert port, "il motore non e' partito: " + (p.stderr.read()[-800:] if p.poll() is not None else "ancora in avvio")
+        if ignora_sigint:
+            assert signal.getsignal(signal.SIGINT) is not None  # il test stesso non e' toccato
+        time.sleep(0.5)  # gli handler sono installati subito dopo l'avvio del motore
+        assert p.poll() is None
+        p.send_signal(getattr(signal, sig))
+        try:
+            p.wait(20)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+            pytest.fail(f"il processo non ha risposto a {sig} entro 20 s (SIGINT ignorato all'avvio: {ignora_sigint})")
+    finally:
+        if p.poll() is None:
+            p.kill()
+            p.wait()
+    err = p.stderr.read()
+    assert p.returncode == 0, (p.returncode, err[-600:])
+    assert "Traceback" not in err, err[-800:]
+
+
+@pytest.mark.skipif(os.name != "posix", reason="segnali POSIX")
+@pytest.mark.parametrize("ignora_sigint", [False, True], ids=["sigint_normale", "sigint_ignorato"])
+@pytest.mark.parametrize("sig", ["SIGINT", "SIGTERM"])
+def test_jh_gui_si_ferma_in_modo_ordinato_con_i_segnali(tmp_path, sig, ignora_sigint):
+    import socket
+
+    data = tmp_path / "dati"
+    data.mkdir()
+    shutil.copy(ROOT / "config.example.toml", data / "config.toml")
+    with socket.socket() as so:
+        so.bind(("127.0.0.1", 0))
+        port = so.getsockname()[1]
+    env = {k: v for k, v in os.environ.items() if k not in (OLD_ENV, "PYTEST_CURRENT_TEST")}
+    env.update(HOME=str(tmp_path), JOBSHUNTER_HOME=str(data), PYTHONPATH=str(ROOT), PYTHONUNBUFFERED="1")
+    pre = (lambda: signal.signal(signal.SIGINT, signal.SIG_IGN)) if ignora_sigint else None
+    p = subprocess.Popen([sys.executable, "-m", "jobshunter", "gui", "--no-browser", "--port", str(port)], cwd=tmp_path, env=env,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", errors="replace", preexec_fn=pre)
+    try:
+        up = False
+        for _ in range(300):
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=0.3):
+                    up = True
+                    break
+            except OSError:
+                time.sleep(0.2)
+        assert up, "la GUI non e' partita"
+        time.sleep(0.5)
+        p.send_signal(getattr(signal, sig))
+        try:
+            p.wait(20)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+            pytest.fail(f"il processo non ha risposto a {sig} entro 20 s")
+    finally:
+        if p.poll() is None:
+            p.kill()
+            p.wait()
+    err = p.stderr.read()
+    assert p.returncode == 0 and "Traceback" not in err, (p.returncode, err[-600:])
 
 
 def test_jh_bat_lettura_riga_per_riga():
@@ -1631,8 +1737,8 @@ def test_ci_workflow_matrice_e_shell():
     assert set(m["os"]) == {"macos-latest", "ubuntu-latest", "windows-latest"}
     assert [str(x) for x in m["python"]] == ["3.11", "3.12", "3.13", "3.14"]  # tra virgolette: 3.10 / 3.1 non devono comparire
     assert job["strategy"]["fail-fast"] is False
-    coe = str(job["continue-on-error"])
-    assert "windows" not in coe and "macos" not in coe
+    coe = str(job.get("continue-on-error", "false"))  # assente = nessun sistema e' non bloccante (Ubuntu ora blocca come gli altri)
+    assert "windows" not in coe and "macos" not in coe and "ubuntu" not in coe
     steps = job["steps"]
     runs = [s for s in steps if "run" in s]
     assert len(runs) == 2 and all(s.get("shell") == "bash" for s in runs), "su Windows il default e' PowerShell: serve bash esplicito per \"$PY\" e [ ]"

@@ -1024,4 +1024,18 @@ def serve(config_path: str | None = None, port: int = 8765, open_browser: bool =
     app = create_app(config_path, port)
     if open_browser:
         threading.Timer(0.8, lambda: webbrowser.open(f"http://127.0.0.1:{port}")).start()
-    app.run(host="127.0.0.1", port=port, debug=False, threaded=True)
+    from werkzeug.serving import make_server
+
+    from .. import stopsignals
+
+    server = make_server("127.0.0.1", port, app, threaded=True)
+    print(f" * Server su http://127.0.0.1:{port}/ (Ctrl+C per chiudere)", flush=True)
+    stopsignals.install()
+    th = threading.Thread(target=server.serve_forever, name="gui-server", daemon=True)
+    th.start()
+    try:
+        stopsignals.wait()
+    except KeyboardInterrupt:
+        pass
+    server.shutdown()  # uscita ordinata, codice 0
+    server.server_close()

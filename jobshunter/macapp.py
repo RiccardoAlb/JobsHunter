@@ -15,7 +15,7 @@ import time
 import webbrowser
 from pathlib import Path
 
-from . import APP_NAME, migrate, osinfo
+from . import APP_NAME, migrate, osinfo, stopsignals
 
 APP_DIR = migrate.support_dir()
 LOG_DIR = migrate.log_dir()
@@ -148,10 +148,11 @@ def _browser_fallback(port: int, why: str) -> None:
     print(f"{APP_NAME}: {why}. Apro la pagina nel browser: http://127.0.0.1:{port}/  (Ctrl+C per chiudere)", file=sys.stderr)
     open_url(f"http://127.0.0.1:{port}/")
     try:
-        while True:
-            time.sleep(3600)
+        stopsignals.install()
+        stopsignals.wait()
     except KeyboardInterrupt:
         pass
+    logging.info("arresto richiesto: uscita ordinata")
 
 
 def main() -> None:
@@ -165,6 +166,12 @@ def main() -> None:
         return
 
     bridge = Bridge()
+
+    def close_window() -> None:  # SIGINT/SIGTERM con la finestra aperta: la si chiude e webview.start() ritorna
+        if getattr(bridge, "window", None) is not None:
+            bridge.window.destroy()
+
+    stopsignals.install(close_window)
     try:
         bridge.window = webview.create_window(
             APP_NAME, f"http://127.0.0.1:{port}/", js_api=bridge,
