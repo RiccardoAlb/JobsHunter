@@ -12,12 +12,12 @@ jobs:
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
-    # Il progetto nasce su macOS: Linux non e' ancora provato su una macchina vera, quindi non blocca la CI (Windows invece si'; vedi docs/phase7_status.md).
-    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
+    # macOS, Linux (Ubuntu) e Windows bloccano la CI: i test devono passare su tutti e tre (vedi docs/phase7_status.md).
     env:
       # I runner di GitHub sono piu' lenti di un PC vero (Windows soprattutto): i limiti di tempo dei test di prestazioni
       # si moltiplicano per questo fattore (vedi t() in tests/conftest.py) invece di allargare i limiti nei test.
-      JOBSHUNTER_TEST_TIME_FACTOR: ${{ matrix.os == 'windows-latest' && '3' || matrix.os == 'macos-latest' && '2' || '1' }}
+      # Windows 6: lo stesso test dura 5 s su un Mac e tra 20 e 58 s sul runner Windows a seconda della versione di Python.
+      JOBSHUNTER_TEST_TIME_FACTOR: ${{ matrix.os == 'windows-latest' && '6' || matrix.os == 'macos-latest' && '2' || '1' }}
     strategy:
       fail-fast: false
       matrix:
