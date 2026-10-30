@@ -6,6 +6,7 @@ import time
 
 import pytest
 
+from conftest import t as tlimit
 from jobshunter import profiles as prof
 from jobshunter import settings
 from jobshunter.models import Job
@@ -136,4 +137,4 @@ def test_categorie_al_massimo_dei_limiti_senza_rallentamenti(home):
     for _ in range(100):
         for b in bodies:
             score_job(Job(source="f", title="backend developer", company="c", location="Roma", url="u", description=b), cfg, p)
-    assert time.time() - t0 < 25, "troppo lento"
+    assert time.time() - t0 < tlimit(25), "troppo lento"

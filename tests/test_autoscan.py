@@ -60,7 +60,9 @@ def test_il_blocco_impedisce_due_scansioni_insieme(cfg, db):
 def test_novita_dall_ultimo_accesso(cfg, db):
     from datetime import datetime, timezone
 
-    before = datetime.now(timezone.utc).isoformat()
+    from datetime import timedelta
+
+    before = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()  # Windows: l'orologio ha ~15 ms di risoluzione, senza margine il primo annuncio puo' avere lo stesso istante
     FakeSource.jobs = [make_job(n=1), make_job("Pentester", "Beta", n=2)]
     run_auto(cfg, db, notify=False)
     assert db.news_since(before)["new"] == 2

@@ -112,11 +112,13 @@ def test_extra_json_rotto_ignorato(home):
 def test_velocita_su_grandi_volumi():
     import time
 
+    from conftest import t as tlimit
+
     text = ("Cerchiamo analista SOC con SIEM Splunk Python e Linux, inglese richiesto. " * 70)[:5000]
     t = time.time()
     for _ in range(2000):
         skills.find_skills(text)
-    assert time.time() - t < 8
+    assert time.time() - t < tlimit(8)
 
 
 # ------------------------------------------------------------------ estrazione ----
