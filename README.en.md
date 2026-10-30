@@ -106,7 +106,7 @@ first refusal so as not to make the block worse, and should be retried later. Wi
 
 **Limits.** Profile name: up to 80 characters, unique (case-insensitive). Custom: at least one title. Radius: 1 to 3000 km. Extra keywords: weight 1 to 15. The last profile cannot be deleted.
 
-**When a new or edited profile sees postings.** Creating or editing a profile re-scores only the postings **already saved** (offline) and discards those older than `max_age_days` (45 days). Postings that no
+**When a new or edited profile sees postings.** Creating or editing a profile re-scores only the postings **already stored** (offline) and discards those older than `max_age_days` (45 days). Postings that no
 profile had found relevant were never saved: you need a new scan to see them. Turning a profile off hides its postings (it does not delete them).
 
 **From the terminal** (the profile name must be written **in full**, case-insensitive):
@@ -137,7 +137,7 @@ They show up as filter chips in the list, only when they have postings, and deci
 - **Scoring:** the base score stays the one from titles, extra words and exclusions. A personal category that recognises a posting adds **at most +4** (word in the title) or **+2** (text only), never the sum,
   and only if the posting is already relevant: it never lets a posting in by itself. With no matching category the label is `ALTRO` (reserved name).
 - With "Profilo: tutti" (all profiles) the chips and the filter show the categories of every active profile. Changing a profile's type replaces the old type's categories with the new one's.
-- Saving different categories recomputes the categories of that profile's saved postings (status and applications untouched) after a safety copy of the database in `backups/`.
+- Saving different categories recomputes the categories of that profile's already stored postings (status and applications untouched) after a safety copy of the database in `backups/`.
 - Names and words are plain text: no HTML, and words are matched literally (never as regular expressions).
 
 ## How it works
@@ -237,6 +237,14 @@ Besides postings, JobsHunter keeps track of the **applications you sent**, one p
 
 Applications live in two database tables (`applications` and `app_events`) and are never deleted by a scan. Deleting requires a double confirmation in the details panel.
 
+### Saved postings
+Every posting has a **bookmark** (☆/★) in the list and in the details panel: one click saves it, another removes it. The **★ Saved (n)** filter in the filter bar
+shows only the saved ones, most recent first, even if they are no longer online in the meantime (then the label *non più online*, "no longer online", appears).
+Saving is independent of the posting's status (new, seen, applied) and of the profile: changing profile or recomputing scores does not touch it, and **Mark as applied** works on a saved
+posting too. If you discard a saved posting the page asks for confirmation and removes it from Saved. If two postings are recognised as duplicates, the bookmark moves to the one that stays;
+if the pair is later undone, no bookmark is lost. The bookmark is stored in the local database (`saved_at` column), is included in backups and the CSV export, and never leaves your computer.
+Service interface: `POST /api/jobs/<uid>/save` and `/unsave`, `saved=1` filter on `/api/jobs`, `saved` count in `/api/stats`.
+
 ### 8. Filters and derived data
 Postings have no precise fields for RAL, work mode or city: JobsHunter **derives them from the text** (module `meta.py`) and stores them in the database, so they can be filtered:
 
@@ -250,7 +258,7 @@ Postings have no precise fields for RAL, work mode or city: JobsHunter **derives
 - **City:** the name in the first part of the location ("Milano, Provincia di Milano" becomes Milano; some districts such as Ostiense become Roma). "Italia", "Remote" or a region are a **generic location**.
 - **Company:** compared on the normalised name, so "Exprivia" also finds "Exprivia S.p.A.".
 
-If you change the rules in `meta.py`, raise `META_VERSION`: at the next start the already saved postings are re-evaluated.
+If you change the rules in `meta.py`, raise `META_VERSION`: at the next start the already stored postings are re-evaluated.
 
 ### 9. Still open?
 A posting may already be closed when you read it. JobsHunter checks it and tells you whether **you can still apply**:
@@ -284,7 +292,11 @@ it on its own: the guide only opens if `onboarding_done` is missing **and** ther
 5. **Last choices (optional):** report folder (suggested `~/Documents/JobsHunter`), daily automatic search, notifications.
 6. **Summary:** estimate of requests, **Start the first scan** with progress and, at the end, the number of postings found and *See the postings*. With zero results it explains what to try (Adzuna key, simpler titles, wider area) and lets you go back to the right step.
 
-(The guide now has seven steps: the optional CV step was added between 5 and 6.) You can reopen it any time from **Settings, "Redo the guide"**: your current choices are already filled in and only the profile created by the guide and the
+(The guide now has seven steps: the optional CV step was added between 5 and 6.) As soon as the guide ends, on the main page a **card tutorial** starts **only once**: one bubble at a time highlights a button and says what it is for
+(search, categories, filters, postings, score, status, bookmark and Saved, Search, Applications, Scan, Settings). Use *Next*/*Back* or the arrow keys; skip with *Skip* or Esc; steps whose element is not there
+(for example an empty list) are skipped. Reopen it from **Settings, "Rivedi il tutorial"** (the button label is Italian, like the rest of the interface). Whether it was seen is remembered in the app settings (`POST /api/tutorial/seen`), not in the browser.
+
+You can reopen it any time from **Settings, "Redo the guide"**: your current choices are already filled in and only the profile created by the guide and the
 settings you touched are updated; other profiles and postings stay intact. Everything is validated by the server too, with the same rules as Settings and the Search tab, and applied atomically (if something goes wrong,
 `settings.json` returns as it was). Keys never appear in logs or responses.
 
@@ -617,7 +629,7 @@ jobshunter/
     +-- sources/            # the sources (Adzuna, Jooble, Arbeitnow, ...)
     +-- profiles.py         # search profiles, presets, countries, queries per source
     +-- onboarding.py       # first-run guided procedure (state, key test, validation, application)
-    +-- rescore.py          # re-scores postings already saved for a profile
+    +-- rescore.py          # re-scores postings already stored for a profile
     +-- scoring.py          # location filter and score (historical and per profile)
     +-- db.py               # SQLite archive, statuses, duplicates, radius filter
     +-- dedupe.py           # duplicate detection with percentage

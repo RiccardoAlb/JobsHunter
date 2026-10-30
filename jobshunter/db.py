@@ -134,6 +134,15 @@ PROFILE_ACTIVE = ("(uid IN (SELECT jp.job_uid FROM job_profiles jp JOIN profiles
 NOT_HIDDEN = DUP_HIDDEN + " AND avail!='closed' AND " + PROFILE_ACTIVE
 
 
+class SavedJobError(ValueError):
+    """Si sta scartando un annuncio salvato senza averlo detto in modo esplicito."""
+
+
+def like_escape(text: str) -> str:
+    """Il testo cercato va preso alla lettera: % e _ non sono jolly (si usa con `LIKE ? ESCAPE '\\'`)."""
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 class DB:
     def __init__(self, path: str | Path, cfg: dict | None = None):
         existed = str(path) == ":memory:" or Path(path).exists()
@@ -166,7 +175,8 @@ class DB:
                           ("avail", "TEXT DEFAULT 'unknown'"),  # open | closed | unknown
                           ("avail_checked", "TEXT"), ("valid_until", "TEXT"), ("avail_note", "TEXT DEFAULT ''"),
                           ("sal_currency", "TEXT DEFAULT ''"),  # valuta della RAL (EUR, GBP...), '' se ignota
-                          ("country", "TEXT DEFAULT ''")):  # codice paese di provenienza, quando noto
+                          ("country", "TEXT DEFAULT ''"),
+                          ("saved_at", "TEXT")):  # annuncio salvato per dopo: data/ora del salvataggio, NULL = non salvato  # codice paese di provenienza, quando noto
             if name not in cols:
                 try:
                     self.conn.execute(f"ALTER TABLE jobs ADD COLUMN {name} {ddl}")
@@ -321,18 +331,21 @@ class DB:
               modes: list[str] | None = None, ral_min: int = 0, ral_unknown: bool = True,
               include_closed: bool = False, contracts: list[str] | None = None,
               profile=None, ral_currency: str = "EUR", country: str | None = None,
-              cv_min: int = 0, cv_version: str | None = None, order_cv: bool = False):
+              cv_min: int = 0, cv_version: str | None = None, order_cv: bool = False, saved: bool = False):
         self.backfill_meta()  # dati derivati (RAL, modalita', citta') mancanti o da rivalutare
-        src, src_args = self._from(profile)
-        sql, args = (f"SELECT * {src} WHERE score>=? AND {DUP_HIDDEN if include_closed else NOT_HIDDEN}"), src_args + [min_score]
+        src, src_args = self._from(None if saved else profile)  # i salvati non dipendono dal profilo: un ricalcolo non li nasconde
+        # i salvati si vedono sempre (anche se l'annuncio non e' piu' online o il profilo e' spento); solo i duplicati confermati restano nascosti
+        sql, args = (f"SELECT * {src} WHERE score>=? AND {DUP_HIDDEN if (include_closed or saved) else NOT_HIDDEN}"), src_args + [min_score]
+        if saved:
+            sql += " AND saved_at IS NOT NULL"
         if country:
             sql += " AND country=?"
             args.append(country.lower())
         if company:  # confronto sul nome normalizzato: "Exprivia" trova anche "Exprivia S.p.A."
             from .dedupe import norm_company
 
-            sql += " AND company_key LIKE ?"
-            args.append(f"%{norm_company(company)}%")
+            sql += " AND company_key LIKE ? ESCAPE '\\'"
+            args.append(f"%{like_escape(norm_company(company))}%")
         if cities:  # "" = sede generica (Italia, Remote, una regione)
             labels, parts = [c for c in cities if c], []
             if labels:
@@ -385,12 +398,14 @@ class DB:
         else:
             sql += " AND status!='discarded'"
         if search:
-            sql += " AND (title LIKE ? OR company LIKE ?)"
-            args += [f"%{search}%"] * 2
+            sql += " AND (title LIKE ? ESCAPE '\\' OR company LIKE ? ESCAPE '\\')"
+            args += [f"%{like_escape(search)}%"] * 2
         if order_cv and cv_version:  # prima l'affinita' col CV, poi il punteggio di sempre
             sql += (" ORDER BY (SELECT score FROM cv_match m WHERE m.uid=jobs.uid AND m.cv_version=?) IS NULL,"
                     " (SELECT score FROM cv_match m WHERE m.uid=jobs.uid AND m.cv_version=?) DESC, score DESC, first_seen DESC")
             args += [cv_version, cv_version]
+        elif saved:
+            sql += " ORDER BY saved_at DESC, score DESC"
         else:
             sql += " ORDER BY score DESC, first_seen DESC"
         if geo is None:
@@ -558,11 +573,47 @@ class DB:
         )
         self.conn.commit()  # meta=0: RAL e modalita' si rivalutano col testo completo
 
-    def set_status(self, uid: str, status: str) -> None:
+    def set_status(self, uid: str, status: str, unsave: bool = False) -> None:
+        """Cambia lo stato. Scartare un annuncio salvato richiede `unsave=True` (toglie il salvataggio): niente perdite in silenzio."""
+        if status == "discarded":
+            row = self.conn.execute("SELECT saved_at FROM jobs WHERE uid=?", (uid,)).fetchone()
+            if row and row["saved_at"]:
+                if not unsave:
+                    raise SavedJobError("L'annuncio e' salvato: scartandolo si toglie dai Salvati.")
+                self.unsave_job(uid)
         self.conn.execute("UPDATE jobs SET status=? WHERE uid=?", (status, uid))
         self.conn.commit()
         if status == "applied":
             self.ensure_application(uid)
+
+    # ---- annunci salvati ----
+    def save_job(self, uid: str) -> bool:
+        """Salva l'annuncio per ritrovarlo dopo (idempotente: se e' gia' salvato resta la data di prima). True se l'uid esiste."""
+        cur = self.conn.execute("UPDATE jobs SET saved_at=COALESCE(saved_at, ?) WHERE uid=?",
+                                (datetime.now(timezone.utc).isoformat(), uid))
+        self.conn.commit()
+        return cur.rowcount > 0
+
+    def unsave_job(self, uid: str) -> bool:
+        """Toglie il salvataggio (idempotente). True se l'uid esiste."""
+        cur = self.conn.execute("UPDATE jobs SET saved_at=NULL WHERE uid=?", (uid,))
+        # anche i nascosti collegati da coppie confermate: un annullo successivo non deve far rivivere un salvataggio tolto
+        self.conn.execute("UPDATE jobs SET saved_at=NULL WHERE uid IN (SELECT hidden_uid FROM dup_pairs WHERE status='confirmed' AND keep_uid=?)", (uid,))
+        self.conn.commit()
+        return cur.rowcount > 0
+
+    def saved_count(self, profile=None) -> int:
+        """Quanti salvati si vedono nella vista Salvati (esclusi i duplicati nascosti). `profile` e' ignorato: vale per annuncio, non per profilo."""
+        return self.conn.execute(f"SELECT COUNT(*) FROM jobs WHERE saved_at IS NOT NULL AND status!='discarded' AND {DUP_HIDDEN}").fetchone()[0]
+
+    def _merge_saved(self, keep: str | None, hidden: str | None) -> None:
+        """Duplicato confermato: chi resta eredita il salvataggio (la data piu' vecchia). L'annuncio nascosto NON viene toccato:
+        se la coppia viene rifiutata o annullata, nessun salvataggio va perso."""
+        if not keep or not hidden:
+            return
+        dates = [r[0] for r in self.conn.execute("SELECT saved_at FROM jobs WHERE uid IN (?, ?) AND saved_at IS NOT NULL", (keep, hidden))]
+        if dates:
+            self.conn.execute("UPDATE jobs SET saved_at=? WHERE uid=?", (min(dates), keep))
 
     # ---- candidature ----
     def _event(self, app_id: int, kind: str, value: str, at: str | None, note: str = "") -> None:
@@ -681,6 +732,8 @@ class DB:
             "VALUES (?,?,?,?,?,?,?,?,?)",
             (a, b, pct, keep, hidden, "confirmed" if auto else "pending", int(auto), now, now if auto else None),
         )
+        if auto:
+            self._merge_saved(keep, hidden)
         return True
 
     def list_dups(self, status: str):
@@ -706,6 +759,8 @@ class DB:
             "UPDATE dup_pairs SET status=?, keep_uid=?, hidden_uid=?, decided_at=?, auto=0 WHERE id=?",
             (status, keep, hidden, decided, pair_id),
         )
+        if status == "confirmed":
+            self._merge_saved(keep, hidden)
         self.conn.commit()
         return True
 

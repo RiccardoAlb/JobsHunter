@@ -601,11 +601,18 @@ def open_(cfg, job_id):
 @main.command()
 @click.argument("job_id")
 @click.argument("status", type=click.Choice(["new", "seen", "applied", "discarded"]))
+@click.option("--unsave", is_flag=True, help="Scartando un annuncio salvato, lo toglie anche dai Salvati (senza, il comando si rifiuta)")
 @click.pass_obj
-def mark(cfg, job_id, status):
+def mark(cfg, job_id, status, unsave):
     """Cambia stato: applied / discarded / seen / new."""
+    from .db import SavedJobError
+
     db, r = _find(cfg, job_id)
-    db.set_status(r["uid"], status)
+    try:
+        db.set_status(r["uid"], status, unsave=unsave)
+    except SavedJobError:
+        console.print("[red]L'annuncio e' salvato:[/] scartandolo lo togli dai Salvati. Se vuoi farlo davvero, ripeti con [bold]--unsave[/].")
+        sys.exit(1)
     console.print(f"[green]ok[/] {r['title']} -> [bold]{status}[/]")
 
 
@@ -770,10 +777,10 @@ def export(cfg, out, min_score):
     rows = open_db(cfg).query(min_score=min_score, limit=100000)
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["score", "category", "title", "company", "location", "status", "url", "attribution"])
+        w.writerow(["score", "category", "title", "company", "location", "status", "url", "attribution", "saved_at"])
         for r in rows:
             attr = "Jobs by Adzuna (https://www.adzuna.co.uk)" if (r["source"] or "").startswith("adzuna") else ""
-            w.writerow([_csv_safe(v) for v in (r["score"], r["category"], r["title"], r["company"], r["location"], r["status"], r["url"], attr)])
+            w.writerow([_csv_safe(v) for v in (r["score"], r["category"], r["title"], r["company"], r["location"], r["status"], r["url"], attr, r["saved_at"] or "")])
     console.print(f"[green]{len(rows)} annunci esportati in[/] {out}")
 
 

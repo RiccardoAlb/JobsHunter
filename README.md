@@ -114,7 +114,7 @@ primo rifiuto per non peggiorare il blocco, e va riprovata più tardi. Con molti
 **Limiti.** Nome del profilo: fino a 80 caratteri, unico (senza distinguere maiuscole). Personalizzato: serve almeno un titolo. Raggio: da 1 a
 3000 km. Parole chiave extra: peso da 1 a 15. Non si elimina l'ultimo profilo.
 
-**Quando un profilo nuovo o modificato vede gli annunci.** Creando o modificando un profilo vengono rivalutati solo gli annunci **già salvati**
+**Quando un profilo nuovo o modificato vede gli annunci.** Creando o modificando un profilo vengono rivalutati solo gli annunci **già in archivio**
 (senza rete) e sono scartati quelli più vecchi di `max_age_days` (45 giorni). Gli annunci che nessun profilo aveva ritenuto pertinenti non
 sono mai stati salvati: per vederli serve una nuova scansione. Spegnere un profilo nasconde i suoi annunci (non li cancella).
 
@@ -147,7 +147,7 @@ massimo 12 categorie per profilo). Compaiono come chip di filtro nella lista, ma
 - **Punteggio:** il punteggio base resta quello di titoli, parole extra ed esclusioni. Una categoria personale che riconosce l'annuncio dà **al massimo +4** (parola nel titolo) o **+2** (solo nel testo), mai la somma,
   e solo se l'annuncio è già pertinente: da sola non fa entrare niente. Senza nessuna categoria che combacia l'etichetta è `ALTRO` (nome riservato).
 - Con "Profilo: tutti" i chip e il filtro mostrano le categorie di tutti i profili attivi. Cambiando il tipo di un profilo, le categorie del tipo vecchio si sostituiscono con quelle del nuovo.
-- Salvare categorie diverse ricalcola le categorie degli annunci già salvati di quel profilo (senza toccare stato o candidature) dopo una copia di sicurezza del database in `backups/`.
+- Salvare categorie diverse ricalcola le categorie degli annunci già in archivio di quel profilo (senza toccare stato o candidature) dopo una copia di sicurezza del database in `backups/`.
 - I nomi e le parole sono solo testo: niente HTML, le parole si cercano come testo letterale (mai espressioni regolari).
 
 ## Come funziona
@@ -268,6 +268,15 @@ Oltre agli annunci, JobsHunter tiene traccia delle **candidature inviate**, una 
 Le candidature stanno in due tabelle del database (`applications` e `app_events`) e non vengono mai cancellate
 dallo scan. L'eliminazione richiede una doppia conferma nel pannello dei dettagli.
 
+### Annunci salvati
+Ogni annuncio ha un **segnalibro** (☆/★) nella lista e nel pannello dei dettagli: un clic lo salva, un altro lo toglie. Il filtro **★ Salvati (n)**
+nella barra dei filtri mostra solo i salvati, dal più recente, anche se nel frattempo non sono più online (in quel caso compare l'etichetta *non più online*).
+Il salvataggio è indipendente dallo stato dell'annuncio (nuovo, visto, candidato) e dal profilo: cambiare profilo o ricalcolare i punteggi non lo tocca, e
+**Segna candidato** funziona anche su un salvato. Se scarti un annuncio salvato, la pagina chiede conferma e lo toglie dai Salvati. Se due annunci vengono
+riconosciuti come duplicati, il salvataggio passa a quello che resta; se poi la coppia viene annullata, nessun salvataggio va perso. Il salvataggio è
+registrato nel database locale (colonna `saved_at`), entra nei backup e nell'esportazione CSV e non esce mai dal tuo computer.
+Interfaccia di servizio: `POST /api/jobs/<uid>/save` e `/unsave`, filtro `saved=1` su `/api/jobs`, conteggio `saved` in `/api/stats`.
+
 ### 8. Filtri e dati derivati
 Gli annunci non hanno campi precisi per RAL, modalità di lavoro e città: JobsHunter li **ricava dal testo** (modulo
 `meta.py`) e li salva nel database, così si possono filtrare:
@@ -288,7 +297,7 @@ Gli annunci non hanno campi precisi per RAL, modalità di lavoro e città: JobsH
   Ostiense diventano Roma). "Italia", "Remote" o una regione sono **sede generica**.
 - **Azienda:** si confronta sul nome normalizzato, quindi "Exprivia" trova anche "Exprivia S.p.A.".
 
-Se cambi le regole in `meta.py`, aumenta `META_VERSION`: al prossimo avvio gli annunci già salvati vengono rivalutati.
+Se cambi le regole in `meta.py`, aumenta `META_VERSION`: al prossimo avvio gli annunci già in archivio vengono rivalutati.
 
 ### 9. Annunci ancora aperti?
 Un annuncio può essere già chiuso quando lo leggi. JobsHunter lo verifica e ti dice se **è ancora possibile candidarsi**:
@@ -331,6 +340,11 @@ modificato non conta).
 5. **Ultime scelte (facoltative):** cartella dei report (suggerita `~/Documents/JobsHunter`), ricerca automatica giornaliera, notifiche.
 6. **Riepilogo:** stima delle richieste, **Avvia la prima scansione** con avanzamento e, alla fine, il numero di annunci trovati e *Vedi gli annunci*.
    Con zero risultati si spiega cosa provare (chiave Adzuna, titoli più semplici, zona più larga) e si può tornare al passo giusto.
+
+Appena finita la guida, sulla pagina principale parte **una sola volta** un **tutorial a schede**: un fumetto per volta evidenzia un pulsante e dice a cosa serve
+(ricerca, categorie, filtri, annunci, punteggio, stato, segnalibro e Salvati, Ricerca, Candidature, Scan, Impostazioni). Si usa con *Avanti* e *Indietro* oppure con le frecce,
+si salta con *Salta* o con Esc, e i passi il cui elemento non c'è (per esempio la lista ancora vuota) vengono saltati. Si riapre da **Impostazioni, "Rivedi il tutorial"**.
+Che sia stato visto è ricordato nelle impostazioni dell'app (`POST /api/tutorial/seen`), non nel browser.
 
 Si riapre quando vuoi da **Impostazioni, "Rifai la guida"**: le scelte attuali sono già compilate e vengono aggiornati solo il profilo creato dalla guida e le impostazioni
 toccate; gli altri profili e gli annunci restano intatti. Tutto è validato anche dal server con le stesse regole di Impostazioni e della scheda Ricerca, e viene applicato in modo atomico
@@ -716,7 +730,7 @@ jobshunter/
     ├── sources/            # le fonti (Adzuna, Jooble, Arbeitnow, ...)
     ├── profiles.py         # profili di ricerca, preset, paesi, query per fonte
     ├── onboarding.py       # procedura guidata di primo avvio (stato, prova chiave, validazione, applicazione)
-    ├── rescore.py          # rivaluta gli annunci già salvati per un profilo
+    ├── rescore.py          # rivaluta gli annunci già in archivio per un profilo
     ├── scoring.py          # filtro sede e punteggio (storico e per profilo)
     ├── db.py               # archivio SQLite, stati, duplicati, filtro per raggio
     ├── dedupe.py           # rilevamento duplicati con percentuale

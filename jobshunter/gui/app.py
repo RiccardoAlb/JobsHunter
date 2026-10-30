@@ -208,6 +208,8 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         d["matched"] = [m for m in (r["matched"] or "").split(",") if m]
         d["cv"], d["cv_base"] = None, None  # affinita' col CV: la riempie chi ha il CV (vedi cv_scores)
         d["id"] = r["uid"][:6]
+        d["saved_at"] = r["saved_at"]
+        d["saved"] = bool(r["saved_at"])
         if full:
             d["text"] = r["full_text"] or r["description"] or ""
             d["has_full"] = bool(r["full_text"])
@@ -238,6 +240,7 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
             group=a.get("group") if a.get("group") in ("main", "jooble") else None,
             geo=geo_arg(a)[0],
             include_closed=a.get("closed") == "1",
+            saved=a.get("saved") == "1",
             **flt_args(a),
         )
         pmap = db.profiles_of([r["uid"] for r in rows])
@@ -303,12 +306,37 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         status = (request.get_json(silent=True) or {}).get("status")
         if status not in STATUSES:
             abort(400)
+        body = request.get_json(silent=True) or {}
         db = open_db()
         r = db.get(uid)
         if not r:
             abort(404)
+        if status == "discarded" and r["saved_at"]:
+            # uno scarto non deve far sparire in silenzio un annuncio salvato: serve una conferma esplicita (unsave=true)
+            if body.get("unsave") is not True:
+                return jsonify(ok=False, saved=True, error="L'annuncio e' salvato: scartandolo si toglie dai Salvati."), 409
+            db.unsave_job(r["uid"])
         db.set_status(r["uid"], status)
         return jsonify(ok=True)
+
+    @app.post("/api/jobs/<uid>/save")
+    def job_save(uid):
+        """Salva l'annuncio per ritrovarlo nella vista Salvati (idempotente)."""
+        db = open_db()
+        r = db.conn.execute("SELECT uid, saved_at FROM jobs WHERE uid=?", (uid,)).fetchone()  # uid esatto: una modifica non deve mai colpire "il primo che inizia cosi'"
+        if not r:
+            abort(404)
+        db.save_job(r["uid"])
+        return jsonify(ok=True, uid=r["uid"], saved=True, saved_at=db.conn.execute("SELECT saved_at FROM jobs WHERE uid=?", (r["uid"],)).fetchone()[0])
+
+    @app.post("/api/jobs/<uid>/unsave")
+    def job_unsave(uid):
+        db = open_db()
+        r = db.conn.execute("SELECT uid, saved_at FROM jobs WHERE uid=?", (uid,)).fetchone()  # uid esatto: una modifica non deve mai colpire "il primo che inizia cosi'"
+        if not r:
+            abort(404)
+        db.unsave_job(r["uid"])
+        return jsonify(ok=True, uid=r["uid"], saved=False, saved_at=None)
 
     @app.get("/api/stats")
     def stats():
@@ -329,7 +357,7 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         dc = db.dup_counts()
         return jsonify(by_cat=by_cat, all_cats=all_cats, new=total_new, near=near, total=max(0, sum(by_cat.values()) - jooble),
                        dups_pending=dc.get("pending", 0), dup_counts=dc, jooble=jooble, jooble_near_new=jooble_near_new,
-                       app_counts=db.app_counts(), needs_setup=needs_setup(), closed=closed)
+                       app_counts=db.app_counts(), needs_setup=needs_setup(), closed=closed, saved=db.saved_count(pid))
 
     # ---- novita' dall'ultimo accesso, cronologia, scansione automatica ----
     def now_iso() -> str:
@@ -506,6 +534,16 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
                 notes.append("Non sono riuscito ad attivare la scansione automatica: puoi riprovare dalle Impostazioni.")
         db.kv_set(onboarding.KV_DONE, "1")
         return jsonify(ok=True, profile_id=pid, notes=notes)
+
+    @app.post("/api/tutorial/seen")
+    def tutorial_seen():
+        """Ricorda (nelle impostazioni, non nel browser) che il tutorial e' stato visto o saltato; seen=false lo riarma."""
+        b = request.get_json(silent=True)
+        seen = True if not isinstance(b, dict) else b.get("seen", True)
+        if not isinstance(seen, bool):
+            abort(400, description="seen deve essere true o false")
+        open_db().kv_set(onboarding.KV_TUTORIAL, "1" if seen else "0")
+        return jsonify(ok=True, tutorial_seen=seen)
 
     @app.post("/api/onboarding/skip")
     def onboarding_skip():

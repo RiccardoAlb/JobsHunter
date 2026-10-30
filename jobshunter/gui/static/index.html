@@ -156,6 +156,27 @@
   .chk input:checked { background: var(--text); border-color: var(--text); }
   .chk input:checked::after { content: ""; width: 5px; height: 10px; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(45deg) translate(-1px, -1px); }
   .dnote { color: var(--dim); font: 11.5px var(--mono); margin-left: auto; }
+  /* segnalibro e Salvati */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  td.sv { width: 30px; text-align: center; padding-left: 0; padding-right: 0; }
+  .star { background: none; border: none; color: var(--dim); font-size: 17px; line-height: 1; padding: 4px 6px; border-radius: 6px; }
+  .star:hover { color: var(--text); background: var(--raised); }
+  .star[aria-pressed="true"] { color: var(--yellow); }
+  .star:focus-visible, .tour-pop button:focus-visible, .chip:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .btn.saved { border-color: var(--yellow); color: var(--yellow); }
+  .gonebadge { font: 11px var(--mono); margin-left: 8px; color: var(--red); }
+  .dconfirm { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; border: 1px solid var(--line2); border-radius: 8px; padding: 10px 12px; margin: 0 0 14px; font-size: 13px; }
+  .dconfirm span { flex: 1; min-width: 180px; }
+  /* tutorial a schede */
+  .tour-blk { position: fixed; inset: 0; z-index: 70; }
+  .tour-hole { position: fixed; z-index: 71; border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,.62), 0 0 0 2px var(--text); pointer-events: none; transition: top .15s, left .15s, width .15s, height .15s; }
+  :root:not([data-theme="light"]) .tour-hole { background: rgba(255,255,255,.08); box-shadow: 0 0 0 9999px rgba(0,0,0,.74), 0 0 0 2px var(--text), 0 0 0 6px rgba(255,255,255,.2); }  /* tema scuro: lo sfondo e' gia' scuro, serve un riquadro piu' chiaro */
+  .tour-pop { position: fixed; z-index: 72; width: min(340px, calc(100vw - 24px)); background: var(--panel); color: var(--text); border: 1px solid var(--line2); border-radius: 10px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,.45); }
+  .tour-pop h3 { margin: 0 0 6px; font-size: 15px; }
+  .tour-pop p { margin: 0 0 14px; color: var(--body); font-size: 13px; line-height: 1.5; }
+  .tour-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .tour-foot .count { color: var(--muted); font: 12px var(--mono); margin-right: auto; }
+  @media (prefers-reduced-motion: reduce) { .tour-hole { transition: none; } }
   @media (max-width: 900px) { .dpair { grid-template-columns: 1fr; } .dside + .dside { border-left: none; border-top: 1px solid var(--line); } .dups { padding: 4px 16px 40px; } }
 
   .chipx { background: none; border: none; color: var(--dim); margin-left: 6px; cursor: pointer; padding: 0 2px; font-size: 14px; line-height: 1; }
@@ -462,7 +483,7 @@
     <div class="list">
       <table>
         <thead><tr>
-          <th></th><th>Tipo</th><th>Score</th><th>Ruolo</th><th class="hide-sm">Sede</th><th class="hide-sm">Stipendio</th><th class="cvh" id="thCv" title="Affinità col tuo CV: clicca per ordinare" hidden>CV</th>
+          <th></th><th class="sv"><span class="sr">Salvato</span></th><th>Tipo</th><th>Score</th><th>Ruolo</th><th class="hide-sm">Sede</th><th class="hide-sm">Stipendio</th><th class="cvh" id="thCv" title="Affinità col tuo CV: clicca per ordinare" hidden>CV</th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
@@ -485,7 +506,7 @@
 "use strict";
 const COLORS = { RED: "var(--red)", BLUE: "var(--blue)", PURPLE: "var(--purple)", SYSADM: "var(--yellow)", SEC: "var(--teal)" };
 const CATS = ["BLUE", "RED", "SYSADM", "SEC", "PURPLE"];
-const F = { cat: "", near: false, only_new: false, q: "", min: 0, group: "main", geo: null, profile: "all" };
+const F = { saved: false, cat: "", near: false, only_new: false, q: "", min: 0, group: "main", geo: null, profile: "all" };
 try { const g = localStorage.getItem("jh-profile"); if (g) F.profile = g; } catch (e) {}
 const saveProfile = () => { try { localStorage.setItem("jh-profile", F.profile); } catch (e) {} };
 let catKeys = [];  // categorie presenti negli annunci (ogni profilo ha le sue: cyber, supporto IT, sviluppo...)
@@ -498,7 +519,7 @@ const saveGeo = () => { try { localStorage.setItem("jh-geo", JSON.stringify(F.ge
 const FLT0 = () => ({ company: "", where: [], mode: [], contract: [], ralMin: 0, ralUnk: true });
 F.flt = FLT0();
 F.closed = false;  // mostra anche gli annunci verificati come chiusi
-let closedCount = 0, checking = false, lastCheck = null;
+let closedCount = 0, savedCount = 0, checking = false, lastCheck = null;
 try { const g = JSON.parse(localStorage.getItem("jh-flt") || "null"); if (g) F.flt = { ...FLT0(), ...g }; } catch (e) {}
 const saveFlt = () => { try { localStorage.setItem("jh-flt", JSON.stringify(F.flt)); } catch (e) {} };
 const AV_LABEL = { open: "aperto", closed: "chiuso" };
@@ -567,7 +588,7 @@ function renderToolbar() {
   const tb = $("toolbar");
   const chip = (label, on, fn, dot) => el("button", { class: "chip" + (on ? " on" : ""), onclick: fn },
     dot ? el("i", { style: `background:${dot}` }) : null, label);
-  const search = el("input", { type: "search", placeholder: "Cerca ruolo o azienda", value: F.q });
+  const search = el("input", { type: "search", placeholder: "Cerca ruolo o azienda", value: F.q, "aria-label": "Cerca ruolo o azienda", "data-tour": "search" });
   let t; search.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { F.q = search.value.trim(); loadJobs(); }, 250); });
   const min = el("select", { onchange: (e) => { F.min = +e.target.value; loadJobs(); } },
     [[0, "Score: tutti"], [20, "Score 20+"], [40, "Score 40+"], [60, "Score 60+"]].map(([v, l]) => el("option", { value: v, selected: F.min === v }, l)));
@@ -577,7 +598,7 @@ function renderToolbar() {
   const shownCats = [...CATS.filter((c) => catKeys.includes(c)), ...catKeys.filter((c) => !CATS.includes(c))];  // solo le categorie che ci sono davvero negli annunci
   tb.replaceChildren(...[
     profSel,
-    chip("Tutti", !F.cat, () => { F.cat = ""; refresh(); }),
+    el("button", { class: "chip" + (!F.cat ? " on" : ""), "data-tour": "cats", onclick: () => { F.cat = ""; refresh(); } }, "Tutti"),
     shownCats.map((c) => chip(c, F.cat === c, () => { F.cat = F.cat === c ? "" : c; refresh(); }, catColor(c))),
     el("div", { class: "sep" }),
     chip("📍 Vicino a casa", F.near, () => { F.near = !F.near; refresh(); }),
@@ -593,11 +614,13 @@ function renderToolbar() {
       ? el("span", { class: "chip on", "data-flt-chip": "" },
           el("span", { style: "cursor:pointer", onclick: (e) => openFlt(e.currentTarget.parentNode) }, `🎚 Filtri · ${fltCount()}`),
           el("button", { class: "chipx", title: "Azzera i filtri", onclick: () => { F.flt = FLT0(); saveFlt(); refresh(); } }, "×"))
-      : el("button", { class: "chip", "data-flt-chip": "", onclick: (e) => openFlt(e.currentTarget) }, "🎚 Filtri…"),
+      : el("button", { class: "chip", "data-flt-chip": "", "data-tour": "filters", onclick: (e) => openFlt(e.currentTarget) }, "🎚 Filtri…"),
     CV.present ? el("select", { title: "Mostra solo gli annunci più affini al tuo CV", onchange: (e) => { F.cvMin = +e.target.value; loadJobs(); } },
       [[0, "Affinità CV: tutte"], [40, "CV 40+"], [60, "CV 60+"], [80, "CV 80+"]].map(([v, l]) => el("option", { value: v, selected: F.cvMin === v }, l))) : null,
     CV.present ? chip("Ordina per CV", F.sortCv, () => { F.sortCv = !F.sortCv; refresh(); }) : null,
     closedCount > 0 ? chip(`Chiusi (${closedCount})`, F.closed, () => { F.closed = !F.closed; refresh(); }) : null,
+    view === "jobs" ? el("button", { class: "chip" + (F.saved ? " on" : ""), id: "chipSaved", "data-tour": "saved", "aria-pressed": F.saved ? "true" : "false",
+      title: "Gli annunci che hai salvato con il segnalibro", onclick: () => { F.saved = !F.saved; refresh(); } }, `★ Salvati (${savedCount})`) : null,
     el("div", { class: "spacer" }),
     view === "jooble" ? null : el("button", { class: "btn sm", id: "btnCheck", title: "Controlla che gli annunci in lista siano ancora aperti (uno ogni 2 secondi)", onclick: toggleCheck }, checking ? checkLabel(lastCheck) : "Verifica annunci"),
     min, search].flat().filter(Boolean));
@@ -607,13 +630,15 @@ function refresh() { renderToolbar(); loadJobs(); }
 
 /* ---- lista ---- */
 function qs() {
-  const p = new URLSearchParams({ min: F.min, limit: 300, group: F.group });
+  const p = new URLSearchParams({ min: F.min, limit: 300 });
+  const onlySaved = F.saved && view === "jobs";
+  if (onlySaved) p.set("saved", "1"); else p.set("group", F.group);  // i salvati si vedono tutti insieme, qualunque sia la fonte
   if (F.cat) p.set("cat", F.cat);
   if (F.profile !== "all") p.set("profile", F.profile);
   if (F.near) p.set("near", "1");
   if (F.only_new) p.set("new", "1");
   if (F.q) p.set("q", F.q);
-  if (F.closed) p.set("closed", "1");
+  if (F.closed && !onlySaved) p.set("closed", "1");
   if (CV.present && F.cvMin) p.set("cv_min", F.cvMin);
   if (CV.present && F.sortCv) p.set("sort", "cv");
   if (F.geo) { p.set("city", F.geo.city); p.set("km", F.geo.km); p.set("unk", F.geo.unk ? "1" : "0"); }
@@ -639,14 +664,18 @@ function renderRows() {
   const body = $("rows");
   $("thCv").hidden = !CV.present;
   $("empty").hidden = jobs.length > 0;
+  $("empty").textContent = F.saved && view === "jobs"
+    ? (savedCount > 0 ? "Nessun salvato con questi filtri. Togli i filtri per rivederli." : "Nessun annuncio salvato. Salva un annuncio con il segnalibro per ritrovarlo qui.")  // con filtri attivi i salvati ci sono, solo non passano i filtri
+    : "Nessun annuncio. Premi Scan.";
   body.replaceChildren(...jobs.map((j) => {
     const [g, c] = STATUS_GLYPH[j.status] || ["", ""];
     const loc = (j.location || "-").split(",")[0];
     return el("tr", { class: "row" + (selected === j.uid ? " sel" : "") + (j.status === "applied" ? " dim" : "") + (j.avail === "closed" ? " gone" : ""), "data-uid": j.uid, onclick: () => openJob(j.uid) },
       el("td", { class: "st", style: `color:${c}` }, g),
+      el("td", { class: "sv" }, starBtn(j)),
       el("td", {}, el("span", { class: "cat" }, el("span", { class: "dot", style: `background:${catColor(j.category)}` }), j.category)),
       el("td", {}, el("span", { class: "score" }, j.score, el("span", { class: "sb" }, el("i", { style: `width:${Math.min(j.score, 100)}%` })))),
-      el("td", {}, el("div", { class: "t-title" }, j.title), el("div", { class: "t-sub" }, j.company, AV_LABEL[j.avail] ? el("span", { class: "av " + j.avail }, j.avail === "open" ? "✓ aperto" : "✕ chiuso") : null, j.adzuna ? adzunaBadge() : null)),
+      el("td", {}, el("div", { class: "t-title" }, j.title), el("div", { class: "t-sub" }, j.company, j.saved && j.avail === "closed" ? el("span", { class: "gonebadge" }, "non più online") : (AV_LABEL[j.avail] ? el("span", { class: "av " + j.avail }, j.avail === "open" ? "✓ aperto" : "✕ chiuso") : null), j.adzuna ? adzunaBadge() : null)),
       el("td", { class: "muted hide-sm" }, loc, j.near ? " 📍" : "", j.km != null ? el("span", { class: "km" }, `${j.km} km`) : null, MODE_SHORT[j.mode] ? el("span", { class: "km" }, MODE_SHORT[j.mode]) : null, CONTRACT_SHORT[j.contract] ? el("span", { class: "km" }, CONTRACT_SHORT[j.contract]) : null),
       el("td", { class: "muted hide-sm" }, j.salary || "-"),
       CV.present ? el("td", {}, cvCell(j)) : null);
@@ -666,6 +695,7 @@ async function loadStats() {
     el("span", {}, el("b", {}, s.near), " vicini"));
   setBadge(s.dups_pending);
   setAppBadge(s.app_counts ? s.app_counts.active : 0);
+  if ((s.saved || 0) !== savedCount) { savedCount = s.saved || 0; updateSavedChip(); }
   if ((s.closed || 0) !== closedCount) { closedCount = s.closed || 0; if (view === "jobs" || view === "jooble") renderToolbar(); }
   loadNews();
   const sn = $("setupnote");
@@ -682,6 +712,42 @@ async function loadStats() {
   const jb = $("jooBadge"); jb.hidden = !s.jooble; jb.textContent = s.jooble || "";
 }
 
+/* ---- segnalibro ---- */
+const starLabel = (j) => (j.saved ? "Togli dai salvati: " : "Salva: ") + j.title;
+function starBtn(j) {
+  return el("button", { class: "star", type: "button", "data-uid": j.uid, "aria-pressed": j.saved ? "true" : "false", "aria-label": starLabel(j), title: j.saved ? "Salvato: clicca per toglierlo" : "Salva per dopo",
+    onclick: (e) => { e.stopPropagation(); toggleSave(j.uid); } }, j.saved ? "★" : "☆");
+}
+function updateSavedChip() { const c = $("chipSaved"); if (c) c.textContent = `★ Salvati (${savedCount})`; }
+function paintSaved(uid, on) {  // aggiorna riga, pannello e contatore senza ricaricare
+  const j = jobs.find((x) => x.uid === uid); if (j) j.saved = on;
+  if (CUR && CUR.uid === uid) CUR.saved = on;
+  document.querySelectorAll(`button.star[data-uid="${uid}"]`).forEach((b) => {
+    b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "★" : "☆";
+    b.setAttribute("aria-label", (on ? "Togli dai salvati: " : "Salva: ") + (j ? j.title : (CUR ? CUR.title : "")));
+    b.title = on ? "Salvato: clicca per toglierlo" : "Salva per dopo";
+  });
+  const sb = $("saveBtn"); if (sb && CUR && CUR.uid === uid) { sb.classList.toggle("saved", on); sb.setAttribute("aria-pressed", on ? "true" : "false"); sb.textContent = on ? "★ Salvato" : "☆ Salva"; }
+}
+let CUR = null;  // annuncio aperto nel pannello
+const SAVING = new Set();  // un solo POST in corso per annuncio: clic veloci non mandano richieste fuori ordine
+async function toggleSave(uid) {
+  if (SAVING.has(uid)) return;
+  const j = jobs.find((x) => x.uid === uid) || (CUR && CUR.uid === uid ? CUR : null);
+  if (!j) return;
+  const was = !!j.saved, now = !was;
+  SAVING.add(uid);
+  paintSaved(uid, now); savedCount = Math.max(0, savedCount + (now ? 1 : -1)); updateSavedChip();  // subito, poi si conferma
+  try {
+    const r = await api(`/api/jobs/${uid}/${now ? "save" : "unsave"}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+    if (!r.ok) throw new Error("no");
+    toast(now ? "Annuncio salvato" : "Tolto dai salvati");
+  } catch (e) {
+    paintSaved(uid, was); savedCount = Math.max(0, savedCount + (was ? 1 : -1)); updateSavedChip();  // ripristino
+    toast("Non sono riuscito a salvare", "Riprova tra un attimo");
+  } finally { SAVING.delete(uid); }
+}
+
 /* ---- drawer ---- */
 async function openJob(uid) {
   selected = uid;
@@ -691,6 +757,7 @@ async function openJob(uid) {
   d.replaceChildren(el("div", { class: "loading" }, "Carico l'annuncio completo..."));
   const j = await api("/api/job/" + uid);
   if (selected !== uid) return;
+  CUR = j;
   if (j.status === "new") { post(`/api/job/${uid}/status`, { status: "seen" }); setLocal(uid, "seen"); }
   const inList = jobs.find((x) => x.uid === uid);
   if (inList && inList.avail !== j.avail) {
@@ -698,7 +765,11 @@ async function openJob(uid) {
     if (j.avail === "closed") { toast("Questo annuncio risulta chiuso", j.avail_note); loadStats(); if (!F.closed) { jobs = jobs.filter((x) => x.uid !== uid); renderRows(); } else renderRows(); }
     else renderRows();
   }
-  const act = (label, status, cls = "") => el("button", { class: "btn " + cls, onclick: async () => { await post(`/api/job/${uid}/status`, { status }); setLocal(uid, status); toast(status === "applied" ? "Aggiunto in Candidature" : label); loadStats(); } }, label);
+  const act = (label, status, cls = "") => el("button", { class: "btn " + cls, onclick: async () => {
+    const r = await post(`/api/job/${uid}/status`, { status });
+    if (r && r.saved && !r.ok) { askDiscardSaved(uid); return; }  // salvato: serve una conferma esplicita
+    setLocal(uid, status); toast(status === "applied" ? "Aggiunto in Candidature" : label); loadStats();
+  } }, label);
   const recheck = el("button", { class: "btn sm", onclick: async () => {
     const r = await post(`/api/job/${uid}/check`);
     if (!r.ok) { toast(r.blocked ? "Il sito sta limitando le richieste" : "Verifica non riuscita", r.error); return; }
@@ -723,7 +794,7 @@ async function openJob(uid) {
     el("dt", {}, "Fonte"), el("dd", {}, j.source + (j.country ? ` · ${j.country.toUpperCase()}` : "")),
     el("dt", {}, "Match"), el("dd", { class: "kw" }, j.matched.map((m) => el("span", {}, m))));
   d.replaceChildren(...[
-    el("div", { class: "d-top" }, el("span", { class: "cat" }, el("span", { class: "dot", style: `background:${catColor(j.category)}` }), j.category, " · ", j.id), el("button", { class: "x", onclick: closeDrawer, title: "Chiudi (Esc)" }, "×")),
+    el("div", { class: "d-top" }, el("span", { class: "cat" }, el("span", { class: "dot", style: `background:${catColor(j.category)}` }), j.category, " · ", j.id), el("span", {}, starBtn(j), el("button", { class: "x", onclick: closeDrawer, title: "Chiudi (Esc)", "aria-label": "Chiudi il pannello" }, "×"))),
     el("h2", { class: "d-title" }, j.title),
     el("div", { class: "d-co" }, j.company),
     j.adzuna ? el("div", { style: "margin: -8px 0 14px" }, adzunaBadge()) : null,
@@ -732,9 +803,22 @@ async function openJob(uid) {
     cvExplain(j),
     el("div", { class: "actions" },
       el("a", { class: "btn primary", href: safeUrl(j.url), target: "_blank", rel: "noopener noreferrer" }, "Apri e candidati ↗"),
+      el("button", { class: "btn" + (j.saved ? " saved" : ""), id: "saveBtn", type: "button", "aria-pressed": j.saved ? "true" : "false", onclick: () => toggleSave(uid) }, j.saved ? "★ Salvato" : "☆ Salva"),
       act("Segna candidato", "applied"), act("Scarta", "discarded"), act("Rimetti in nuovi", "new")),
+    el("div", { id: "discardBox" }),
     j.source.startsWith("jooble") ? el("div", { class: "jnote", style: "margin:0 0 14px" }, "Anteprima Jooble: il testo completo è sul sito. Usa \"Apri e candidati\".") : null,
     el("div", { class: "body" }, j.text || "Testo non disponibile.")].filter(Boolean));
+}
+function askDiscardSaved(uid) {  // niente scarto silenzioso di un annuncio salvato
+  const box = $("discardBox"); if (!box) return;
+  const yes = el("button", { class: "btn stop", type: "button", onclick: async () => {
+    await post(`/api/job/${uid}/status`, { status: "discarded", unsave: true });
+    if (jobs.find((x) => x.uid === uid)?.saved || (CUR && CUR.uid === uid && CUR.saved)) { savedCount = Math.max(0, savedCount - 1); updateSavedChip(); }
+    paintSaved(uid, false); setLocal(uid, "discarded"); box.replaceChildren(); toast("Annuncio scartato e tolto dai salvati"); loadJobs();
+  } }, "Scarta e togli dai salvati");
+  const no = el("button", { class: "btn", type: "button", onclick: () => box.replaceChildren() }, "Annulla");
+  box.replaceChildren(el("div", { class: "dconfirm", role: "alert" }, el("span", {}, "Questo annuncio è salvato: scartandolo lo togli dai Salvati."), yes, no));
+  yes.focus();
 }
 function cvExplain(j) {
   const e = j.cv_explain;
@@ -1471,6 +1555,9 @@ async function loadSettings() {
     el("div", { class: "sgroup" }, el("h4", {}, "Guida di primo avvio"),
       el("div", { class: "shint" }, "Rivedi i passi guidati: che lavoro cerchi, dove, le chiavi delle fonti e le ultime scelte. I tuoi annunci e gli altri profili non vengono toccati."),
       el("div", { class: "sbar", style: "margin:0 0 12px" }, el("button", { class: "btn", onclick: () => openOnboarding(true) }, "Rifai la guida"))),
+    el("div", { class: "sgroup" }, el("h4", {}, "Tutorial"),
+      el("div", { class: "shint" }, "Un giro a schede che spiega i pulsanti della pagina principale. Parte da solo una volta dopo la guida di primo avvio."),
+      el("div", { class: "sbar", style: "margin:0 0 12px" }, el("button", { class: "btn", id: "btnTour", onclick: () => { setView("jobs"); setTimeout(() => startTour(), 400); } }, "Rivedi il tutorial"))),
     aboutGroup(d.version),
     el("div", { class: "sfoot" },
       el("div", {}, el("b", {}, "Versione "), d.version),
@@ -1481,7 +1568,7 @@ async function loadSettings() {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA" || (typeof OB !== "undefined" && OB)) return;  // niente scorciatoie della lista mentre si scrive o con la guida aperta
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA" || (typeof OB !== "undefined" && OB) || (typeof TOUR !== "undefined" && TOUR)) return;  // niente scorciatoie della lista mentre si scrive o con la guida o il tutorial aperti
   if (e.key === "Escape") closeDrawer();
   if (e.key === "j" || e.key === "k") {
     const i = jobs.findIndex((j) => j.uid === selected);
@@ -1582,6 +1669,126 @@ function cvBox() {
   return box;
 }
 
+/* ---- tutorial a schede ---- */
+// Ogni passo indica l'elemento da evidenziare (selettore CSS); se manca o non si vede, il passo viene saltato.
+const TOUR_STEPS = [
+  { id: "search", sel: '[data-tour="search"]', title: "Cerca", text: "Scrivi un ruolo o il nome di un'azienda per restringere l'elenco." },
+  { id: "cats", sel: '[data-tour="cats"]', title: "Categorie", text: "Le categorie dividono gli annunci per tipo di lavoro, secondo i profili che hai scelto. Tocca una categoria per vedere solo quelli." },
+  { id: "filters", sel: '[data-tour="filters"], [data-flt-chip]', title: "Filtri e raggio", text: "Qui restringi per azienda, città, modalità di lavoro, contratto e stipendio minimo. Il raggio sceglie un'area intorno a una città." },
+  { id: "row", sel: "#rows tr.row", title: "Gli annunci", text: "Ogni riga è un annuncio. Cliccala per leggere il testo completo nel pannello a destra." },
+  { id: "score", sel: "#rows tr.row .score", title: "Il punteggio", text: "Il punteggio dice quanto l'annuncio assomiglia a ciò che cerchi, in base alle parole chiave del tuo profilo. Più è alto, meglio corrisponde." },
+  { id: "status", sel: "#rows tr.row .st", title: "Lo stato", text: "Il simbolo a sinistra dice a che punto sei: ● nuovo, ○ già aperto, ✓ candidato, ✕ scartato. Lo cambi dal pannello dell'annuncio." },
+  { id: "star", sel: "#rows tr.row .star", title: "Il segnalibro", text: "Salva un annuncio per ritrovarlo dopo: un clic lo salva, un altro lo toglie." },
+  { id: "saved", sel: '[data-tour="saved"]', title: "Salvati", text: "Qui trovi tutti gli annunci salvati, anche quelli che nel frattempo non sono più online." },
+  { id: "search-tab", sel: '.tab[data-v="search"]', title: "Ricerca", text: "Qui decidi cosa cerchi: profili di ricerca, paesi e luoghi." },
+  { id: "apps", sel: '.tab[data-v="apps"]', title: "Candidature", text: "Quando ti candidi, qui tieni il conto: fasi, contatti e promemoria." },
+  { id: "scan", sel: "#btnScan", title: "Scan", text: "Cerca nuovi annunci nelle fonti attive. Puoi anche pianificare la scansione dalle Impostazioni." },
+  { id: "settings", sel: '.tab[data-v="settings"]', title: "Impostazioni", text: "Qui trovi le chiavi delle fonti, il CV, la scansione automatica e le notifiche. Per rivedere questo giro: «Rivedi il tutorial»." },
+];
+let TOUR = null;
+function tourVisible(sel) {
+  const e = document.querySelector(sel);
+  if (!e) return null;
+  const r = e.getBoundingClientRect(), cs = getComputedStyle(e);
+  return r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none" ? e : null;
+}
+function tourSteps() { return TOUR_STEPS.filter((st) => tourVisible(st.sel)); }
+function tourOpen() { return !!TOUR; }
+async function startTour() {
+  if (TOUR || OB) return false;
+  if (tourSteps().length === 0) return false;
+  const prevFocus = document.activeElement;
+  const blk = el("div", { class: "tour-blk" });
+  const hole = el("div", { class: "tour-hole" });
+  const title = el("h3", { id: "tourTitle" }), text = el("p", { id: "tourText" });
+  const count = el("span", { class: "count", "aria-live": "polite" });
+  const back = el("button", { class: "btn", type: "button", onclick: () => tourGo(-1) }, "Indietro");
+  const next = el("button", { class: "btn primary", type: "button", onclick: () => tourGo(1) }, "Avanti");
+  const skip = el("button", { class: "btn", type: "button", onclick: () => tourClose() }, "Salta");
+  const pop = el("div", { class: "tour-pop", id: "tourPop", role: "dialog", "aria-modal": "true", "aria-labelledby": "tourTitle", "aria-describedby": "tourText", tabindex: "-1" },
+    title, text, el("div", { class: "tour-foot" }, count, skip, back, next));
+  TOUR = { id: TOUR_STEPS[0].id, blk, hole, pop, title, text, count, back, next, skip, prevFocus };
+  document.body.append(blk, hole, pop);
+  const app = document.querySelector(".app"); if (app) app.inert = true;
+  TOUR.onKey = (e) => {
+    if (e.key === "Escape") { e.preventDefault(); tourClose(); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); tourGo(1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); tourGo(-1); }
+    else if (e.key === "Enter" && !(e.target && e.target.tagName === "BUTTON")) { e.preventDefault(); tourGo(1); }
+    else if (e.key === "Tab") {  // il focus resta dentro il fumetto
+      const f = [...pop.querySelectorAll("button:not([disabled])")];
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (!pop.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  TOUR.onLayout = () => tourShow();
+  document.addEventListener("keydown", TOUR.onKey, true);
+  window.addEventListener("resize", TOUR.onLayout);
+  window.addEventListener("scroll", TOUR.onLayout, true);
+  post("/api/tutorial/seen", { seen: true }).catch(() => {});  // si ricorda subito: parte una volta sola
+  tourShow(true);
+  return true;
+}
+function tourGo(d) {
+  if (!TOUR) return;
+  const steps = tourSteps();
+  const i = steps.findIndex((st) => st.id === TOUR.id);
+  const j = i < 0 ? 0 : i + d;
+  if (j >= steps.length) return tourClose();
+  TOUR.id = steps[Math.max(0, j)].id;
+  tourShow(true);
+}
+function tourShow(focus) {
+  if (!TOUR) return;
+  const steps = tourSteps();
+  if (!steps.length) return tourClose();
+  let i = steps.findIndex((st) => st.id === TOUR.id);
+  if (i < 0) {  // il passo corrente non si vede più (finestra stretta): si passa al primo visibile che lo segue
+    const order = TOUR_STEPS.map((st) => st.id), cur = order.indexOf(TOUR.id);
+    i = steps.findIndex((st) => order.indexOf(st.id) > cur);
+    if (i < 0) i = steps.length - 1;
+    TOUR.id = steps[i].id;
+  }
+  const st = steps[i], target = tourVisible(st.sel);
+  if (!target) return;
+  if (focus) target.scrollIntoView({ block: "nearest", inline: "nearest" });
+  const r = target.getBoundingClientRect(), pad = 4;
+  Object.assign(TOUR.hole.style, { top: `${r.top - pad}px`, left: `${r.left - pad}px`, width: `${r.width + 2 * pad}px`, height: `${r.height + 2 * pad}px` });
+  TOUR.title.textContent = st.title; TOUR.text.textContent = st.text;
+  TOUR.count.textContent = `${i + 1} di ${steps.length}`;
+  TOUR.back.disabled = i === 0;
+  TOUR.next.textContent = i === steps.length - 1 ? "Fine" : "Avanti";
+  const pw = TOUR.pop.offsetWidth, ph = TOUR.pop.offsetHeight, vw = window.innerWidth, vh = window.innerHeight, gap = 12;
+  let top = r.bottom + pad + gap;
+  if (top + ph > vh - 8) top = r.top - pad - gap - ph;
+  if (top < 8) top = Math.max(8, Math.min(vh - ph - 8, (vh - ph) / 2));  // niente spazio sopra né sotto: al centro
+  const left = Math.max(12, Math.min(vw - pw - 12, r.left));
+  Object.assign(TOUR.pop.style, { top: `${top}px`, left: `${left}px` });
+  if (focus) TOUR.next.focus();
+}
+function tourClose() {
+  if (!TOUR) return;
+  const t = TOUR; TOUR = null;
+  document.removeEventListener("keydown", t.onKey, true);
+  window.removeEventListener("resize", t.onLayout);
+  window.removeEventListener("scroll", t.onLayout, true);
+  t.blk.remove(); t.hole.remove(); t.pop.remove();
+  const app = document.querySelector(".app"); if (app) app.inert = false;
+  const back = t.prevFocus && document.contains(t.prevFocus) ? t.prevFocus : $("btnScan");
+  try { back.focus(); } catch (e) {}
+}
+async function maybeStartTour() {  // dopo la guida di primo avvio, una volta sola
+  try {
+    const o = await api("/api/onboarding");
+    if (o.tutorial_seen) return;
+    await loadJobs();
+    startTour();
+  } catch (e) {}
+}
+
 /* ---- guida di primo avvio ---- */
 const OB_STEPS = ["Benvenuto", "Che lavoro cerchi", "Dove", "Fonti degli annunci", "Ultime scelte", "Il tuo CV (facoltativo)", "Riepilogo e prima ricerca"];
 const OB_FIELD_STEP = { profile: 2, titles: 2, categories: 2, country: 3, home: 3, radius_km: 3, adzuna: 4, jooble: 4, keys: 4, report_dir: 5, schedule: 5 };
@@ -1634,7 +1841,7 @@ function obClose(goToJobs) {
   if (!OB) return;
   try { sessionStorage.removeItem(OB_DRAFT); } catch (e) {}
   clearInterval(OB.timer);
-  const pid = OB.pid;
+  const pid = OB.pid, rerun = OB.rerun;
   OB = null;
   $("onb").hidden = true;
   document.querySelector(".app").inert = false;
@@ -1642,7 +1849,8 @@ function obClose(goToJobs) {
   loadStats();
   if (goToJobs && pid != null) {
     F.profile = String(pid); saveProfile();
-    loadProfiles().then(() => { setView("jobs"); renderToolbar(); loadJobs(); });
+    const first = !rerun;
+    loadProfiles().then(() => { setView("jobs"); renderToolbar(); loadJobs(); if (first) maybeStartTour(); });
   } else {
     loadProfiles().then(() => { if (view === "jobs" || view === "jooble") { renderToolbar(); loadJobs(); } if (view === "search") loadSearch(); });
   }

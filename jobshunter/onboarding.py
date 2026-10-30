@@ -27,6 +27,7 @@ for _name in ("httpx", "httpcore"):
 
 KV_DONE = "onboarding_done"
 KV_PROFILE = "onboarding_profile_id"
+KV_TUTORIAL = "tutorial_seen"  # il tour a schede dopo la guida: "1" = gia' visto o saltato
 MAX_TITLES = 8
 TEST_INTERVAL = 5.0  # secondi tra due prove della chiave
 _CTRL = re.compile(r"[\x00-\x1f\x7f]")
@@ -81,6 +82,7 @@ def state(cfg: dict, db) -> dict:
     az, jo = cfg.get("sources", {}).get("adzuna", {}), cfg.get("sources", {}).get("jooble", {})
     sch = scheduler.current_settings(cfg)
     return {
+        "tutorial_seen": db.kv_get(KV_TUTORIAL) == "1",
         "needed": needed, "done": done, "has_keys": keys, "has_data": data, "has_profiles": has_profiles, "has_settings": has_settings,
         "step_hint": "welcome" if needed else ("rerun" if done else "none"),
         "suggested_report_dir": str(Path.home() / "Documents" / "JobsHunter"),

@@ -366,6 +366,9 @@ def test_gitignore_copre_esportazioni_e_log():
         assert cp._ignored(f, False, rules), f
 
 
+REPO_URL = "https://github.com/" + "Ricc" + "ardoAlb/JobsHunter"
+
+
 def test_nessun_dato_personale_nei_file_pubblicabili():
     import check_publishable as cp
 
@@ -380,6 +383,7 @@ def test_nessun_dato_personale_nei_file_pubblicabili():
         except UnicodeDecodeError:
             continue
         for n, ln in enumerate(t.splitlines(), 1):
+            ln = ln.replace(REPO_URL, "")  # l'indirizzo pubblico della repo contiene il nome utente GitHub: e' voluto, solo quello
             m = pat.search(ln)
             if m and not (m.group(0).lower() == "sicilia" and rel.endswith(("dedupe.py", "meta.py", "scoring.py"))):
                 hits.append(f"{rel}:{n}: {m.group(0)}")
