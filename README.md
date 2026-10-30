@@ -346,7 +346,7 @@ Serve **Python 3.11 o superiore**. JobsHunter gira da sorgente su **macOS**, **W
 ### macOS e Linux
 
 ```bash
-git clone <indirizzo-del-repository> jobshunter
+git clone https://github.com/RiccardoAlb/JobsHunter.git jobshunter
 cd jobshunter
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
@@ -359,7 +359,7 @@ cp config.example.toml config.toml
 ### Windows (PowerShell o Prompt dei comandi)
 
 ```bat
-git clone <indirizzo-del-repository> jobshunter
+git clone https://github.com/RiccardoAlb/JobsHunter.git jobshunter
 cd jobshunter
 py -3 -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.txt
