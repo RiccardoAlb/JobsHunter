@@ -43,7 +43,7 @@ def test_release_permessi_minimi_e_scrittura_solo_nel_job_della_bozza():
 
 
 def test_release_matrice_python_fisso_e_cache():
-    for runner in ("macos-14", "windows-latest", "ubuntu-22.04", "ubuntu-22.04-arm"):
+    for runner in ("macos-15", "windows-latest", "ubuntu-22.04", "ubuntu-22.04-arm"):
         assert f"os: {runner}" in RELEASE
     ids = re.findall(r"^\s+id: (\S+)$", RELEASE, re.M)
     assert ids == ["macos", "windows", "linux-amd64", "linux-arm64"] and "pacchetto-${{ matrix.id }}" in RELEASE  # nomi di artefatto distinti
