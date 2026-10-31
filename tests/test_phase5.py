@@ -32,7 +32,7 @@ def _load_script(name):
 
 # ------------------------------------------------------------------------------ nome e versione ----
 def test_nome_e_versione():
-    assert APP_NAME == "JobsHunter" and __version__ == "0.3.0"
+    assert APP_NAME == "JobsHunter" and __version__ == "0.4.0"
     meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert meta["name"] == "jobshunter" and meta["version"] == __version__
     assert meta["requires-python"] == ">=3.11" and meta["classifiers"] and meta["description"]

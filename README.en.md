@@ -1,17 +1,46 @@
-# JobsHunter
+<p align="center"><img src="branding/JobsHunter.png" alt="JobsHunter logo" width="140"></p>
 
-[Italiano](README.md) | **English**
+<h1 align="center">JobsHunter</h1>
 
-A personal radar for job postings: **for any field and in several countries**, running locally on your Mac. It started out for cybersecurity
-(Blue and Red team) and sysadmins; today a search is set up with **profiles** (cybersecurity is one of the types, but you can look for "nurse",
-"backend developer", "forklift operator"...). It collects postings from several sources, scores them, removes duplicates, checks that they are still open,
-helps you follow your applications and writes a Markdown report (for example for Obsidian).
+<p align="center"><a href="README.md">Italiano</a> | <b>English</b></p>
 
-It runs on your computer, with your own data and keys, no account and no telemetry. You use it as a **Mac app**, from a GUI in the browser, or from the command line.
-The interface and the messages of the program are in Italian; this document and the code structure are meant to be readable in English.
+<p align="center">A personal radar for job postings, running locally on your computer: macOS, Windows and Linux, for any field and in several countries.</p>
 
-> **Not affiliated** with Adzuna, Jooble, LinkedIn or Indeed. Read the [Disclaimer](#disclaimer) before using it.
-> License: **MIT** (see [License](#license)). Version 0.3.0.
+> **Not affiliated** with Adzuna, Jooble, LinkedIn or Indeed: read the [Disclaimer](#disclaimer). License **MIT** (see [License](#license)). Version 0.4.0.
+> Your data and keys stay yours, no account and no telemetry. The interface and the messages of the program are in Italian; this document is in English.
+
+## Get started in a minute
+
+**A. Download the package (no Python to install).** From version 0.4.0 the project's [Releases](https://github.com/RiccardoAlb/JobsHunter/releases) page offers one package per system,
+and it **already contains its own Python**: unzip it and open it.
+
+| System | File | Then |
+|---|---|---|
+| macOS (Apple Silicon) | `JobsHunter-<version>-macOS-arm64.zip` | drag `JobsHunter.app` into Applications, on first launch right-click, **Open** |
+| Windows 10/11 | `JobsHunter-<version>-Windows-x64.zip` (or the `...-Setup.exe` installer) | open `JobsHunter.exe`; if a warning appears: **More info**, **Run anyway** |
+| Linux | `.deb` packages and AppImage in preparation | for now use route B |
+
+The packages are not signed or notarized: the warnings and the SHA256 hash check are explained in [Download](#download).
+
+**B. From source** (needs Python 3.11 or later; if it is missing, `./jh` and `jh.bat` say so and offer to install it, asking for confirmation):
+
+```bash
+# macOS and Linux
+git clone https://github.com/RiccardoAlb/JobsHunter.git jobshunter
+cd jobshunter
+./jh setup
+./jh gui
+```
+
+```bat
+REM Windows (PowerShell or Command Prompt)
+git clone https://github.com/RiccardoAlb/JobsHunter.git jobshunter
+cd jobshunter
+jh.bat setup
+jh.bat gui
+```
+
+`setup` creates the `.venv` environment and installs the libraries (it asks before downloading). On first launch a guide walks you through. Details: [Installation](#installation).
 
 ![The list of postings](docs/screenshots/01-lista.png)
 
@@ -22,23 +51,24 @@ The interface and the messages of the program are in Italian; this document and 
 1. [What it is for](#what-it-is-for)
 2. [Search profiles and countries](#search-profiles-and-countries)
 3. [How it works](#how-it-works)
-4. [Installation](#installation)
-5. [Configuration](#configuration)
-6. [Usage](#usage)
-7. [First run](#first-run)
-8. [Customising the score](#customising-the-score)
-9. [Reports for Obsidian](#reports-for-obsidian)
-10. [Mac app](#mac-app)
-11. [Automatic scans](#automatic-scans)
-12. [Security and privacy](#security-and-privacy)
-13. [Project status and next steps](#project-status-and-next-steps)
-14. [Known limits](#known-limits)
-15. [Project layout](#project-layout)
-16. [Troubleshooting](#troubleshooting)
-17. [Development and tests](#development-and-tests)
-18. [Notes on sources and credits](#notes-on-sources-and-credits)
-19. [Disclaimer](#disclaimer)
-20. [License](#license)
+4. [Download](#download)
+5. [Installation](#installation)
+6. [Configuration](#configuration)
+7. [Usage](#usage)
+8. [First run](#first-run)
+9. [Customising the score](#customising-the-score)
+10. [Reports for Obsidian](#reports-for-obsidian)
+11. [Mac app](#mac-app)
+12. [Automatic scans](#automatic-scans)
+13. [Security and privacy](#security-and-privacy)
+14. [Project status and next steps](#project-status-and-next-steps)
+15. [Known limits](#known-limits)
+16. [Project layout](#project-layout)
+17. [Troubleshooting](#troubleshooting)
+18. [Development and tests](#development-and-tests)
+19. [Notes on sources and credits](#notes-on-sources-and-credits)
+20. [Disclaimer](#disclaimer)
+21. [License](#license)
 
 ---
 
@@ -284,7 +314,7 @@ link stays, because its pages are protected by anti-bot systems and are **not by
 At the first opening, if there are no postings, keys or profiles of yours yet, a full-screen **guided procedure** appears, in six steps (with a progress bar, a *Back* button and *Skip the guide*). Whoever already uses the app never sees
 it on its own: the guide only opens if `onboarding_done` is missing **and** there are no postings, applications, scans, keys or user-created profiles (the automatically created Cybersecurity profile, if never edited, does not count).
 
-1. **Welcome:** what the app does, everything stays on the Mac, no account.
+1. **Welcome:** what the app does, everything stays on your computer, no account.
 2. **What job you want:** a kind of job (preset) or up to 8 freely written titles, experience level, "also search internships".
 3. **Where:** country, home city (with offline suggestions), radius, remote work.
 4. **Sources:** without keys only the free sources work (Arbeitnow, RemoteOK, Remotive), with their limits explained. Adzuna (recommended, free) is explained in three steps with the link to the site, the *Application ID* and
@@ -302,35 +332,65 @@ settings you touched are updated; other profiles and postings stay intact. Every
 
 Service interface (`jobshunter/gui/app.py`, logic in `jobshunter/onboarding.py`): `GET /api/onboarding`, `POST /api/onboarding/test-adzuna`, `/estimate` (checks and estimates without saving), `/complete`, `/skip`.
 
+## Download
+
+[Back to "Get started in a minute"](#get-started-in-a-minute). If you do not have Python you can download a ready-made package from the project's **Releases** page on GitHub, open it and use JobsHunter. The packages are **unsigned
+and not notarized** (the author has no Apple Developer account and no Windows certificate): that is why the system shows a warning on first launch, explained below.
+The code is public and every file has its SHA256 hash (`SHA256SUMS.txt`) so you can check it is the one built from this repository's code.
+
+| System | File | What to do |
+|---|---|---|
+| macOS (Apple Silicon) | `JobsHunter-<version>-macOS-arm64.zip` | unzip, drag `JobsHunter.app` into Applications |
+| Windows 10/11 (x64) | `JobsHunter-<version>-Windows-x64.zip` (folder with `JobsHunter.exe`) or `JobsHunter-<version>-Windows-x64-Setup.exe` (per-user installer, no administrator, if present in the release) | unzip and open `JobsHunter.exe`, or run the installer |
+
+Your **data** (postings, applications, CV, keys) never lives inside the package: it stays in the user folders listed in [Where the data lives](#where-the-data-lives),
+so you can move, update or delete the program without losing it. On first launch, with no `config.toml`, the program creates one from the bundled example file.
+
+**macOS.** The Mac says it "cannot verify the developer" because the app is not notarized. On first launch right-click `JobsHunter.app`, choose **Open**, then **Open** again;
+or go to System Settings, **Privacy & Security**, and press **Open Anyway**. After the first time it opens normally. Check the hash: `shasum -a 256 JobsHunter-<version>-macOS-arm64.zip`.
+Intel Mac build: not provided.
+
+**Windows.** SmartScreen may say "Windows protected your PC" because the executable is not signed: press **More info**, then **Run anyway**. Check the hash in PowerShell:
+`Get-FileHash .\JobsHunter-<version>-Windows-x64.zip -Algorithm SHA256` and compare with `SHA256SUMS.txt`. The native window uses WebView2 (already on Windows 11; Windows 10 needs Microsoft's
+"WebView2 Runtime"); if it is missing the app opens in the browser.
+
+**Linux.** Linux packages (`.deb` and AppImage) are in preparation and are not yet in the release: for now, run from source (see [Installation](#installation)).
+
+**What has been tried.** The macOS package was built and checked with the `--smoke` test (it starts the packaged program, checks the page and API, uses no network); the test on a real Windows machine is in progress and until it is done it should be treated as not yet tried.
+The scheduled scan from the package runs the package's executable with `--scan-once`.
+To build the packages yourself: `packaging/build_mac.sh` and `packaging/build_windows.ps1`; to make a release: [docs/RELEASING.md](docs/RELEASING.md).
+
 ## Installation
 
+[Back to "Get started in a minute"](#get-started-in-a-minute). This is the **from source** route; the ready-made packages (which need no Python) are in [Download](#download).
 You need **Python 3.11 or later**. JobsHunter runs from source on **macOS**, **Windows** and **Linux**; the native window and the automatic scan depend on the system (see the table below).
+
+`./jh` and `jh.bat` check that Python 3.11+ is there (they try `python3.13`, `python3.12`, `python3.11`, `python3`, `python`; on Windows `py -3.13`, `-3.12`, `-3.11`, `-3`, `python`).
+If it is missing or too old they say what is needed and **ask for confirmation** (`[s/N]`, "s" = yes) before installing anything: Windows `winget install -e --id Python.Python.3.13 --scope user`
+(without winget they open the download page and download nothing themselves), macOS `brew install python@3.13` (without Homebrew, the download page), Linux `apt`, `dnf` or `pacman` with `sudo`
+(you type the password yourself in your own terminal). Without an interactive terminal they print the message and exit with an error: they never install silently. After installing you may need to reopen the terminal.
 
 ### macOS and Linux
 
 ```bash
-git clone <repository-address> jobshunter
+git clone https://github.com/RiccardoAlb/JobsHunter.git jobshunter
 cd jobshunter
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-# (optional: on first run config.toml is created automatically from the example)
-cp config.example.toml config.toml
-./jh scan
+./jh setup
 ./jh gui
 ```
 
 ### Windows (PowerShell or Command Prompt)
 
 ```bat
-git clone <repository-address> jobshunter
+git clone https://github.com/RiccardoAlb/JobsHunter.git jobshunter
 cd jobshunter
-py -3 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-REM (optional: created automatically on first run)
-copy config.example.toml config.toml
-jh.bat scan
+jh.bat setup
 jh.bat gui
 ```
+
+`setup` creates `.venv` if missing and installs `requirements.txt` (it asks before downloading; `./jh setup --yes` gives the consent in advance). If you run `./jh gui` without a `.venv`, it offers to run `setup`.
+If you prefer doing it by hand: `python3 -m venv .venv` and `.venv/bin/pip install -r requirements.txt` (on Windows `py -3 -m venv .venv` and `.venv\Scripts\python.exe -m pip install -r requirements.txt`).
+On first launch `config.toml` is created automatically from the example file (`config.example.toml`).
 
 `jh.bat` is the same as `./jh`: it uses `.venv\Scripts\python.exe` and does not depend on the current folder. `python -m jobshunter ...` works everywhere.
 In `config.toml` paths on Windows use single quotes (`dir = 'D:\Work\Reports'`) or forward slashes (`D:/Work/Reports`): double quotes treat `\` as a special character.
@@ -409,7 +469,7 @@ Important notes:
 Every outgoing request introduces itself with a declared name, **never as a browser**:
 
 ```
-JobsHunter/0.3.0 (+personal job search tool; contact: you@example.org)
+JobsHunter/0.4.0 (+personal job search tool; contact: you@example.org)
 ```
 
 The contact is optional (an email or the project address) and is set in `[net] contact` or in Settings, "Advanced, network" block; with `[net] user_agent` you replace the whole header. If a site refuses requests (HTTP 403 or 429)
@@ -597,7 +657,7 @@ JobsHunter can search on its own, even with the app closed, and tell you when th
   languages (St. Gallen / Sankt Gallen), typos in short words. This is an accepted limit (the risk is one more duplicate to look at, never a posting hidden by mistake).
 - **RAL:** the filter is always in euros; salaries in other currencies count as "not stated". A little over one posting in four states the RAL.
 - The **radius** uses straight-line distance and recognises cities above 15,000 inhabitants; smaller places stay "without distance" unless the posting also gives the province.
-- **macOS only**, and the app is built for **Apple Silicon** and signed "ad hoc": on another Mac security warnings appear (see Mac app).
+- The macOS package is for **Apple Silicon** and is not notarized (security warnings on first launch, see [Download](#download)); Windows and Linux are new and not yet tried thoroughly on real machines (see the table in Installation).
 - Scores are heuristic: they help order, not judge whether a job is right for you.
 
 ## Project layout
@@ -605,6 +665,7 @@ JobsHunter can search on its own, even with the app closed, and tell you when th
 ```
 jobshunter/
 +-- jh                      # launcher (does not depend on the package install)
++-- packaging/              # package building (PyInstaller, per-system scripts, Windows installer, smoke test)
 +-- build_mac_app.sh        # builds and installs JobsHunter.app
 +-- scripts/                # check_publishable.py, gen_third_party.py, demo_server.py, take_screenshots.py, remove_old_app.sh
 +-- docs/screenshots/       # GUI screenshots (invented data)

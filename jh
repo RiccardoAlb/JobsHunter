@@ -1,6 +1,11 @@
 #!/bin/sh
 # Launcher: non dipende dall'install editable (macOS puo' nascondere il .pth) ne' dalla cartella corrente,
 # e funziona anche chiamato tramite un collegamento simbolico o un alias.
+#
+# Controlla che ci sia Python 3.11 o superiore. Se manca, spiega cosa fare e CHIEDE CONFERMA prima di installare qualsiasi cosa
+# (mai installazioni silenziose, mai scaricare ed eseguire file). Senza un terminale interattivo non installa nulla: stampa e esce con 1.
+#   ./jh setup [--yes]   crea .venv se manca e installa requirements.txt (--yes = conferma di scaricare le dipendenze)
+# I pacchetti scaricabili (.app, .exe, .deb) contengono il proprio Python: questo controllo serve solo a chi usa il codice sorgente.
 SELF="$0"
 while [ -h "$SELF" ]; do
   LINK="$(readlink "$SELF")"
@@ -10,4 +15,142 @@ while [ -h "$SELF" ]; do
   esac
 done
 DIR="$(cd "$(dirname "$SELF")" && pwd)"
-PYTHONPATH="$DIR${PYTHONPATH:+:$PYTHONPATH}" exec "$DIR/.venv/bin/python" -m jobshunter "$@"
+
+say() { printf '%s\n' "$*" >&2; }
+
+# Python (comando o percorso in $1) e' alla versione 3.11 o superiore?
+py_ok() {
+  "$1" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' >/dev/null 2>&1
+}
+
+# Cerca un Python adatto, dal piu' nuovo: il risultato e' in $FOUND
+find_python() {
+  for c in python3.13 python3.12 python3.11 python3 python; do
+    p="$(command -v "$c" 2>/dev/null)" || continue
+    [ -n "$p" ] || continue
+    if py_ok "$p"; then FOUND="$p"; return 0; fi
+  done
+  return 1
+}
+
+# Terminale interattivo? (JH_FORCE_INTERACTIVE serve solo ai test: la risposta va comunque digitata)
+interactive() {
+  [ -n "${JH_FORCE_INTERACTIVE:-}" ] || { [ -t 0 ] && [ -t 2 ]; }
+}
+
+# Domanda s/N: successo solo con una risposta affermativa esplicita
+ask() {
+  printf '%s [s/N] ' "$1" >&2
+  read -r ANSWER || return 1
+  case "$ANSWER" in s | S | si | SI | Si | sì | y | Y | yes) return 0 ;; esac
+  return 1
+}
+
+explain_missing_python() {
+  say "JobsHunter da sorgente ha bisogno di Python 3.11 o superiore, e qui non l'ho trovato (o e' troppo vecchio)."
+  say "Cercati, in quest'ordine: python3.13, python3.12, python3.11, python3, python."
+  say "I pacchetti scaricabili (.app, .exe, .deb) contengono il proprio Python e non ne hanno bisogno."
+}
+
+# Propone (e solo con una conferma esplicita esegue) l'installazione di Python
+offer_python_install() {
+  SUDO=""
+  if [ "$(id -u 2>/dev/null)" != "0" ] && command -v sudo >/dev/null 2>&1; then SUDO="sudo"; fi
+  case "$(uname -s 2>/dev/null)" in
+    Darwin)
+      if command -v brew >/dev/null 2>&1; then
+        say "Comando per installarlo: brew install python@3.13"
+        interactive || { say "Terminale non interattivo: non installo nulla. Esegui il comando qui sopra e riapri il terminale."; return 1; }
+        ask "Vuoi installarlo ora?" || { say "Va bene, non installo nulla."; return 1; }
+        brew install python@3.13 || return 1
+      else
+        say "Homebrew non c'e'. Scarica Python da https://www.python.org/downloads/macos/ e installalo."
+        interactive || { say "Terminale non interattivo: non apro nulla."; return 1; }
+        ask "Vuoi che apra la pagina di download nel browser?" || return 1
+        if command -v open >/dev/null 2>&1; then open "https://www.python.org/downloads/macos/"; fi
+        return 1
+      fi
+      ;;
+    *)
+      PM=""
+      if command -v apt-get >/dev/null 2>&1; then PM="apt"; CMD="apt-get install -y python3 python3-venv python3-pip"
+      elif command -v dnf >/dev/null 2>&1; then PM="dnf"; CMD="dnf install -y python3.13"
+      elif command -v pacman >/dev/null 2>&1; then PM="pacman"; CMD="pacman -S --noconfirm python"
+      fi
+      if [ -z "$PM" ]; then
+        say "Non conosco il gestore di pacchetti di questo sistema: installa Python 3.11 o superiore con il suo (o da https://www.python.org/downloads/)."
+        return 1
+      fi
+      say "Comando per installarlo: ${SUDO:+$SUDO }$CMD"
+      say "(Su alcune distribuzioni la versione nei pacchetti e' piu' vecchia della 3.11: in quel caso usa i pacchetti scaricabili o installa Python da python.org.)"
+      interactive || { say "Terminale non interattivo: non installo nulla. Esegui il comando qui sopra e riprova."; return 1; }
+      ask "Vuoi installarlo ora? La password di sudo, se serve, la digiti tu in questo terminale." || { say "Va bene, non installo nulla."; return 1; }
+      case "$PM" in
+        apt) $SUDO apt-get install -y python3 python3-venv python3-pip || return 1 ;;
+        dnf) $SUDO dnf install -y python3.13 || return 1 ;;
+        pacman) $SUDO pacman -S --noconfirm python || return 1 ;;
+      esac
+      ;;
+  esac
+  return 0
+}
+
+# Crea .venv (se manca) e installa le dipendenze; $1 = --yes per non chiedere conferma del download
+do_setup() {
+  if [ ! -x "$DIR/.venv/bin/python" ]; then
+    say "Creo l'ambiente .venv con $FOUND ..."
+    "$FOUND" -m venv "$DIR/.venv" || { say "Non sono riuscito a creare .venv. Su Debian/Ubuntu serve: sudo apt install python3-venv"; return 1; }
+  fi
+  if [ "$1" != "--yes" ]; then
+    interactive || { say "Terminale non interattivo: non scarico le dipendenze. Usa ./jh setup --yes per confermare."; return 1; }
+    ask "Ora scarico da internet le librerie elencate in requirements.txt (pip install). Continuo?" || { say "Va bene, mi fermo qui."; return 1; }
+  fi
+  "$DIR/.venv/bin/python" -m pip install -r "$DIR/requirements.txt" || { say "Installazione delle librerie non riuscita."; return 1; }
+  say "Fatto. Prova: ./jh gui"
+  return 0
+}
+
+run_jobshunter() {
+  PYTHONPATH="$DIR${PYTHONPATH:+:$PYTHONPATH}" exec "$DIR/.venv/bin/python" -m jobshunter "$@"
+}
+
+SETUP_ARG=""
+if [ "$1" = "setup" ]; then
+  SETUP_ARG="$2"
+  case "$SETUP_ARG" in "" | --yes) ;; *) say "Uso: ./jh setup [--yes]"; exit 2 ;; esac
+fi
+
+# 1) strada normale: .venv presente e con Python adatto
+if [ -x "$DIR/.venv/bin/python" ]; then
+  if py_ok "$DIR/.venv/bin/python"; then
+    if [ "$1" != "setup" ]; then run_jobshunter "$@"; fi
+    FOUND="$DIR/.venv/bin/python"
+    do_setup "$SETUP_ARG" || exit 1
+    exit 0
+  fi
+  say "L'ambiente .venv usa un Python piu' vecchio della 3.11. Cancella la cartella .venv e lancia ./jh setup."
+  exit 1
+fi
+
+# 2) niente .venv: serve un Python adatto per crearlo
+if ! find_python; then
+  explain_missing_python
+  offer_python_install || exit 1
+  if ! find_python; then
+    say "Installato, ma non lo trovo ancora nel PATH: chiudi e riapri il terminale, poi rilancia ./jh setup."
+    exit 1
+  fi
+fi
+
+if [ "$1" = "setup" ]; then
+  do_setup "$SETUP_ARG" || exit 1
+  exit 0
+fi
+
+say "Manca l'ambiente .venv di JobsHunter (trovato Python: $FOUND)."
+if interactive && ask "Vuoi prepararlo ora con ./jh setup?"; then
+  do_setup "" || exit 1
+  run_jobshunter "$@"
+fi
+say "Esegui ./jh setup per prepararlo."
+exit 1

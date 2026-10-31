@@ -1,0 +1,150 @@
+name: Release
+
+# Costruisce i pacchetti per macOS e Windows (Linux: tappa successiva) da un tag `vX.Y.Z` e prepara una BOZZA di release.
+# Il workflow NON pubblica mai la release: la pubblica solo una persona, dopo aver scaricato e provato i file (vedi docs/RELEASING.md).
+# Nessun segreto, nessun CDN. Le azioni sono bloccate a una versione precisa.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      bozza:
+        description: "Crea la bozza di release con i pacchetti (se tolta, il workflow costruisce e basta)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Pacchetto (${{ matrix.nome }})
+    # i fork non producono pacchetti
+    if: github.event.repository.fork == false
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nome: macOS arm64
+            os: macos-14
+            sistema: macos
+          - nome: Windows x64
+            os: windows-latest
+            sistema: windows
+          # Linux (.deb, AppImage): tappa successiva, si aggiunge qui con una voce in piu' e un passo "Pacchetto Linux"
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Controllo che il tag coincida con la versione del programma
+        if: github.ref_type == 'tag'
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VER="$(python -c 'import jobshunter; print(jobshunter.__version__)')"
+          if [ "$TAG" != "v$VER" ]; then
+            echo "Il tag ($TAG) non coincide con la versione del programma (v$VER): aggiorna pyproject.toml, jobshunter/__init__.py e CHANGELOG.md" >&2
+            exit 1
+          fi
+
+      - name: Dipendenze
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Pacchetto macOS (costruzione e test di fumo)
+        if: matrix.sistema == 'macos'
+        shell: bash
+        run: |
+          python -m pip install -r requirements-mac.txt
+          PY="$(command -v python)" JH_WORK="$RUNNER_TEMP/jh-work" sh packaging/build_mac.sh --out dist-release
+
+      - name: Installer di Windows (Inno Setup, facoltativo)
+        if: matrix.sistema == 'windows'
+        continue-on-error: true
+        shell: pwsh
+        run: choco install innosetup --version=6.2.2 -y --no-progress
+
+      - name: Pacchetto Windows (costruzione e test di fumo)
+        if: matrix.sistema == 'windows'
+        shell: pwsh
+        env:
+          JH_WORK: ${{ runner.temp }}\jh-work
+        run: |
+          python -m pip install -r requirements-gui.txt
+          ./packaging/build_windows.ps1 -Out dist-release -Python python
+
+      - name: Elenco e dimensioni dei file
+        shell: bash
+        run: ls -l dist-release
+
+      - uses: actions/upload-artifact@v4.6.2
+        with:
+          name: pacchetto-${{ matrix.sistema }}
+          path: dist-release/*
+          if-no-files-found: error
+          retention-days: 14
+
+  bozza:
+    name: Bozza di release
+    needs: build
+    # la bozza si crea da un tag, oppure a mano con la casella "bozza" attiva; mai su un fork
+    if: github.event.repository.fork == false && (github.ref_type == 'tag' || inputs.bozza)
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write   # solo qui: serve a creare la release in BOZZA
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.6.0
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@v4.3.0
+        with:
+          pattern: pacchetto-*
+          merge-multiple: true
+          path: dist-release
+
+      - name: Hash SHA256 di tutti i file
+        working-directory: dist-release
+        run: |
+          sha256sum JobsHunter-* | tee SHA256SUMS.txt
+
+      - name: Note dal CHANGELOG
+        run: |
+          VER="$(python -c 'import jobshunter; print(jobshunter.__version__)')"
+          python packaging/release_notes.py "$VER" > note.md
+          {
+            echo
+            echo "Pacchetti non firmati e non notarizzati: vedi la sezione Scarica del README per come aprirli."
+            echo "Controlla i file con SHA256SUMS.txt."
+          } >> note.md
+
+      - name: Crea la BOZZA (mai pubblicata dal workflow)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          VER="$(python -c 'import jobshunter; print(jobshunter.__version__)')"
+          TAG="v$VER"
+          if [ "$REF_TYPE" = "tag" ] && [ "$REF_NAME" != "$TAG" ]; then
+            echo "Il tag ($REF_NAME) non coincide con la versione ($TAG)" >&2
+            exit 1
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "La release $TAG esiste gia': non la tocco. Cancella la bozza vecchia a mano e rilancia." >&2
+            exit 1
+          fi
+          gh release create "$TAG" --draft --target "$SHA" --title "JobsHunter $VER" --notes-file note.md dist-release/*

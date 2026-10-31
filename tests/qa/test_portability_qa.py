@@ -1470,10 +1470,15 @@ def test_jh_bat_lettura_riga_per_riga():
     assert "setlocal" in text.lower() and "exit /b %ERRORLEVEL%" in text
     for l in (x.strip() for x in lines):
         if l.lower().startswith("set ") and "=" in l:
-            assert l[4:].startswith('"') and l.rstrip().endswith('"'), f"set senza virgolette: {l}"  # sicuro con spazi, & e ) nel percorso
+            body = l[4:]
+            if body.lower().startswith("/p "):  # domanda all'utente (controllo di Python, fase 9): set /p "VAR=testo"
+                body = body[3:]
+            assert body.startswith('"') and l.rstrip().endswith('"'), f"set senza virgolette: {l}"  # sicuro con spazi, & e ) nel percorso
         if re.search(r"%DIR%|%PY%", l) and not l.lower().startswith(("set ", "rem")):
             assert re.search(r'"%(DIR|PY)%[^"]*"', l), f"percorso senza virgolette: {l}"
-    assert not re.search(r"(?m)^\s*(goto|call)\s", text, re.I)
+    # fase 9: jh.bat controlla Python e puo' chiedere di installarlo, quindi usa goto/call; l'installazione parte solo dopo una risposta affermativa
+    assert "winget install -e --id Python.Python.3.13 --scope user" in text and 'set /p "ANS=' in text
+    assert not re.search(r"(?i)(curl|wget|powershell|Invoke-WebRequest|bitsadmin|certutil)", text)  # nessun download ed esecuzione di file
 
 
 def test_jh_sh_percorsi_con_spazi_e_link(tmp_path):

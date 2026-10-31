@@ -131,6 +131,28 @@ def gui(cfg, port, no_browser):
     serve(cfg["_config_path"], port, open_browser=not no_browser)
 
 
+@main.command("setup")
+@click.option("--yes", is_flag=True, help="Accettato per compatibilita' con ./jh setup (qui non si scarica nulla)")
+def setup_cmd(yes):
+    """Controlla l'ambiente (Python e librerie). Per CREARE .venv e installare le librerie usa il launcher: ./jh setup (jh.bat setup)."""
+    import importlib
+
+    ok = sys.version_info >= (3, 11)
+    console.print(f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}: " + ("[green]ok[/]" if ok else "[red]serve la 3.11 o superiore[/]"))
+    missing = []
+    for mod in ("rich", "click", "httpx", "bs4", "lxml", "flask", "geonamescache", "pypdf", "cryptography"):
+        try:
+            importlib.import_module(mod)
+        except ImportError:
+            missing.append(mod)
+    if missing:
+        console.print("[red]Librerie mancanti:[/] " + ", ".join(missing) + ". Esegui ./jh setup (su Windows jh.bat setup) dalla cartella del progetto.")
+    else:
+        console.print("Librerie: [green]tutte presenti[/]. Prova: ./jh gui")
+    if not ok or missing:
+        sys.exit(1)
+
+
 @main.command("app")
 def app_window():
     """Apre la finestra nativa (pywebview); se manca o non parte, apre il browser predefinito con lo stesso motore locale."""

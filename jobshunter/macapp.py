@@ -50,7 +50,7 @@ class Bridge:
     """Funzioni native richiamabili dalla pagina (window.pywebview.api.*)."""
 
     def __init__(self) -> None:
-        self.window = None
+        self._window = None  # con il trattino basso: pywebview non esamina gli attributi privati (su Windows `window.native` rimanda a se stesso all'infinito)
 
     def open_external(self, url: str) -> bool:
         """Apre un link nel browser predefinito (solo http/https)."""
@@ -59,7 +59,7 @@ class Bridge:
     def choose_folder(self) -> str | None:
         import webview
 
-        res = self.window.create_file_dialog(webview.FOLDER_DIALOG)
+        res = self._window.create_file_dialog(webview.FOLDER_DIALOG)
         return res[0] if res else None
 
     def open_folder(self, kind: str) -> bool:
@@ -168,12 +168,12 @@ def main() -> None:
     bridge = Bridge()
 
     def close_window() -> None:  # SIGINT/SIGTERM con la finestra aperta: la si chiude e webview.start() ritorna
-        if getattr(bridge, "window", None) is not None:
-            bridge.window.destroy()
+        if getattr(bridge, "_window", None) is not None:
+            bridge._window.destroy()
 
     stopsignals.install(close_window)
     try:
-        bridge.window = webview.create_window(
+        bridge._window = webview.create_window(
             APP_NAME, f"http://127.0.0.1:{port}/", js_api=bridge,
             width=1320, height=860, min_size=(960, 620), background_color="#0b0b0c",
         )

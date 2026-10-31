@@ -36,4 +36,6 @@ docs/phase*_status.md
 # build dell'app Mac
 dist/
 build/
+dist-release/
 *.spec
+!packaging/JobsHunter.spec

@@ -230,6 +230,13 @@ def scan_command() -> list[str]:
 
 
 # ---- Windows: Utilita' di pianificazione ----
+def _task_workdir() -> str:
+    """Cartella di lavoro dell'attivita': in un pacchetto e' quella dell'eseguibile (esiste di sicuro), da sviluppo il progetto."""
+    if getattr(sys, "frozen", False):
+        return str(Path(sys.executable).parent)
+    return str(settings.SOURCE_ROOT)
+
+
 def _task_xml(kind: str, times: list[tuple[int, int]], hours: int, now: datetime | None = None) -> str:
     now = now or datetime.now()
     day = now.strftime("%Y-%m-%d")
@@ -254,7 +261,7 @@ def _task_xml(kind: str, times: list[tuple[int, int]], hours: int, now: datetime
             "<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries><StartWhenAvailable>true</StartWhenAvailable>"
             "<ExecutionTimeLimit>PT1H</ExecutionTimeLimit><Enabled>true</Enabled></Settings>"
             f'<Actions Context="Author"><Exec><Command>{_xml_escape(cmd[0])}</Command><Arguments>{_xml_escape(args)}</Arguments>'
-            f"<WorkingDirectory>{_xml_escape(str(settings.SOURCE_ROOT))}</WorkingDirectory></Exec></Actions></Task>")
+            f"<WorkingDirectory>{_xml_escape(_task_workdir())}</WorkingDirectory></Exec></Actions></Task>")
 
 
 def _install_schtasks(kind, times, hours) -> None:

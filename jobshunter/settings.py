@@ -39,7 +39,13 @@ def home() -> Path:
 
             logging.getLogger("jobshunter").warning("JOBHUNTER_HOME e' la variabile del vecchio nome: usa JOBSHUNTER_HOME")
             print("Avviso: JOBHUNTER_HOME e' la variabile del vecchio nome (JobHunter); usa JOBSHUNTER_HOME.", file=_sys.stderr)
-    return Path(env).expanduser() if env else SOURCE_ROOT
+    if env:
+        return Path(env).expanduser()
+    if getattr(sys, "frozen", False):  # programma impacchettato: i dati stanno nella cartella dell'utente, MAI accanto al programma
+        from . import osinfo
+
+        return osinfo.data_dir()
+    return SOURCE_ROOT
 
 
 def resolve_path(p: str | Path) -> Path:

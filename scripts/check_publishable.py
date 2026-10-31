@@ -67,25 +67,33 @@ def _gitignore_rules(root: Path) -> list[str]:
     f = root / ".gitignore"
     if not f.exists():
         return []
-    return [ln.strip() for ln in f.read_text(encoding="utf-8").splitlines() if ln.strip() and not ln.startswith(("#", "!"))]
+    return [ln.strip() for ln in f.read_text(encoding="utf-8").splitlines() if ln.strip() and not ln.startswith("#")]  # le righe "!regola" riammettono un file (vince l'ultima regola che corrisponde, come in Git)
+
+
+def _matches(rel: str, is_dir: bool, rule: str) -> bool:
+    parts = rel.split("/")
+    dir_only = rule.endswith("/")
+    pat = rule.strip("/")
+    if "/" in pat:  # ancorata alla radice
+        return fnmatch.fnmatch(rel, pat) or rel.startswith(pat + "/")
+    for i, part in enumerate(parts):
+        last = i == len(parts) - 1
+        if dir_only and last and not is_dir:
+            continue
+        if fnmatch.fnmatch(part, pat):
+            return True
+    return False
 
 
 def _ignored(rel: str, is_dir: bool, rules: list[str]) -> bool:
-    parts = rel.split("/")
-    for rule in rules:
-        dir_only = rule.endswith("/")
-        pat = rule.strip("/")
-        if "/" in pat:  # ancorata alla radice
-            if fnmatch.fnmatch(rel, pat) or rel.startswith(pat + "/"):
-                return True
-            continue
-        for i, part in enumerate(parts):
-            last = i == len(parts) - 1
-            if dir_only and last and not is_dir:
-                continue
-            if fnmatch.fnmatch(part, pat):
-                return True
-    return False
+    ignored = False
+    for rule in rules:  # come Git: l'ultima regola che corrisponde decide; "!regola" riammette
+        if rule.startswith("!"):
+            if ignored and _matches(rel, is_dir, rule[1:]):
+                ignored = False
+        elif _matches(rel, is_dir, rule):
+            ignored = True
+    return ignored
 
 
 def iter_files(root: Path):
@@ -116,6 +124,8 @@ def scan_text(rel: str, text: str, personal=None) -> list[str]:
                 problems.append(f"{rel}:{n}: percorso personale ({m.group(0)})")
         for m in EMAIL.finditer(line):
             domain = m.group(1).lower()
+            if re.fullmatch(r"v?\d+(?:\.\d+)*", domain):  # "actions/checkout@v4.2.2": una versione, non un indirizzo
+                continue
             if domain not in OK_EMAIL_DOMAINS and not domain.endswith((".example", ".invalid", ".test", "jooble.org")):  # jooble.org: host nei test (utente@host)
                 problems.append(f"{rel}:{n}: indirizzo email ({m.group(0)})")
         if PRIVATE_IP.search(line):
