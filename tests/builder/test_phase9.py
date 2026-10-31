@@ -43,9 +43,10 @@ def test_release_permessi_minimi_e_scrittura_solo_nel_job_della_bozza():
 
 
 def test_release_matrice_python_fisso_e_cache():
-    for runner in ("macos-14", "windows-latest"):
+    for runner in ("macos-14", "windows-latest", "ubuntu-22.04", "ubuntu-22.04-arm"):
         assert f"os: {runner}" in RELEASE
-    assert "os: ubuntu" not in RELEASE.split("bozza:\n    name")[0]  # Linux: tappa successiva (si aggiunge con una voce in piu' nella matrice)
+    ids = re.findall(r"^\s+id: (\S+)$", RELEASE, re.M)
+    assert ids == ["macos", "windows", "linux-amd64", "linux-arm64"] and "pacchetto-${{ matrix.id }}" in RELEASE  # nomi di artefatto distinti
     assert RELEASE.count('python-version: "3.13"') == 2 and "cache: pip" in RELEASE
     assert "latest" not in RELEASE.replace("windows-latest", "")  # nessun "latest" ambiguo oltre a windows-latest
 
@@ -81,8 +82,8 @@ def test_release_nessun_rischio_di_iniezione_ne_scarichi_pericolosi():
 
 def test_release_non_gira_sui_fork_e_ha_il_passo_di_fumo():
     assert RELEASE.count("github.event.repository.fork == false") == 2
-    assert RELEASE.lower().count("test di fumo") >= 2  # un passo per sistema
-    assert "build_mac.sh" in RELEASE and "build_windows.ps1" in RELEASE
+    assert RELEASE.lower().count("test di fumo") >= 4  # macOS, Windows, .deb e AppImage
+    assert "build_mac.sh" in RELEASE and "build_windows.ps1" in RELEASE and "build_linux.sh" in RELEASE
 
 
 def test_release_crea_solo_una_bozza_e_non_pubblica_mai():
@@ -103,7 +104,7 @@ def test_ci_yml_non_e_stato_toccato_dalla_fase_9():
 
 
 # ------------------------------------------------------------ script e specifica ----
-SCRIPTS = ["build_mac.sh", "smoke.sh"]
+SCRIPTS = ["build_mac.sh", "smoke.sh", "build_linux.sh", "smoke_deb.sh"]
 
 
 @pytest.mark.parametrize("name", SCRIPTS)
@@ -114,7 +115,8 @@ def test_script_sh_sicuri_e_leggibili(name):
         assert re.fullmatch(r'"\$\{[A-Z]+:\?\}"', target), f"rm -rf senza protezione: {target}"  # mai `rm -rf "$VAR"` che puo' espandersi a vuoto
     for target in re.findall(r"rm -f (\S+)", s):
         assert ":?" in target, target
-    assert "curl | sh" not in s and "sudo" not in s
+    assert "curl | sh" not in s
+    assert ("sudo" in s) == (name == "smoke_deb.sh")  # sudo solo dove si installa un pacchetto, e li' solo in CI o con --yes
     assert "\r" not in s
 
 
@@ -385,3 +387,119 @@ def test_bridge_non_espone_attributi_pubblici_che_non_siano_funzioni():
     for n in dir(b):
         if not n.startswith("_"):
             assert callable(getattr(b, n)), n
+
+
+# ------------------------------------------------------------------- Linux (.deb, AppImage) ----
+def _deb_files():
+    sys.path.insert(0, str(ROOT / "packaging"))
+    try:
+        import deb_files
+    finally:
+        sys.path.pop(0)
+    return deb_files
+
+
+def test_release_linux_deb_amd64_arm64_e_appimage_con_fumo_e_somme():
+    assert "ubuntu-22.04-arm" in RELEASE
+    assert "sh packaging/smoke_deb.sh dist-release/jobshunter_*.deb" in RELEASE  # installa, --smoke, apt remove
+    assert "--appimage-extract-and-run" in RELEASE
+    assert "sha256sum JobsHunter-* jobshunter_*" in RELEASE  # anche i .deb (nome da Debian) entrano in SHA256SUMS.txt
+    assert "if: matrix.sistema == 'linux'" in RELEASE
+    assert "gh release create" in RELEASE and "--draft" in RELEASE  # sempre e solo bozza
+
+
+def test_build_linux_sh_deb_e_appimage_senza_curl_pipe_sh():
+    sh = (ROOT / "packaging" / "build_linux.sh").read_text(encoding="utf-8")
+    for needle in ("dpkg-deb --root-owner-group", "dpkg --print-architecture", "jobshunter_${VER}_${DEB_ARCH}.deb", "deb_files.py",
+                   "packaging/JobsHunter.spec", "--appimage-extract-and-run", "sha256sum -c", "[0-9a-f]{64}", "--no-smoke", "--no-appimage", "--out"):
+        assert needle in sh, needle
+    assert not re.search(r"\|\s*(ba|z)?sh\b", sh.replace("#!/bin/sh", "")) and "sudo" not in sh
+    assert '"$MACHINE" = "x86_64"' in sh  # AppImage solo x86_64
+    deb = (ROOT / "packaging" / "smoke_deb.sh").read_text(encoding="utf-8")
+    for needle in ("apt-get install -y", "jobshunter --smoke", "apt-get remove -y jobshunter", 'CI:-}" != "true"', "--yes", "hicolor"):
+        assert needle in deb, needle
+    cfg = (ROOT / "packaging" / "appimagetool.txt").read_text(encoding="utf-8")
+    assert re.search(r"^url=https://github\.com/AppImage/appimagetool/releases/download/\d+\.\d+\.\d+/", cfg, re.M)
+    m = re.search(r"^sha256=(.*)$", cfg, re.M)
+    assert m and (m.group(1) == "" or re.fullmatch(r"[0-9a-f]{64}", m.group(1)))  # vuoto (AppImage saltata) o un hash vero, mai inventato
+
+
+def test_deb_control_e_desktop():
+    d = _deb_files()
+    c = d.control("0.4.0", "arm64", 123456)
+    lines = dict(l.split(": ", 1) for l in c.splitlines() if l and not l.startswith(" "))
+    assert lines["Package"] == "jobshunter" and lines["Version"] == "0.4.0" and lines["Architecture"] == "arm64"
+    assert lines["Depends"] == "libc6 (>= 2.35)" and lines["Installed-Size"] == "123456" and lines["Section"] == "utils"
+    assert "@" in lines["Maintainer"] and lines["Maintainer"].endswith(".invalid>")  # nessun indirizzo vero
+    assert c.endswith("\n") and "\nDescription: " in c and not re.search(r"[^\x00-\x7f]", c)
+    assert all(l.startswith(" ") for l in c.split("Description:", 1)[1].splitlines()[1:])  # righe di continuazione con spazio iniziale
+    for bad in ("1.0", "0.4", "v0.4.0", ""):
+        with pytest.raises(ValueError):
+            d.control(bad, "amd64", 1)
+    with pytest.raises(ValueError):
+        d.control("0.4.0", "i386", 1)
+    desk = d.desktop()
+    kv = dict(l.split("=", 1) for l in desk.splitlines() if "=" in l and not l.startswith("["))
+    assert desk.startswith("[Desktop Entry]\n") and kv["Type"] == "Application" and kv["Exec"] == "jobshunter" and kv["Icon"] == "jobshunter"
+    assert kv["Terminal"] == "false" and kv["Categories"].endswith(";") and kv["Name"] == "JobsHunter"
+
+
+def test_deb_postinst_e_prerm_semplici_senza_toccare_la_home():
+    d = _deb_files()
+    for script in (d.POSTINST, d.PRERM):
+        assert script.startswith("#!/bin/sh\nset -e\n") and script.rstrip().endswith("exit 0")
+        for bad in ("$HOME", "~/", "/home", "rm -", "curl", "wget", "pip", "systemctl", "crontab", "launchctl"):
+            assert bad not in script, bad
+    assert 'if [ "$1" = "configure" ]' in d.POSTINST and "|| true" in d.POSTINST  # le cache di sistema sono facoltative
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="permessi POSIX (chmod/st_mode) e collegamenti simbolici: il .deb si costruisce solo su Linux")
+def test_deb_albero_costruito_da_una_cartella_finta(tmp_path):
+    d = _deb_files()
+    dist = tmp_path / "dist con spazi"
+    (dist / "_internal").mkdir(parents=True)
+    (dist / "JobsHunter").write_bytes(b"#!/bin/sh\n")
+    (dist / "JobsHunter").chmod(0o755)
+    (dist / "_internal" / "dato.json").write_text("{}", encoding="utf-8")
+    icon = tmp_path / "icona.png"
+    icon.write_bytes(b"\x89PNG\r\n\x1a\n")
+    lic = tmp_path / "LICENSE"
+    lic.write_text("MIT", encoding="utf-8")
+    tree = tmp_path / "albero"
+    d.populate(tree, dist, icon, lic, "0.4.0", "amd64")
+    rel = {str(p.relative_to(tree)) for p in tree.rglob("*")}
+    for needed in ("opt/jobshunter/JobsHunter", "opt/jobshunter/_internal/dato.json", "usr/bin/jobshunter", "usr/share/applications/jobshunter.desktop",
+                   "usr/share/icons/hicolor/512x512/apps/jobshunter.png", "usr/share/doc/jobshunter/copyright", "DEBIAN/control", "DEBIAN/postinst", "DEBIAN/prerm"):
+        assert needed.replace("/", os.sep) in rel, needed
+    assert os.readlink(tree / "usr" / "bin" / "jobshunter") == "/opt/jobshunter/JobsHunter"
+    # niente di personale e niente fuori dalle cartelle di sistema previste
+    top = {p.name for p in tree.iterdir()}
+    assert top == {"opt", "usr", "DEBIAN"}
+    assert not any(n in " ".join(rel) for n in ("config.toml", ".db", "cv.json", "settings.json", "home", ".local"))
+    if os.name == "posix":
+        assert (tree / "opt/jobshunter/JobsHunter").stat().st_mode & 0o777 == 0o755
+        assert (tree / "DEBIAN/postinst").stat().st_mode & 0o777 == 0o755 and (tree / "DEBIAN/control").stat().st_mode & 0o777 == 0o644
+    assert "Installed-Size: " in (tree / "DEBIAN/control").read_text(encoding="utf-8")
+    with pytest.raises(FileExistsError):
+        d.populate(tree, dist, icon, lic, "0.4.0", "amd64")  # non sovrascrive un albero gia' pieno
+
+
+def test_spec_su_linux_senza_webview_e_con_console():
+    assert 'excludes.append("webview")' in SPEC and "console=IS_LINUX" in SPEC
+    assert "distutils" in SPEC and '"distutils"' not in SPEC.split("excludes = [")[1].split("]")[0]  # B122: non va escluso (l'hook di setuptools vi crea un alias)
+
+
+def test_bridge_usa_window_con_il_trattino_basso():
+    src = (ROOT / "jobshunter" / "macapp.py").read_text(encoding="utf-8")
+    assert "self._window = None" in src and "bridge._window = webview.create_window" in src  # B123: pywebview non esamina gli attributi privati
+    assert "self.window" not in src and "bridge.window" not in src
+
+
+def test_readme_linux_deb_e_appimage_in_entrambe_le_lingue():
+    it = (ROOT / "README.md").read_text(encoding="utf-8")
+    en = (ROOT / "README.en.md").read_text(encoding="utf-8")
+    for text in (it, en):
+        for w in ("jobshunter_<", "_amd64.deb", "_arm64.deb", "sudo apt install ./", "AppImage", "chmod +x", "sudo apt remove jobshunter", "--appimage-extract-and-run"):
+            assert w in text, w
+    assert "browser predefinito" in it and "default browser" in en
+    assert "in preparazione" not in it.split("## Installazione")[0].split("## Scarica")[1] and "in preparation" not in en.split("## Installation")[0].split("## Download")[1]

@@ -18,7 +18,7 @@ and it **already contains its own Python**: unzip it and open it.
 |---|---|---|
 | macOS (Apple Silicon) | `JobsHunter-<version>-macOS-arm64.zip` | drag `JobsHunter.app` into Applications, on first launch right-click, **Open** |
 | Windows 10/11 | `JobsHunter-<version>-Windows-x64.zip` (or the `...-Setup.exe` installer) | open `JobsHunter.exe`; if a warning appears: **More info**, **Run anyway** |
-| Linux | `.deb` packages and AppImage in preparation | for now use route B |
+| Linux | `jobshunter_<version>_amd64.deb` or `_arm64.deb`, or `JobsHunter-<version>-Linux-x86_64.AppImage` | `sudo apt install ./jobshunter_...deb` (Debian, Ubuntu and derivatives) or `chmod +x` and run the AppImage |
 
 The packages are not signed or notarized: the warnings and the SHA256 hash check are explained in [Download](#download).
 
@@ -342,6 +342,7 @@ The code is public and every file has its SHA256 hash (`SHA256SUMS.txt`) so you 
 |---|---|---|
 | macOS (Apple Silicon) | `JobsHunter-<version>-macOS-arm64.zip` | unzip, drag `JobsHunter.app` into Applications |
 | Windows 10/11 (x64) | `JobsHunter-<version>-Windows-x64.zip` (folder with `JobsHunter.exe`) or `JobsHunter-<version>-Windows-x64-Setup.exe` (per-user installer, no administrator, if present in the release) | unzip and open `JobsHunter.exe`, or run the installer |
+| Linux (amd64 and arm64) | `jobshunter_<version>_amd64.deb` and `jobshunter_<version>_arm64.deb` (Debian, Ubuntu and derivatives); `JobsHunter-<version>-Linux-x86_64.AppImage` (x86_64, if present in the release) | `sudo apt install ./jobshunter_<version>_<arch>.deb`, or `chmod +x` the AppImage and run it |
 
 Your **data** (postings, applications, CV, keys) never lives inside the package: it stays in the user folders listed in [Where the data lives](#where-the-data-lives),
 so you can move, update or delete the program without losing it. On first launch, with no `config.toml`, the program creates one from the bundled example file.
@@ -354,11 +355,13 @@ Intel Mac build: not provided.
 `Get-FileHash .\JobsHunter-<version>-Windows-x64.zip -Algorithm SHA256` and compare with `SHA256SUMS.txt`. The native window uses WebView2 (already on Windows 11; Windows 10 needs Microsoft's
 "WebView2 Runtime"); if it is missing the app opens in the browser.
 
-**Linux.** Linux packages (`.deb` and AppImage) are in preparation and are not yet in the release: for now, run from source (see [Installation](#installation)).
+**Linux.** The `.deb` installs with `sudo apt install ./jobshunter_<version>_amd64.deb` (or `_arm64.deb` on ARM computers, for example a 64-bit Raspberry Pi or an ARM VM) and is removed with `sudo apt remove jobshunter`: it puts the program in `/opt/jobshunter`, the `jobshunter` command in `/usr/bin` and an entry in the applications menu.
+Your data stays in `~/.local/share/jobshunter` even after removal. The AppImage (x86_64 only) is not installed: `chmod +x JobsHunter-<version>-Linux-x86_64.AppImage` and run it; if your system has no FUSE use `./JobsHunter-<version>-Linux-x86_64.AppImage --appimage-extract-and-run`.
+For now on Linux **the native window is not included** (it would need the system's GTK and WebKit): `jobshunter` opens the page in the **default browser**, same program and same interface. Built on Ubuntu 22.04: you need a C library (glibc) 2.35 or newer (Debian 12, Ubuntu 22.04 and later are fine).
 
-**What has been tried.** The macOS package was built and checked with the `--smoke` test (it starts the packaged program, checks the page and API, uses no network); the test on a real Windows machine is in progress and until it is done it should be treated as not yet tried.
+**What has been tried.** The release CI checks the Linux packages with the `--smoke` test (for the `.deb`: install, run, remove) and its result should be checked in each release draft; the Linux packages have not yet been tried by hand on a real machine. The macOS package was built and checked with the `--smoke` test (it starts the packaged program, checks the page and API, uses no network); the test on a real Windows machine is in progress and until it is done it should be treated as not yet tried.
 The scheduled scan from the package runs the package's executable with `--scan-once`.
-To build the packages yourself: `packaging/build_mac.sh` and `packaging/build_windows.ps1`; to make a release: [docs/RELEASING.md](docs/RELEASING.md).
+To build the packages yourself: `packaging/build_mac.sh`, `packaging/build_windows.ps1` and `packaging/build_linux.sh`; to make a release: [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Installation
 

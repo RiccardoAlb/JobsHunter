@@ -18,7 +18,7 @@ e **contiene già il suo Python**: lo scompatti e lo apri.
 |---|---|---|
 | macOS (Apple Silicon) | `JobsHunter-<versione>-macOS-arm64.zip` | trascina `JobsHunter.app` in Applicazioni, al primo avvio tasto destro, **Apri** |
 | Windows 10/11 | `JobsHunter-<versione>-Windows-x64.zip` (o l'installer `...-Setup.exe`) | apri `JobsHunter.exe`, se compare l'avviso: **Ulteriori informazioni**, **Esegui comunque** |
-| Linux | pacchetti `.deb` e AppImage in preparazione | per ora usa la strada B |
+| Linux | `jobshunter_<versione>_amd64.deb` o `_arm64.deb`, oppure `JobsHunter-<versione>-Linux-x86_64.AppImage` | `sudo apt install ./jobshunter_...deb` (Debian, Ubuntu e derivate) oppure `chmod +x` e avvio dell'AppImage |
 
 I pacchetti non sono firmati né notarizzati: gli avvisi e il controllo dell'hash SHA256 sono spiegati in [Scarica](#scarica).
 
@@ -393,6 +393,7 @@ Il codice è pubblico e ogni file ha il suo hash SHA256 (`SHA256SUMS.txt`) per c
 |---|---|---|
 | macOS (Apple Silicon) | `JobsHunter-<versione>-macOS-arm64.zip` | scompatta, trascina `JobsHunter.app` in Applicazioni |
 | Windows 10/11 (x64) | `JobsHunter-<versione>-Windows-x64.zip` (cartella con `JobsHunter.exe`) oppure `JobsHunter-<versione>-Windows-x64-Setup.exe` (installer per utente, senza amministratore, se presente nella release) | scompatta e apri `JobsHunter.exe`, oppure lancia l'installer |
+| Linux (amd64 e arm64) | `jobshunter_<versione>_amd64.deb` e `jobshunter_<versione>_arm64.deb` (Debian, Ubuntu e derivate); `JobsHunter-<versione>-Linux-x86_64.AppImage` (x86_64, se presente nella release) | `sudo apt install ./jobshunter_<versione>_<arch>.deb`, oppure `chmod +x` sull'AppImage e avvio |
 
 I **dati** (annunci, candidature, CV, chiavi) non stanno mai dentro il pacchetto: restano nelle cartelle dell'utente indicate in [Dove stanno i dati](#dove-stanno-i-dati),
 così puoi spostare, aggiornare o cancellare il programma senza perderli. Alla prima apertura, senza `config.toml`, il programma lo crea da solo dal file di esempio incluso.
@@ -405,11 +406,13 @@ Versione per Mac Intel: non fornita.
 `Get-FileHash .\JobsHunter-<versione>-Windows-x64.zip -Algorithm SHA256` e confronta il risultato con `SHA256SUMS.txt`. La finestra nativa usa WebView2 (già presente su Windows 11; su Windows 10 serve il
 "WebView2 Runtime" di Microsoft); se manca, l'app si apre nel browser.
 
-**Linux.** Pacchetti per Linux (`.deb` e AppImage) sono in preparazione e non sono ancora nella release: per ora si usa da sorgente (vedi [Installazione](#installazione)).
+**Linux.** Il `.deb` si installa con `sudo apt install ./jobshunter_<versione>_amd64.deb` (o `_arm64.deb` sui computer ARM, per esempio un Raspberry Pi 64 bit o una VM ARM) e si toglie con `sudo apt remove jobshunter`: mette il programma in `/opt/jobshunter`, il comando `jobshunter` in `/usr/bin` e una voce nel menu delle applicazioni.
+I tuoi dati restano in `~/.local/share/jobshunter` anche dopo la rimozione. L'AppImage (solo x86_64) non si installa: `chmod +x JobsHunter-<versione>-Linux-x86_64.AppImage` e poi avviala; se il tuo sistema non ha FUSE usa `./JobsHunter-<versione>-Linux-x86_64.AppImage --appimage-extract-and-run`.
+Per ora su Linux **la finestra nativa non è inclusa** (richiederebbe GTK e WebKit del sistema): `jobshunter` apre la pagina nel **browser predefinito**, con lo stesso programma e la stessa interfaccia. Costruiti su Ubuntu 22.04: servono una libreria C (glibc) 2.35 o più recente (Debian 12, Ubuntu 22.04 e successive vanno bene).
 
-**Stato delle prove.** Il pacchetto per macOS è stato costruito e provato con il test di fumo `--smoke` (avvia il programma impacchettato, controlla pagina e API, non usa la rete); la prova su un Windows vero è in corso e finché non è fatta va considerato non ancora provato.
+**Stato delle prove.** La CI di rilascio prova i pacchetti Linux con il test di fumo `--smoke` (per il `.deb`: installazione, avvio, rimozione) e va controllata nella bozza di ogni release; i pacchetti Linux non sono ancora stati provati a mano su una macchina vera. Il pacchetto macOS è stato costruito e provato con il test di fumo `--smoke` (avvia il programma impacchettato, controlla pagina e API, non usa la rete); la prova su un Windows vero è in corso e finché non è fatta va considerato non ancora provato.
 La scansione pianificata dal pacchetto usa l'eseguibile del pacchetto con `--scan-once`.
-Per costruire i pacchetti da soli: `packaging/build_mac.sh` e `packaging/build_windows.ps1`; per fare una release: [docs/RELEASING.md](docs/RELEASING.md).
+Per costruire i pacchetti da soli: `packaging/build_mac.sh`, `packaging/build_windows.ps1` e `packaging/build_linux.sh`; per fare una release: [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Installazione
 

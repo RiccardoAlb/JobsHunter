@@ -1,6 +1,6 @@
 name: Release
 
-# Costruisce i pacchetti per macOS e Windows (Linux: tappa successiva) da un tag `vX.Y.Z` e prepara una BOZZA di release.
+# Costruisce i pacchetti per macOS, Windows e Linux (.deb amd64 e arm64, AppImage x86_64) da un tag `vX.Y.Z` e prepara una BOZZA di release.
 # Il workflow NON pubblica mai la release: la pubblica solo una persona, dopo aver scaricato e provato i file (vedi docs/RELEASING.md).
 # Nessun segreto, nessun CDN. Le azioni sono bloccate a una versione precisa.
 on:
@@ -34,10 +34,19 @@ jobs:
           - nome: macOS arm64
             os: macos-14
             sistema: macos
+            id: macos
           - nome: Windows x64
             os: windows-latest
             sistema: windows
-          # Linux (.deb, AppImage): tappa successiva, si aggiunge qui con una voce in piu' e un passo "Pacchetto Linux"
+            id: windows
+          - nome: Linux amd64
+            os: ubuntu-22.04
+            sistema: linux
+            id: linux-amd64
+          - nome: Linux arm64
+            os: ubuntu-22.04-arm
+            sistema: linux
+            id: linux-arm64
     steps:
       - uses: actions/checkout@v4.2.2
       - uses: actions/setup-python@v5.6.0
@@ -85,13 +94,33 @@ jobs:
           python -m pip install -r requirements-gui.txt
           ./packaging/build_windows.ps1 -Out dist-release -Python python
 
+      - name: Pacchetti Linux (costruzione .deb e AppImage)
+        if: matrix.sistema == 'linux'
+        shell: bash
+        run: |
+          PY="$(command -v python)" JH_WORK="$RUNNER_TEMP/jh-work" sh packaging/build_linux.sh --out dist-release --no-smoke
+
+      - name: Test di fumo del .deb (installa, --smoke, apt remove)
+        if: matrix.sistema == 'linux'
+        shell: bash
+        run: sh packaging/smoke_deb.sh dist-release/jobshunter_*.deb
+
+      - name: Test di fumo della AppImage (--appimage-extract-and-run --smoke)
+        if: matrix.sistema == 'linux'
+        shell: bash
+        run: |
+          for f in dist-release/*.AppImage; do
+            [ -e "$f" ] || { echo "Nessuna AppImage (appimagetool senza hash in packaging/appimagetool.txt): salto."; break; }
+            sh packaging/smoke.sh "$f"
+          done
+
       - name: Elenco e dimensioni dei file
         shell: bash
         run: ls -l dist-release
 
       - uses: actions/upload-artifact@v4.6.2
         with:
-          name: pacchetto-${{ matrix.sistema }}
+          name: pacchetto-${{ matrix.id }}
           path: dist-release/*
           if-no-files-found: error
           retention-days: 14
@@ -118,7 +147,7 @@ jobs:
       - name: Hash SHA256 di tutti i file
         working-directory: dist-release
         run: |
-          sha256sum JobsHunter-* | tee SHA256SUMS.txt
+          sha256sum JobsHunter-* jobshunter_* | tee SHA256SUMS.txt
 
       - name: Note dal CHANGELOG
         run: |
