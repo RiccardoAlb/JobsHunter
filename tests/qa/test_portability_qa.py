@@ -1253,6 +1253,7 @@ def test_B94_open_path_non_uccide_il_gestore_di_file_dopo_il_timeout(monkeypatch
 
 def test_open_url_solo_http_e_senza_eccezioni(monkeypatch):
     opened = []
+    monkeypatch.setattr(macapp.subprocess, "Popen", lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("open")))  # niente comando vero: si prova il ripiego su webbrowser
     monkeypatch.setattr(macapp.webbrowser, "open", lambda u, *a, **k: opened.append(u) or True)
     assert macapp.open_url("https://example.org/a?b=1&c=è") is True
     for bad in ("file:///etc/passwd", "javascript:alert(1)", "ftp://x", "", None, 5, "HTTP://x.org", "//x.org", "x.org"):
@@ -1275,6 +1276,8 @@ def child_home_env(home: Path) -> dict:
 APP_SCRIPT = r"""
 import sys, webbrowser
 webbrowser.open = lambda *a, **k: print("BROWSER_APERTO", a, flush=True) or True
+import jobshunter.macapp as _m
+_m.open_url = lambda u: print("BROWSER_APERTO", u, flush=True) or True  # niente comando di sistema vero (open, xdg-open) durante i test
 mode = sys.argv[1]
 if mode == "nowebview":
     sys.modules["webview"] = None

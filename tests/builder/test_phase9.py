@@ -191,7 +191,7 @@ def test_il_vecchio_script_mac_non_e_stato_cambiato_nel_comportamento():
 def test_versione_coerente_ovunque():
     import tomllib
 
-    assert __version__ == "0.4.0"
+    assert __version__ == "0.4.1"
     assert tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"] == __version__
     first = re.search(r"^## \[([^\]]+)\] - (\S+)", (ROOT / "CHANGELOG.md").read_text(encoding="utf-8"), re.M)
     assert first.group(1) == __version__ and re.fullmatch(r"\d{4}-\d{2}-\d{2}", first.group(2))

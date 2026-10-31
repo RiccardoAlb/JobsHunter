@@ -37,12 +37,33 @@ def open_path(path) -> bool:
 
 
 def open_url(url: str) -> bool:
-    """Apre un indirizzo http/https nel browser predefinito."""
-    if isinstance(url, str) and url.startswith(("http://", "https://")):
+    """Apre un indirizzo http/https nel browser predefinito. True se un metodo ha funzionato, mai eccezioni.
+
+    Prima il comando del sistema (open su macOS, os.startfile su Windows, xdg-open su Linux), con l'indirizzo come ARGOMENTO (mai in una shell):
+    `webbrowser.open` su macOS passa da osascript e dentro un pacchetto con firma ad hoc puo' fallire in silenzio. Il modulo webbrowser resta
+    come ripiego se il comando manca o fallisce. Se tutto fallisce si scrive un avviso nel registro."""
+    if not (isinstance(url, str) and url.startswith(("http://", "https://"))):
+        return False
+    try:
+        if osinfo.is_windows():
+            os.startfile(url)  # type: ignore[attr-defined]  # solo Windows
+            return True
+        cmd = ["open", url] if osinfo.is_mac() else ["xdg-open", url]
+        proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         try:
-            return bool(webbrowser.open(url))
-        except webbrowser.Error:
-            return False
+            if proc.wait(timeout=3) == 0:  # i comandi di apertura tornano subito: un errore si vede, un comando che resta in attesa si considera riuscito
+                return True
+            logging.warning("%s ha risposto con errore %s: provo il ripiego", cmd[0], proc.returncode)
+        except subprocess.TimeoutExpired:
+            return True
+    except (OSError, subprocess.SubprocessError, AttributeError) as e:
+        logging.warning("impossibile aprire il browser con il comando del sistema (%s): provo il ripiego", type(e).__name__)
+    try:
+        if webbrowser.open(url):
+            return True
+    except webbrowser.Error:
+        pass
+    logging.warning("impossibile aprire il browser: nessun metodo ha funzionato")
     return False
 
 
@@ -166,6 +187,8 @@ def main() -> None:
         return
 
     bridge = Bridge()
+    # solo ora che pywebview c'e': la pagina nella finestra nativa ha bisogno di 'unsafe-eval' per il ponte (vedi CSP_NATIVE in gui/app.py)
+    os.environ["JOBSHUNTER_NATIVE_WINDOW"] = "1"
 
     def close_window() -> None:  # SIGINT/SIGTERM con la finestra aperta: la si chiude e webview.start() ritorna
         if getattr(bridge, "_window", None) is not None:
@@ -181,4 +204,5 @@ def main() -> None:
         webview.start(private_mode=False, storage_path=str(settings.home() / "webview"))
     except Exception as e:  # noqa: BLE001 - qualunque problema della finestra (WebView2/GTK mancanti...): si ripiega sul browser
         logging.exception("la finestra nativa non si e' aperta")
+        os.environ.pop("JOBSHUNTER_NATIVE_WINDOW", None)  # si ripiega sul browser: torna la politica stretta
         _browser_fallback(port, f"la finestra nativa non si e' aperta ({type(e).__name__})")

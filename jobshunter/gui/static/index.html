@@ -1173,7 +1173,11 @@ async function loadApps() {
 const native = () => (window.pywebview && window.pywebview.api) ? window.pywebview.api : null;
 document.addEventListener("click", (e) => {
   const a = e.target.closest && e.target.closest("a[target=_blank]");
-  if (a && native()) { e.preventDefault(); native().open_external(a.href); }
+  if (a && native()) {
+    e.preventDefault();
+    const href = a.href;
+    Promise.resolve(native().open_external(href)).then((ok) => { if (!ok) toast("Non riesco ad aprire il browser", href); }, () => toast("Non riesco ad aprire il browser", href));  // mai in silenzio
+  }
 }, true);
 
 

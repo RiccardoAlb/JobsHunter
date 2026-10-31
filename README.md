@@ -6,7 +6,7 @@
 
 <p align="center">Un radar personale per annunci di lavoro, in locale sul tuo computer: macOS, Windows e Linux, per qualsiasi settore e in più paesi.</p>
 
-> **Non affiliato** ad Adzuna, Jooble, LinkedIn o Indeed: leggi le [Avvertenze](#avvertenze). Licenza **MIT** (vedi [Licenza](#licenza)). Versione 0.4.0.
+> **Non affiliato** ad Adzuna, Jooble, LinkedIn o Indeed: leggi le [Avvertenze](#avvertenze). Licenza **MIT** (vedi [Licenza](#licenza)). Versione 0.4.1.
 > Dati e chiavi restano solo tuoi, senza account e senza telemetria.
 
 ## Inizia in un minuto
@@ -528,7 +528,7 @@ cybersecurity e sistemista. Molte di queste scelte si fanno anche dalla GUI (sch
 Ogni richiesta in uscita si presenta con un nome dichiarato, **mai come un browser**:
 
 ```
-JobsHunter/0.4.0 (+personal job search tool; contact: tu@example.org)
+JobsHunter/0.4.1 (+personal job search tool; contact: tu@example.org)
 ```
 
 Il contatto è facoltativo (un'email o l'indirizzo del progetto) e si imposta in `[net] contact` o in Impostazioni, blocco "Avanzate, rete";

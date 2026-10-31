@@ -6,7 +6,7 @@
 
 <p align="center">A personal radar for job postings, running locally on your computer: macOS, Windows and Linux, for any field and in several countries.</p>
 
-> **Not affiliated** with Adzuna, Jooble, LinkedIn or Indeed: read the [Disclaimer](#disclaimer). License **MIT** (see [License](#license)). Version 0.4.0.
+> **Not affiliated** with Adzuna, Jooble, LinkedIn or Indeed: read the [Disclaimer](#disclaimer). License **MIT** (see [License](#license)). Version 0.4.1.
 > Your data and keys stay yours, no account and no telemetry. The interface and the messages of the program are in Italian; this document is in English.
 
 ## Get started in a minute
@@ -472,7 +472,7 @@ Important notes:
 Every outgoing request introduces itself with a declared name, **never as a browser**:
 
 ```
-JobsHunter/0.4.0 (+personal job search tool; contact: you@example.org)
+JobsHunter/0.4.1 (+personal job search tool; contact: you@example.org)
 ```
 
 The contact is optional (an email or the project address) and is set in `[net] contact` or in Settings, "Advanced, network" block; with `[net] user_agent` you replace the whole header. If a site refuses requests (HTTP 403 or 429)

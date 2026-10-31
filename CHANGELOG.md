@@ -2,6 +2,12 @@
 
 Formato ispirato a [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
+## [0.4.1] - 2026-10-31
+
+### Corretto
+- **Causa vera:** dentro la finestra nativa pywebview crea le funzioni del ponte con `new Function(...)` e la politica di sicurezza della pagina (CSP) non lo permetteva: tutte le funzioni del ponte (Apri e candidati, scegli cartella, apri cartella) restavano `undefined`. Ora la CSP ammette `'unsafe-eval'` SOLO quando l'interfaccia gira nella finestra nativa (`JOBSHUNTER_NATIVE_WINDOW=1`, impostata da `macapp` dopo aver importato pywebview); nel browser (`gui`, ripiego, test) resta quella stretta.
+- Il pulsante "Apri e candidati" (e gli altri link esterni) non apriva il browser nell'app macOS impacchettata: ora si usa il comando del sistema (`open` su macOS, `os.startfile` su Windows, `xdg-open` su Linux) e `webbrowser` resta solo come ripiego; se tutto fallisce la pagina lo dice con un avviso invece di non fare niente.
+
 ## [0.4.0] - 2026-10-31
 
 Portabilita' (fase 7): macOS, Windows e Linux. Versione 0.4.0 (numero unico in `pyproject.toml` e `jobshunter.__version__`).

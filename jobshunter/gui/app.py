@@ -30,6 +30,10 @@ CATEGORIES = {"RED", "BLUE", "PURPLE", "SYSADM", "SEC"}
 MAX_JSON_BYTES = 256 * 1024
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
        "connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+# Dentro la finestra nativa pywebview crea le funzioni del ponte (window.pywebview.api.*) con `new Function(...)`: senza 'unsafe-eval' WebKit le blocca
+# e ogni funzione del ponte (Apri e candidati, scegli cartella, apri cartella) resta undefined. Il permesso vale SOLO quando macapp ha aperto la finestra
+# nativa (variabile JOBSHUNTER_NATIVE_WINDOW=1, letta a ogni richiesta); nel browser normale resta la politica stretta.
+CSP_NATIVE = CSP.replace("script-src 'self' 'unsafe-inline';", "script-src 'self' 'unsafe-inline' 'unsafe-eval';", 1)
 CATEGORY_OK = re.compile(r"^[^\x00-\x1f\x7f]{1,60}$")  # qualsiasi nome senza caratteri di controllo: il valore va nel SQL solo come parametro  # le categorie dei profili non cyber sono nomi di gruppo (es. BACKEND)
 
 
@@ -107,7 +111,7 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         resp.headers["X-Content-Type-Options"] = "nosniff"
         resp.headers["X-Frame-Options"] = "DENY"
         resp.headers["Referrer-Policy"] = "no-referrer"
-        resp.headers["Content-Security-Policy"] = CSP
+        resp.headers["Content-Security-Policy"] = CSP_NATIVE if os.environ.get("JOBSHUNTER_NATIVE_WINDOW") == "1" else CSP
         if request.path.startswith("/assets/") or request.path == "/favicon.ico":
             resp.headers["Cache-Control"] = "public, max-age=3600"
         else:
