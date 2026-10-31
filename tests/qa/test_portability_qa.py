@@ -1253,6 +1253,7 @@ def test_B94_open_path_non_uccide_il_gestore_di_file_dopo_il_timeout(monkeypatch
 
 def test_open_url_solo_http_e_senza_eccezioni(monkeypatch):
     opened = []
+    monkeypatch.setattr(macapp.os, "startfile", lambda u: (_ for _ in ()).throw(OSError("startfile")), raising=False)  # su Windows niente apertura vera: si prova il ripiego su webbrowser
     monkeypatch.setattr(macapp.subprocess, "Popen", lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("open")))  # niente comando vero: si prova il ripiego su webbrowser
     monkeypatch.setattr(macapp.webbrowser, "open", lambda u, *a, **k: opened.append(u) or True)
     assert macapp.open_url("https://example.org/a?b=1&c=è") is True

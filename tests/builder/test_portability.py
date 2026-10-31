@@ -442,6 +442,7 @@ def test_open_path_non_solleva_mai(monkeypatch, tmp_path):
 
 def test_open_url_solo_http_https(monkeypatch):
     opened = []
+    monkeypatch.setattr(macapp.os, "startfile", lambda u: (_ for _ in ()).throw(OSError("startfile")), raising=False)  # su Windows niente apertura vera: si prova il ripiego su webbrowser
     monkeypatch.setattr(macapp.subprocess, "Popen", lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("open")))  # niente comando vero: si prova il ripiego su webbrowser
     monkeypatch.setattr(macapp.webbrowser, "open", lambda u: opened.append(u) or True)
     assert macapp.open_url("https://example.org") is True and macapp.open_url("http://127.0.0.1:8765/") is True
