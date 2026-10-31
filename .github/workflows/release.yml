@@ -97,7 +97,10 @@ jobs:
       - name: Pacchetti Linux (costruzione .deb e AppImage)
         if: matrix.sistema == 'linux'
         shell: bash
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
+          if [ "$(uname -m)" = "x86_64" ]; then sudo apt-get update && sudo apt-get install -y desktop-file-utils; fi
           PY="$(command -v python)" JH_WORK="$RUNNER_TEMP/jh-work" sh packaging/build_linux.sh --out dist-release --no-smoke
 
       - name: Test di fumo del .deb (installa, --smoke, apt remove)

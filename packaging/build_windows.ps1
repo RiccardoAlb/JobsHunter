@@ -15,6 +15,8 @@ $ErrorActionPreference = "Stop"
 $proj = Split-Path -Parent $PSScriptRoot
 Set-Location $proj
 if (-not $Out) { $Out = Join-Path $proj "dist-release" }
+# Percorso assoluto: Inno Setup legge /DOutDir rispetto alla cartella dello script .iss, non a quella di lavoro
+if (-not [System.IO.Path]::IsPathRooted($Out)) { $Out = Join-Path $proj $Out }
 if (-not $Python) {
     $venv = Join-Path $proj ".venv\Scripts\python.exe"
     if (Test-Path $venv) { $Python = $venv } else { $Python = "python" }
