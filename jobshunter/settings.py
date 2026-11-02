@@ -86,7 +86,7 @@ FIELDS = [
     ("net.contact", "Contatto nell'User-Agent (facoltativo)", "text", False),
     ("net.user_agent", "User-Agent personalizzato (avanzato)", "text", False),
 ]
-FIELD_KEYS = {f[0] for f in FIELDS}
+FIELD_KEYS = {f[0] for f in FIELDS} | {"notes.letter_template"}  # il modello di lettera si salva in settings.json ma NON e' un campo di Impostazioni: lo gestiscono le rotte /api/notes/template
 DEFAULTS = {"sources.adzuna.full_text": True, "search.internships": True, "schedule.enabled": False, "schedule.kind": "daily",
             "schedule.times": "09:00", "schedule.hours": 6, "schedule.notify": True}  # valori quando la configurazione non li indica
 SECRET_KEYS = {f[0] for f in FIELDS if f[3]}
@@ -214,9 +214,12 @@ def save_overrides(config_path: Path, updates: dict, clear: list[str] | None = N
         current.pop(k, None)
     p = overrides_path(config_path)
     tmp = p.with_name(f"{p.name}.{os.getpid()}.{threading.get_ident()}.tmp")  # nome unico: due salvataggi insieme non si pestano
-    tmp.write_text(json.dumps(current, indent=2, ensure_ascii=False), encoding="utf-8")
-    fsperm.secure_file(tmp)
-    fsutil.replace(tmp, p)
+    try:
+        tmp.write_text(json.dumps(current, indent=2, ensure_ascii=False), encoding="utf-8")
+        fsperm.secure_file(tmp)
+        fsutil.replace(tmp, p)
+    finally:
+        tmp.unlink(missing_ok=True)  # se qualcosa va storto non resta un temporaneo accanto alle impostazioni
 
 
 _MAC_ROOTS = ("/private", "/System", "/Library", "/Applications", "/cores")

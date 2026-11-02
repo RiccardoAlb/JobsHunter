@@ -6,7 +6,7 @@
 
 <p align="center">Un radar personale per annunci di lavoro, in locale sul tuo computer: macOS, Windows e Linux, per qualsiasi settore e in più paesi.</p>
 
-> **Non affiliato** ad Adzuna, Jooble, LinkedIn o Indeed: leggi le [Avvertenze](#avvertenze). Licenza **MIT** (vedi [Licenza](#licenza)). Versione 0.4.1.
+> **Non affiliato** ad Adzuna, Jooble, LinkedIn o Indeed: leggi le [Avvertenze](#avvertenze). Licenza **MIT** (vedi [Licenza](#licenza)). Versione 0.5.0.
 > Dati e chiavi restano solo tuoi, senza account e senza telemetria.
 
 ## Inizia in un minuto
@@ -307,6 +307,33 @@ riconosciuti come duplicati, il salvataggio passa a quello che resta; se poi la 
 registrato nel database locale (colonna `saved_at`), entra nei backup e nell'esportazione CSV e non esce mai dal tuo computer.
 Interfaccia di servizio: `POST /api/jobs/<uid>/save` e `/unsave`, filtro `saved=1` su `/api/jobs`, conteggio `saved` in `/api/stats`.
 
+### Blocco note e lettere di presentazione
+La scheda **Note** raccoglie **appunti** (anche generali, non legati a un annuncio) e **lettere di presentazione**, con ricerca e filtri (Tutte, Lettere, Appunti, Generali).
+- **Modello di lettera:** da **Nuova lettera** parti da un modello con segnaposto, che modifichi nelle impostazioni delle note (e ripristini quando vuoi). Segnaposto accettati: `{azienda}` / `{company}`, `{ruolo}` / `{role}`,
+  `{sede}` / `{location}`, `{data}` / `{date}` (oggi, gg/mm/aaaa), `{link}` / `{url}` (indirizzo dell'annuncio). Un segnaposto sconosciuto o senza dato resta com'e', senza errori; i valori si inseriscono alla lettera, senza interpretarli.
+  La lettera nasce con il titolo `Lettera per <azienda>, <ruolo>` (al massimo 70 caratteri: un ruolo lungo si accorcia sull'ultima parola intera, con "…") e il modello riempito con i dati dell'annuncio o della candidatura.
+- **Tutto collegato:** le note di un annuncio compaiono nella sua candidatura quando lo segni come candidato; una nota creata dentro una candidatura porta con se annuncio, azienda e ruolo. Il vecchio campo "Note" della candidatura resta com'e'.
+- **Mai perse in silenzio:** cancellare una candidatura NON cancella le note (perdono solo il legame con la candidatura); nessuna pulizia o scansione le tocca; si cancella una nota solo con la richiesta esplicita (l'interfaccia chiede conferma). Titolo fino a 200 caratteri, testo fino a 100.000: oltre, l'errore e' chiaro e niente viene troncato.
+  Le note stanno nel database locale (quindi nei backup) e sono dati personali: non escono mai dal tuo computer.
+- **Esporta in Markdown:** un file `.md` per nota nella sottocartella `Note` della cartella dei report (stesse zone protette dei report; mai sovrascrive: se il nome esiste aggiunge `-2`, `-3`...). Formato:
+
+```
+---
+titolo: Lettera per Azienda, Ruolo
+tipo: lettera
+azienda: Azienda
+ruolo: Ruolo
+annuncio: https://...
+candidatura: inviata il 01/11/2026
+creata: 2026-11-01
+aggiornata: 2026-11-01
+---
+
+(il testo della nota, cosi' com'e')
+```
+Da terminale: `./jh notes list [--job ID] [--q TESTO]`, `notes show ID`, `notes add --title T [--body B] [--letter --job ID]`, `notes export [ID]`, `notes template [--reset]`.
+Interfaccia di servizio: `GET/POST /api/notes`, `POST /api/notes/<id>` e `/delete` e `/export`, `POST /api/notes/export`, `GET/POST /api/notes/template`; `notes` in `/api/stats`.
+
 ### 8. Filtri e dati derivati
 Gli annunci non hanno campi precisi per RAL, modalità di lavoro e città: JobsHunter li **ricava dal testo** (modulo
 `meta.py`) e li salva nel database, così si possono filtrare:
@@ -528,7 +555,7 @@ cybersecurity e sistemista. Molte di queste scelte si fanno anche dalla GUI (sch
 Ogni richiesta in uscita si presenta con un nome dichiarato, **mai come un browser**:
 
 ```
-JobsHunter/0.4.1 (+personal job search tool; contact: tu@example.org)
+JobsHunter/0.5.0 (+personal job search tool; contact: tu@example.org)
 ```
 
 Il contatto è facoltativo (un'email o l'indirizzo del progetto) e si imposta in `[net] contact` o in Impostazioni, blocco "Avanzate, rete";

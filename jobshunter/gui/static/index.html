@@ -411,6 +411,57 @@
   .cvbox .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
   .cverr { color: var(--red); font-size: 13px; margin: 6px 0; }
 
+  /* note e lettere */
+  .nt-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .nt-bar input[type=search] { flex: 1 1 200px; max-width: 360px; }
+  .nt-count { color: var(--dim); font: 12px var(--mono); margin: 0 0 10px; }
+  .nt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; max-width: 1100px; }
+  .nt-card { display: block; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 12px 14px; color: var(--text); }
+  .nt-card:hover { border-color: var(--line3); background: var(--hover); }
+  .nt-card:focus-visible, .nt-dlg button:focus-visible, .nt-tpl summary:focus-visible, .nt-dlg input:focus-visible, .nt-dlg textarea:focus-visible, .nt-tpltext:focus-visible, .nt-bar input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .nt-card .nt-t { display: block; font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+  .nt-card .nt-s { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
+  .nt-card .nt-x { display: block; color: var(--dim); font-size: 12.5px; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nt-card .nt-m { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; color: var(--dim); font: 11.5px var(--mono); }
+  .nt-card .atag { padding: 1px 8px; font-size: 10.5px; }
+  .nt-card.compact { padding: 9px 12px; }
+  .nt-sec { border-top: 1px solid var(--line); margin: 14px 0 0; padding-top: 14px; }
+  .nt-sec h3, .nt-tpl summary { margin: 0 0 10px; font: 600 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+  .nt-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+  .nt-msg, .nt-more { font-size: 12.5px; }
+  .nt-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nt-tpl { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 12px 16px; margin: 0 0 16px; max-width: 1100px; }
+  .nt-tpl summary { cursor: pointer; margin: 0; }
+  .nt-tpl[open] summary { margin-bottom: 12px; }
+  .nt-tpltext, .nt-dlg textarea.nt-body { display: block; width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 10px 12px; font: 13.5px/1.6 var(--sans); outline: none; resize: vertical; }
+  .nt-tpltext { min-height: 220px; }
+  .nt-phs { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .nt-phs .chip { font-family: var(--mono); }
+  .nt-phl { margin: 0 0 8px; padding-left: 18px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+  .nt-phl code { font: 12px var(--mono); color: var(--text); }
+  .nt-blk { position: fixed; inset: 0; z-index: 80; background: rgba(0,0,0,.55); }
+  .nt-dlg { position: fixed; z-index: 81; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(820px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; background: var(--panel); color: var(--text); border: 1px solid var(--line2); border-radius: 12px; padding: 18px 20px 20px; box-shadow: 0 12px 48px rgba(0,0,0,.45); }
+  .nt-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .nt-top h3 { margin: 0; font-size: 16px; flex: 1; }
+  .nt-ctx { color: var(--muted); font-size: 12.5px; margin: 0 0 12px; overflow-wrap: anywhere; }
+  .nt-dlg label.lab { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+  .nt-dlg input[type=text] { display: block; width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 8px 10px; font: inherit; font-size: 14px; outline: none; }
+  .nt-dlg textarea.nt-body { min-height: 46vh; }
+  .nt-stat { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0; font: 12px var(--mono); color: var(--muted); }
+  .nt-stat .st-saved { color: var(--green); } .nt-stat .st-error { color: var(--red); }
+  .nt-stat .sp { flex: 1; }
+  .nt-err { color: var(--red); font-size: 13px; line-height: 1.5; border: 1px solid var(--stopline2); background: var(--stopbg); border-radius: 8px; padding: 8px 12px; margin: 8px 0; }
+  .nt-dlg .nt-acts { margin-top: 10px; align-items: center; }
+  .toast { z-index: 90; }
+  .pk-dlg input[type=search] { width: 100%; max-width: none; margin: 4px 0 6px; padding: 8px 10px; }
+  .pk-dlg .nt-card + .nt-sec { margin-top: 12px; }
+  @media (max-width: 600px) {
+    .nt-dlg { inset: 0; transform: none; width: 100%; max-height: none; border-radius: 0; border: none; padding: 14px 14px 20px; }
+    .nt-dlg textarea.nt-body { min-height: 40vh; }
+    .nt-grid { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { .nt-card { transition: none; } }
+
   /* toast */
   .toast { position: fixed; bottom: 22px; left: 50%; transform: translate(-50%, 20px); background: var(--raised); border: 1px solid var(--line2); border-radius: 8px; padding: 10px 16px; font-size: 13px; opacity: 0; pointer-events: none; transition: .2s; max-width: 80vw; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
@@ -438,6 +489,7 @@
       <button class="tab" data-v="search" title="Cosa cerchi: profili di ricerca, paesi e luoghi">Ricerca</button>
       <button class="tab" data-v="jooble" title="Annunci Jooble: solo anteprima, testo completo sul sito">Jooble<span class="pill soft" id="jooBadge" hidden></span></button>
       <button class="tab" data-v="apps">Candidature<span class="pill soft" id="appBadge" hidden></span></button>
+      <button class="tab" data-v="notes" title="Appunti e lettere di presentazione, anche legati a un annuncio">Note<span class="pill soft" id="noteBadge" hidden></span></button>
       <button class="tab" data-v="dups">Duplicati<span class="pill" id="dupBadge" hidden></span></button>
       <button class="tab" data-v="settings">Impostazioni</button>
     </nav>
@@ -463,6 +515,10 @@
     <div class="dup-bar" id="appbar"></div>
     <div id="appform"></div>
     <div id="applist"></div>
+  </section>
+
+  <section class="apps" id="noteview" hidden>
+    <div id="notecontent"></div>
   </section>
 
   <section class="apps" id="searchview" hidden>
@@ -695,6 +751,7 @@ async function loadStats() {
     el("span", {}, el("b", {}, s.near), " vicini"));
   setBadge(s.dups_pending);
   setAppBadge(s.app_counts ? s.app_counts.active : 0);
+  setNoteBadge(s.notes || 0);
   if ((s.saved || 0) !== savedCount) { savedCount = s.saved || 0; updateSavedChip(); }
   if ((s.closed || 0) !== closedCount) { closedCount = s.closed || 0; if (view === "jobs" || view === "jooble") renderToolbar(); }
   loadNews();
@@ -769,6 +826,7 @@ async function openJob(uid) {
     const r = await post(`/api/job/${uid}/status`, { status });
     if (r && r.saved && !r.ok) { askDiscardSaved(uid); return; }  // salvato: serve una conferma esplicita
     setLocal(uid, status); toast(status === "applied" ? "Aggiunto in Candidature" : label); loadStats();
+    if (status === "applied") afterNoteChange();  // le note dell'annuncio seguono la candidatura: si rinfresca la vista
   } }, label);
   const recheck = el("button", { class: "btn sm", onclick: async () => {
     const r = await post(`/api/job/${uid}/check`);
@@ -807,6 +865,7 @@ async function openJob(uid) {
       act("Segna candidato", "applied"), act("Scarta", "discarded"), act("Rimetti in nuovi", "new")),
     el("div", { id: "discardBox" }),
     j.source.startsWith("jooble") ? el("div", { class: "jnote", style: "margin:0 0 14px" }, "Anteprima Jooble: il testo completo è sul sito. Usa \"Apri e candidati\".") : null,
+    noteHost({ job: uid }),
     el("div", { class: "body" }, j.text || "Testo non disponibile.")].filter(Boolean));
 }
 function askDiscardSaved(uid) {  // niente scarto silenzioso di un annuncio salvato
@@ -1009,13 +1068,13 @@ function setView(v) {
   const listView = v === "jobs" || v === "jooble";
   F.group = v === "jooble" ? "jooble" : "main";
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
-  $("toolbar").hidden = !listView; document.querySelector("main").hidden = !listView; $("dupview").hidden = v !== "dups"; $("appview").hidden = v !== "apps"; $("setview").hidden = v !== "settings"; $("searchview").hidden = v !== "search";
+  $("toolbar").hidden = !listView; document.querySelector("main").hidden = !listView; $("dupview").hidden = v !== "dups"; $("appview").hidden = v !== "apps"; $("setview").hidden = v !== "settings"; $("searchview").hidden = v !== "search"; $("noteview").hidden = v !== "notes";
   $("jnote").hidden = v !== "jooble";
   if (v !== "jobs") { $("jnear").hidden = true; $("setupnote").hidden = true; $("newsnote").hidden = true; }  // l'avviso Jooble vale solo nella lista principale
   closeDrawer();
   closeFlt(); closeGeo();  // i pannelli Filtri e Raggio non devono restare aperti sopra le altre schede
   if (listView) renderToolbar();  // il selettore Profilo può essere cambiato (profilo eliminato) mentre eri in un'altra scheda
-  v === "dups" ? loadDups() : v === "apps" ? loadApps() : v === "settings" ? loadSettings() : v === "search" ? loadSearch() : loadJobs();
+  v === "dups" ? loadDups() : v === "apps" ? loadApps() : v === "settings" ? loadSettings() : v === "search" ? loadSearch() : v === "notes" ? loadNotes() : loadJobs();
 }
 document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => setView(b.dataset.v)));
 
@@ -1068,6 +1127,7 @@ async function loadDups() {
 function setBadge(n) { const b = $("dupBadge"); b.hidden = !n; b.textContent = n || ""; }
 
 /* ---- candidature ---- */
+let appNotes = {};  // numero di note collegate per candidatura
 let appFilter = "active", appOpen = null, appFormOpen = false, appsData = [], appCounts = { active: 0, closed: 0 };
 const APP_STAGES = [["sent", "Inviata"], ["hr", "Colloquio HR"], ["tech", "Colloquio tecnico"], ["offer", "Proposta"]];
 const APP_OUTCOME = { active: "In corso", accepted: "Accettata", rejected: "Rifiutata", withdrawn: "Ritirata", no_response: "Nessuna risposta" };
@@ -1110,7 +1170,8 @@ function appCard(a) {
         el("div", { class: "ameta" },
           a.location ? el("span", {}, a.location) : null,
           el("span", {}, `Inviata il ${dayLabel(a.applied_at)} (${agoLabel(a.applied_at)})`),
-          a.follow_up ? el("span", { class: "atag" + (late ? " late" : "") }, `Follow-up ${dayLabel(a.follow_up)}`) : null)),
+          a.follow_up ? el("span", { class: "atag" + (late ? " late" : "") }, `Follow-up ${dayLabel(a.follow_up)}`) : null,
+          appNotes[a.id] ? el("span", {}, T_NOTE.linked(appNotes[a.id])) : null)),
       el("div", { class: "astage" }, slider, labels),
       el("span", { class: "atag" }, el("span", { class: "dot", style: `background:${APP_COLOR[a.outcome]}` }), APP_OUTCOME[a.outcome])),
     el("div", { class: "aacts" }, ...quick, el("span", { class: "grow" }),
@@ -1133,7 +1194,8 @@ function appCard(a) {
         appField(a, "Data candidatura", "applied_at", "date"), appField(a, "Follow-up (promemoria)", "follow_up", "date"), appField(a, "Referente", "contact"),
         el("label", { class: "fl" }, "Note", notes), del),
       el("div", {}, el("h5", {}, "Storico"),
-        el("ul", { class: "tl" }, a.events.map((e) => el("li", {}, el("time", {}, dayLabel(e.at)), evText(e), e.note ? el("span", { class: "muted" }, " · " + e.note) : null))))));
+        el("ul", { class: "tl" }, a.events.map((e) => el("li", {}, el("time", {}, dayLabel(e.at)), evText(e), e.note ? el("span", { class: "muted" }, " · " + e.note) : null)))),
+      el("div", { style: "grid-column: 1 / -1" }, noteHost({ app: a.id }))));
   }
   return card;
 }
@@ -1165,8 +1227,505 @@ function renderApps() {
 }
 async function loadApps() {
   const [list, st] = await Promise.all([api("/api/apps?outcome=" + appFilter), api("/api/stats")]);
+  appNotes = {};
+  for (const x of list) if (x.note_count) appNotes[x.id] = x.note_count;  // il server conta le note collegate a ogni candidatura
   appsData = list; appCounts = st.app_counts; setAppBadge(appCounts.active);
   renderApps();
+}
+
+/* ---- note e lettere ---- */
+// Tutti i testi nuovi dell'interfaccia delle note stanno qui (in vista della traduzione).
+const T_NOTE = {
+  tab: "Note",
+  intro: "Appunti e lettere di presentazione. Restano sul tuo computer e non vengono mai inviati in rete. Le note di un annuncio seguono la candidatura quando lo segni come candidato.",
+  newNote: "Nuova nota",
+  newLetter: "Nuova lettera",
+  searchLabel: "Cerca nelle note",
+  searchPh: "Cerca nelle note",
+  filtersLabel: "Filtra le note",
+  filters: { all: "Tutte", letter: "Lettere", note: "Appunti", general: "Generali" },
+  kindLetter: "Lettera",
+  kindNote: "Appunto",
+  tagApp: "Candidatura",
+  tagGeneral: "Generale",
+  tagClosed: "Annuncio non più online",
+  untitled: "Senza titolo",
+  updatedOn: (d) => `Modificata il ${d}`,
+  countOne: "1 nota",
+  countMany: (n) => `${n} note`,
+  linked: (n) => (n === 1 ? "1 nota collegata" : `${n} note collegate`),
+  more: (n) => (n === 1 ? "E un'altra nota." : `E altre ${n} note.`),
+  openAll: "Vedi tutte",
+  openLabel: "Apri",
+  emptyAll: "Nessuna nota. Scrivi un appunto o parti da un modello di lettera.",
+  emptySearch: "Nessuna nota corrisponde alla ricerca.",
+  emptyFilter: "Nessuna nota in questa sezione.",
+  noneHere: "Ancora nessuna nota qui.",
+  loadFail: "Non riesco a caricare le note. Riprova tra un attimo.",
+  secTitle: "Le tue note",
+  tplTitle: "Modello di lettera",
+  tplIntro: "È il testo da cui parte ogni nuova lettera. I segnaposto vengono sostituiti con i dati dell'annuncio; se un dato manca, il segnaposto resta visibile.",
+  tplLabel: "Testo del modello",
+  tplInsert: "Inserisci nel modello",
+  tplSave: "Salva modello",
+  tplReset: "Ripristina modello",
+  tplResetConfirm: "Conferma il ripristino",
+  tplSaved: "Modello salvato.",
+  tplRestored: "Modello ripristinato a quello predefinito.",
+  tplFail: "Non sono riuscito a salvare il modello. Il testo è ancora qui sotto.",
+  tplLoadFail: "Non riesco a caricare il modello.",
+  tplEnglish: "Valgono anche i nomi inglesi (company, role, location, date, url). Un segnaposto che non conosco resta com'è.",
+  placeholders: [
+    ["{azienda}", "il nome dell'azienda"],
+    ["{ruolo}", "il ruolo dell'annuncio"],
+    ["{sede}", "la sede di lavoro"],
+    ["{data}", "la data di oggi, nel formato gg/mm/aaaa"],
+    ["{link}", "l'indirizzo dell'annuncio"],
+  ],
+  edLetter: "Lettera di presentazione",
+  edNote: "Nota",
+  edClose: "Chiudi",
+  edCloseTitle: "Chiudi (Esc)",
+  edCloseLabel: "Chiudi l'editor della nota",
+  edTitleLabel: "Titolo",
+  edTitlePh: "Titolo della nota",
+  edBodyLabel: "Testo",
+  edBodyPh: "Scrivi qui. Si salva da sola mentre scrivi.",
+  edClosed: "L'annuncio non è più online: la nota resta qui.",
+  stateNew: "Si salva da sola mentre scrivi",
+  stateSaved: "Salvato",
+  stateSaving: "Salvataggio...",
+  stateDirty: "Non ancora salvato",
+  stateError: "Non salvato",
+  saveNow: "Salva ora",
+  saveNowTitle: "Salva subito (Ctrl/Cmd+S)",
+  copy: "Copia testo",
+  copied: "Testo copiato",
+  copyFail: "Non sono riuscito a copiare",
+  copyFailSub: "Seleziona il testo e copialo con Ctrl/Cmd+C",
+  exportMd: "Esporta in Markdown",
+  exported: "Nota esportata in Markdown",
+  exportEmpty: "Scrivi qualcosa prima di esportare",
+  exportFail: "Esportazione non riuscita",
+  del: "Elimina",
+  delAsk: "Eliminare questa nota? Non si può annullare.",
+  delYes: "Elimina definitivamente",
+  delNo: "Annulla",
+  deleted: "Nota eliminata",
+  delFail: "Non sono riuscito a eliminare la nota",
+  saveFail: (why) => `Non sono riuscito a salvare${why ? ": " + why : ""}. Il testo è ancora nella casella: copialo o riprova con Salva ora.`,
+  closeWarn: "Il testo non è stato salvato. Premi Esc di nuovo per chiudere comunque, oppure copia il testo.",
+  letterFail: "Non sono riuscito a creare la lettera",
+  pickTitle: "Per quale annuncio è la lettera?",
+  pickIntro: "Scegli una candidatura o un annuncio: azienda, ruolo, sede e link verranno inseriti nel modello.",
+  pickSearchLabel: "Cerca per azienda o ruolo",
+  pickSearchPh: "Cerca per azienda o ruolo",
+  pickNone: "Nessuno, lettera generale",
+  pickNoneHint: "Azienda, ruolo e link restano da compilare a mano",
+  pickApps: "Le tue candidature",
+  pickSaved: "Annunci salvati",
+  pickFound: "Altri annunci trovati",
+  pickNoApps: "Nessuna candidatura",
+  pickNoSaved: "Nessun annuncio salvato",
+  pickNoFound: "Nessun risultato",
+  pickTypeMore: "Scrivi almeno due lettere per cercare tra tutti gli annunci.",
+  pickLoading: "Carico l'elenco...",
+  pickFail: "Non riesco a caricare l'elenco. Riprova tra un attimo.",
+  pickSearchFail: "La ricerca non è riuscita. Riprova tra un attimo.",
+  pickClose: "Annulla",
+  pickCloseLabel: "Chiudi la scelta dell'annuncio",
+  pickResults: (n) => (n === 1 ? "1 risultato" : `${n} risultati`),
+  chars: (n, max) => `${n.toLocaleString("it-IT")} su ${max.toLocaleString("it-IT")} caratteri`,
+};
+let noteFilter = "all", noteQuery = "", NE = null, noteTotal = 0, noteSeq = 0;
+const NOTE_HOSTS = new Set();  // sezioni delle note collegate, aperte (pannello annuncio, scheda candidatura)
+const NOTE_BODY_MAX = 100000, NOTE_TITLE_MAX = 200;
+const nCount = (n) => (n === 1 ? T_NOTE.countOne : T_NOTE.countMany(n));
+function setNoteBadge(n) { noteTotal = n; const b = $("noteBadge"); b.hidden = !n; b.textContent = n || ""; b.setAttribute("aria-label", nCount(n)); }
+async function fetchNotes(o) {
+  const p = new URLSearchParams();
+  if (o.job) p.set("job", o.job);
+  if (o.app != null) p.set("app", o.app);
+  if (o.kind) p.set("kind", o.kind);
+  if (o.q) p.set("q", o.q);
+  if (o.general) p.set("general", "1");
+  const r = await api("/api/notes?" + p);
+  if (!Array.isArray(r)) throw new Error("notes");
+  return r;
+}
+const noteTitleOf = (n) => (n.title && n.title.trim() ? n.title : T_NOTE.untitled);
+function noteRow(n, compact) {
+  const T = T_NOTE, letter = n.kind === "letter", ctx = [n.company, n.role].filter(Boolean).join(", ");
+  const tags = [el("span", { class: "atag" }, letter ? T.kindLetter : T.kindNote)];
+  if (n.app_id != null) tags.push(el("span", { class: "atag" }, T.tagApp));
+  else if (!n.job_uid && !compact) tags.push(el("span", { class: "atag" }, T.tagGeneral));
+  if (n.job_uid && n.job_open === false) tags.push(el("span", { class: "atag late" }, T.tagClosed));
+  const excerpt = compact ? "" : Array.from((n.body || "").slice(0, 400).replace(/\s+/g, " ").trim()).slice(0, 160).join("");
+  return el("button", { type: "button", class: "nt-card" + (compact ? " compact" : ""), "data-note-id": n.id, "aria-label": `${T.openLabel}: ${letter ? T.kindLetter : T.kindNote}, ${noteTitleOf(n)}` + (ctx ? `, ${ctx}` : ""), onclick: () => openNoteEditor(n) },
+    el("span", { class: "nt-t" }, noteTitleOf(n)),
+    ctx ? el("span", { class: "nt-s" }, ctx) : null,
+    excerpt ? el("span", { class: "nt-x" }, excerpt) : null,
+    el("span", { class: "nt-m" }, ...tags, n.updated ? el("span", {}, T.updatedOn(fmtDate(n.updated))) : null));
+}
+
+/* vista Note */
+function noteApiOpts() {
+  const o = { q: noteQuery };
+  if (noteFilter === "letter") o.kind = "letter"; else if (noteFilter === "note") o.kind = "note"; else if (noteFilter === "general") o.general = true;
+  return o;
+}
+async function refreshNoteList() {
+  const box = $("ntList"), cnt = $("ntCount");
+  if (!box) return;
+  const seq = ++noteSeq;
+  let list;
+  try { list = await fetchNotes(noteApiOpts()); } catch (e) { if (seq === noteSeq) { cnt.textContent = ""; box.replaceChildren(el("div", { class: "empty", role: "alert" }, T_NOTE.loadFail)); } return; }
+  if (seq !== noteSeq || !$("ntList")) return;  // risposta vecchia: la ignoro
+  cnt.textContent = nCount(list.length);
+  box.replaceChildren(...(list.length ? list.map((n) => noteRow(n, false))
+    : [el("div", { class: "empty" }, noteQuery ? T_NOTE.emptySearch : noteFilter === "all" ? T_NOTE.emptyAll : T_NOTE.emptyFilter)]));
+}
+function tplInsert(ta, ph) {
+  const a = ta.selectionStart == null ? ta.value.length : ta.selectionStart, b = ta.selectionEnd == null ? a : ta.selectionEnd;
+  ta.setRangeText(ph, a, b, "end"); ta.focus();
+}
+function tplBox() {
+  const T = T_NOTE;
+  const ta = el("textarea", { id: "ntTplText", class: "nt-tpltext", maxlength: 20000, "aria-describedby": "ntTplHint" });
+  const msg = el("div", { class: "shint", id: "ntTplMsg", role: "status", "aria-live": "polite" });
+  const say = (text, bad) => { msg.textContent = text; msg.setAttribute("role", bad ? "alert" : "status"); msg.style.color = bad ? "var(--red)" : ""; };
+  const load = async () => {
+    try { const g = await api("/api/notes/template"); ta.value = typeof g.template === "string" ? g.template : (g.text || ""); }
+    catch (e) { say(T.tplLoadFail, true); }
+  };
+  const save = el("button", { type: "button", class: "btn primary sm", onclick: async () => {
+    let r; try { r = await postRaw("/api/notes/template", { template: ta.value }); } catch (e) { r = { ok: false, data: {} }; }
+    if (!r.ok) { say(T.tplFail + (r.data && r.data.error ? " " + r.data.error : ""), true); return; }
+    say(T.tplSaved);
+  } }, T.tplSave);
+  let armed = false, timer = null;
+  const reset = el("button", { type: "button", class: "btn sm", onclick: async () => {
+    if (!armed) { armed = true; reset.textContent = T.tplResetConfirm; timer = setTimeout(() => { armed = false; reset.textContent = T.tplReset; }, 4000); return; }
+    clearTimeout(timer); armed = false; reset.textContent = T.tplReset;
+    let r; try { r = await postRaw("/api/notes/template", { template: "" }); } catch (e) { r = { ok: false, data: {} }; }
+    if (!r.ok) { say(T.tplFail + (r.data && r.data.error ? " " + r.data.error : ""), true); return; }
+    await load(); say(T.tplRestored);
+  } }, T.tplReset);
+  load();
+  return el("details", { class: "nt-tpl", id: "ntTpl" },
+    el("summary", {}, T.tplTitle),
+    el("p", { class: "shint", id: "ntTplHint", style: "margin-top:0" }, T.tplIntro),
+    el("ul", { class: "nt-phl" }, T.placeholders.map(([ph, d]) => el("li", {}, el("code", {}, ph), ": " + d))),
+    el("div", { class: "shint" }, T.tplEnglish),
+    el("div", { class: "nt-phs", role: "group", "aria-label": T.tplInsert }, T.placeholders.map(([ph, d]) =>
+      el("button", { type: "button", class: "chip", title: `${T.tplInsert}: ${d}`, "aria-label": `${T.tplInsert}: ${ph}`, onclick: () => tplInsert(ta, ph) }, ph))),
+    el("label", { class: "sr", for: "ntTplText" }, T.tplLabel), ta,
+    el("div", { class: "nt-acts", style: "margin-top:10px" }, save, reset), msg);
+}
+async function loadNotes() {
+  const T = T_NOTE;
+  const search = el("input", { type: "search", id: "ntSearch", placeholder: T.searchPh, "aria-label": T.searchLabel, value: noteQuery });
+  let t; search.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { noteQuery = search.value.trim(); refreshNoteList(); }, 250); });
+  const chips = el("div", { class: "nt-acts", role: "group", "aria-label": T.filtersLabel }, Object.entries(T.filters).map(([k, label]) =>
+    el("button", { type: "button", class: "chip" + (noteFilter === k ? " on" : ""), "data-note-filter": k, "aria-pressed": noteFilter === k ? "true" : "false", onclick: () => {
+      noteFilter = k;
+      document.querySelectorAll("[data-note-filter]").forEach((b) => { const on = b.dataset.noteFilter === k; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+      refreshNoteList();
+    } }, label)));
+  $("notecontent").replaceChildren(
+    el("p", { class: "dup-intro" }, T.intro),
+    el("div", { class: "nt-bar" }, chips, search, el("div", { class: "spacer" }),
+      el("button", { type: "button", class: "btn", onclick: (e) => openLetterPicker(e.currentTarget) }, T.newLetter),
+      el("button", { type: "button", class: "btn primary", onclick: () => openNoteEditor({ kind: "note" }) }, T.newNote)),
+    tplBox(),
+    el("div", { class: "nt-count", id: "ntCount", role: "status", "aria-live": "polite" }),
+    el("div", { class: "nt-grid", id: "ntList" }));
+  await refreshNoteList();
+}
+
+/* sezione note collegate nel pannello annuncio e nella scheda candidatura */
+let hostSeq = 0;
+function noteHost(ctx) {
+  const T = T_NOTE, id = "ntSec" + (++hostSeq);
+  const list = el("div", { class: "nt-list" }, el("div", { class: "loading" }, "..."));
+  const sec = el("section", { class: "nt-sec", "aria-labelledby": id }, el("h3", { id }, T.secTitle), list,
+    el("div", { class: "nt-acts" },
+      el("button", { type: "button", class: "btn sm", onclick: (e) => newLetter(ctx, e.currentTarget) }, T.newLetter),
+      el("button", { type: "button", class: "btn sm", onclick: () => openNoteEditor({ kind: "note", job_uid: ctx.job || null, app_id: ctx.app != null ? ctx.app : null }) }, T.newNote)));
+  const h = { sec, list, ctx };
+  NOTE_HOSTS.add(h); fillHost(h);
+  return sec;
+}
+async function fillHost(h) {
+  const T = T_NOTE;
+  let list;
+  try { list = await fetchNotes(h.ctx.job ? { job: h.ctx.job } : { app: h.ctx.app }); }
+  catch (e) { h.list.replaceChildren(el("div", { class: "muted nt-msg" }, T.loadFail)); return; }
+  const more = list.length - 5;
+  h.list.replaceChildren(...(list.length
+    ? [...list.slice(0, 5).map((n) => noteRow(n, true)),
+       more > 0 ? el("div", { class: "muted nt-more" }, T.more(more) + " ", el("button", { type: "button", class: "btn sm", onclick: () => { noteFilter = "all"; noteQuery = ""; setView("notes"); } }, T.openAll)) : null].filter(Boolean)
+    : [el("div", { class: "muted nt-msg" }, T.noneHere)]));
+}
+function refreshNoteHosts() {
+  for (const h of [...NOTE_HOSTS]) { if (!document.contains(h.sec)) NOTE_HOSTS.delete(h); else fillHost(h); }
+}
+function afterNoteChange() {
+  loadStats(); refreshNoteHosts();
+  if (view === "notes") refreshNoteList();
+  if (view === "apps") loadApps();
+}
+let creatingLetter = false;  // una sola creazione alla volta: due clic veloci non fanno due lettere
+async function newLetter(ctx, btn, onCreated) {
+  if (creatingLetter) return;
+  creatingLetter = true; if (btn) btn.disabled = true;
+  try {
+    let r;
+    try { r = await postRaw("/api/notes", { kind: "letter", ...(ctx.job ? { job_uid: ctx.job } : {}), ...(ctx.app != null ? { app_id: ctx.app } : {}) }); } catch (e) { r = { ok: false, data: {} }; }
+    if (!r.ok || !r.data || r.data.id == null) { toast(T_NOTE.letterFail, r.data && r.data.error); return; }
+    if (onCreated) onCreated();
+    openNoteEditor(r.data, true);
+    return true;
+  } finally { creatingLetter = false; if (btn) btn.disabled = false; }
+}
+
+/* scelta dell'annuncio per una nuova lettera (solo dalla vista Note) */
+let PK = null;
+function openLetterPicker(opener) {
+  if (PK || NE) return;
+  const T = T_NOTE;
+  const k = { opener, apps: null, saved: null, found: [], foundErr: false, q: "", seq: 0, timer: null };
+  const search = el("input", { type: "search", id: "pkSearch", placeholder: T.pickSearchPh, "aria-label": T.pickSearchLabel, autocomplete: "off" });
+  const status = el("div", { class: "sr", role: "status", "aria-live": "polite" });
+  const body = el("div", { class: "pk-body" });
+  const blk = el("div", { class: "nt-blk" });
+  const dlg = el("div", { class: "nt-dlg pk-dlg", role: "dialog", "aria-modal": "true", "aria-labelledby": "pkHead", "aria-describedby": "pkIntro", tabindex: "-1" },
+    el("div", { class: "nt-top" }, el("h3", { id: "pkHead" }, T.pickTitle),
+      el("button", { type: "button", class: "x", title: T.edCloseTitle, "aria-label": T.pickCloseLabel, onclick: () => pickerClose() }, "×")),
+    el("p", { class: "nt-ctx", id: "pkIntro" }, T.pickIntro), search, status, body,
+    el("div", { class: "nt-acts", style: "margin-top:12px" }, el("button", { type: "button", class: "btn", onclick: () => pickerClose() }, T.pickClose)));
+  k.blk = blk; k.dlg = dlg; k.body = body; k.status = status; k.search = search;
+  PK = k;
+  document.body.append(blk, dlg);
+  const app = document.querySelector(".app"); if (app) app.inert = true;
+  k.onKey = (e) => {
+    if (e.isComposing) return;
+    if (e.key === "Escape") { e.preventDefault(); pickerClose(); }
+    else if (e.key === "Tab") {
+      const f = [...dlg.querySelectorAll("button:not([disabled]), input")];
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (!dlg.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  document.addEventListener("keydown", k.onKey, true);
+  search.addEventListener("input", () => {
+    clearTimeout(k.timer);
+    k.timer = setTimeout(() => { k.q = search.value.trim(); pickerSearch(k); pickerDraw(k); }, 250);
+  });
+  body.replaceChildren(el("div", { class: "muted nt-msg" }, T.pickLoading));
+  search.focus();
+  pickerLoad(k);
+}
+async function pickerLoad(k) {
+  const [a, sv] = await Promise.allSettled([api("/api/apps?outcome=all"), api("/api/jobs?" + new URLSearchParams({ saved: "1", min: 0, limit: 100 }))]);
+  if (PK !== k) return;
+  k.apps = a.status === "fulfilled" && Array.isArray(a.value) ? a.value.filter((x) => (x.company || "").trim() || (x.role || "").trim()) : null;
+  k.saved = sv.status === "fulfilled" && Array.isArray(sv.value) ? sv.value : null;
+  pickerDraw(k);
+}
+async function pickerSearch(k) {
+  const seq = ++k.seq; k.found = []; k.foundErr = false;
+  if (k.q.length < 2) return;
+  try {
+    const r = await api("/api/jobs?" + new URLSearchParams({ q: k.q, min: 0, limit: 20, group: "main" }));
+    if (PK !== k || seq !== k.seq) return;
+    if (!Array.isArray(r)) throw new Error("jobs");
+    k.found = r.slice(0, 20);
+  } catch (e) { if (PK !== k || seq !== k.seq) return; k.foundErr = true; }
+  pickerDraw(k);
+}
+function pickerChoose(k, ctx, btn) {
+  newLetter(ctx, btn, () => pickerClose());  // se fallisce il dialogo resta aperto, con lo stato com'era
+}
+function pickerDraw(k) {
+  const T = T_NOTE, q = k.q.toLowerCase(), has = (...v) => !q || v.some((x) => (x || "").toLowerCase().includes(q));
+  const row = (title, sub, ctx, extra) => el("button", { type: "button", class: "nt-card compact", onclick: (e) => pickerChoose(k, ctx, e.currentTarget) },
+    el("span", { class: "nt-t" }, title), sub ? el("span", { class: "nt-s" }, sub) : null, extra || null);
+  const group = (id, title, items, empty, err) => el("section", { "aria-labelledby": id, class: "nt-sec", style: "margin-top:10px;padding-top:10px" },
+    el("h3", { id }, title), el("div", { class: "nt-list" }, err ? el("div", { class: "nt-msg", style: "color:var(--red)", role: "alert" }, err) : items.length ? items : el("div", { class: "muted nt-msg" }, empty)));
+  const apps = (k.apps || []).filter((a) => has(a.company, a.role)).map((a) => row(a.company || a.role, a.company ? a.role : "", { app: a.id }, el("span", { class: "nt-m" }, el("span", { class: "atag" }, APP_OUTCOME[a.outcome] || ""))));
+  const jobRow = (j) => row(j.title, j.company, { job: j.uid }, j.avail === "closed" ? el("span", { class: "nt-m" }, el("span", { class: "atag late" }, T.tagClosed)) : null);
+  const saved = (k.saved || []).filter((j) => has(j.title, j.company)).map(jobRow);
+  const savedUids = new Set((k.saved || []).map((j) => j.uid));
+  const found = k.found.filter((j) => !savedUids.has(j.uid) && j.avail !== "closed").map(jobRow);
+  const parts = [
+    el("button", { type: "button", class: "nt-card compact", onclick: (e) => pickerChoose(k, {}, e.currentTarget) }, el("span", { class: "nt-t" }, T.pickNone), el("span", { class: "nt-s" }, T.pickNoneHint)),
+    group("pkApps", T.pickApps, apps, q ? T.pickNoFound : T.pickNoApps, k.apps === null ? T.pickFail : ""),
+    group("pkSaved", T.pickSaved, saved, q ? T.pickNoFound : T.pickNoSaved, k.saved === null ? T.pickFail : ""),
+  ];
+  if (q) parts.push(group("pkFound", T.pickFound, found, k.q.length < 2 ? T.pickTypeMore : T.pickNoFound, k.foundErr ? T.pickSearchFail : ""));
+  k.body.replaceChildren(...parts);
+  k.status.textContent = T.pickResults(apps.length + saved.length + found.length);
+}
+function pickerClose() {
+  const k = PK; if (!k) return;
+  clearTimeout(k.timer); k.seq++;
+  document.removeEventListener("keydown", k.onKey, true);
+  k.blk.remove(); k.dlg.remove(); PK = null;
+  const app = document.querySelector(".app"); if (app) app.inert = false;
+  try { (k.opener && document.contains(k.opener) ? k.opener : $("btnScan")).focus(); } catch (e) {}
+}
+
+/* editor di nota (finestra di dialogo) */
+function neState(s, kind) {
+  const T = T_NOTE, map = { saved: T.stateSaved, saving: T.stateSaving, dirty: T.stateDirty, error: T.stateError, new: T.stateNew };
+  s.status.textContent = map[kind] || ""; s.status.className = "st-" + kind;
+}
+function neShowError(s, text) { s.err.textContent = text || ""; s.err.hidden = !text; }
+function neSchedule(s) { clearTimeout(s.timer); s.timer = setTimeout(() => neFlush(), 900); }
+function neFlush() {
+  const s = NE; if (!s) return Promise.resolve(true);
+  clearTimeout(s.timer);
+  s.chain = s.chain.then(() => neDoSave(s));  // un solo salvataggio alla volta, in ordine
+  return s.chain;
+}
+async function neDoSave(s) {
+  const title = s.title.value, body = s.body.value;
+  if (s.id != null && title === s.last.title && body === s.last.body) { s.failed = false; neState(s, "saved"); neShowError(s, ""); return true; }
+  if (s.id == null && !title.trim() && !body.trim()) return true;  // niente da creare
+  neState(s, "saving");
+  let r;
+  try {
+    r = s.id == null
+      ? await postRaw("/api/notes", { kind: s.kind, title, body, ...(s.job_uid ? { job_uid: s.job_uid } : {}), ...(s.app_id != null ? { app_id: s.app_id } : {}) })
+      : await postRaw("/api/notes/" + s.id, { title, body });
+  } catch (e) { r = { ok: false, data: {} }; }
+  if (r.ok && s.id == null && !(r.data && r.data.id != null)) r = { ok: false, data: {} };
+  if (!r.ok) {
+    s.failed = true; neState(s, "error");
+    neShowError(s, T_NOTE.saveFail(r.data && typeof r.data.error === "string" ? r.data.error : ""));
+    return false;
+  }
+  if (s.id == null) s.id = r.data.id;
+  s.failed = false; s.warned = false; s.changed = true; s.last = { title, body };
+  neShowError(s, "");
+  if (s.title.value !== title || s.body.value !== body) { neState(s, "dirty"); neSchedule(s); } else neState(s, "saved");
+  return true;
+}
+function openNoteEditor(note, created) {
+  if (NE) return;
+  const T = T_NOTE;
+  const s = { id: note.id != null ? note.id : null, kind: note.kind === "letter" ? "letter" : "note", job_uid: note.job_uid || null, app_id: note.app_id != null ? note.app_id : null,
+    changed: !!created, chain: Promise.resolve(true), failed: false, warned: false, prevFocus: document.activeElement, timer: null };
+  s.last = { title: note.title || "", body: note.body || "" };
+  const ctxText = [note.company, note.role].filter(Boolean).join(", ");
+  s.title = el("input", { type: "text", id: "neTitle", maxlength: NOTE_TITLE_MAX, value: s.last.title, placeholder: T.edTitlePh, autocomplete: "off" });
+  s.body = el("textarea", { id: "neBody", class: "nt-body", maxlength: NOTE_BODY_MAX, placeholder: T.edBodyPh }, s.last.body);
+  s.status = el("span", { id: "neStatus", role: "status", "aria-live": "polite" });
+  s.err = el("div", { class: "nt-err", role: "alert", hidden: true });
+  const chars = el("span", { "aria-hidden": "true" });
+  const paintChars = () => { chars.textContent = T.chars(s.body.value.length, NOTE_BODY_MAX); };
+  const onEdit = () => { s.warned = false; paintChars(); neState(s, "dirty"); neSchedule(s); };  // ogni modifica non salvata riarma l'avviso di chiusura
+  s.title.addEventListener("input", onEdit); s.body.addEventListener("input", onEdit);
+  paintChars(); neState(s, s.id == null ? "new" : "saved");
+  const confirmBox = el("div", { class: "dconfirm", role: "alert", hidden: true });
+  const askDelete = () => {
+    const yes = el("button", { type: "button", class: "btn stop", onclick: () => neDelete() }, T.delYes);
+    const no = el("button", { type: "button", class: "btn", onclick: () => { confirmBox.hidden = true; confirmBox.replaceChildren(); s.delBtn.focus(); } }, T.delNo);
+    confirmBox.replaceChildren(el("span", {}, T.delAsk), yes, no); confirmBox.hidden = false; no.focus();
+  };
+  s.delBtn = el("button", { type: "button", class: "btn danger", onclick: askDelete }, T.del);
+  const blk = el("div", { class: "nt-blk" });
+  const dlg = el("div", { class: "nt-dlg", role: "dialog", "aria-modal": "true", "aria-labelledby": "neHead", tabindex: "-1" },
+    el("div", { class: "nt-top" }, el("h3", { id: "neHead" }, s.kind === "letter" ? T.edLetter : T.edNote),
+      el("button", { type: "button", class: "x", title: T.edCloseTitle, "aria-label": T.edCloseLabel, onclick: () => neRequestClose() }, "×")),
+    ctxText || (s.job_uid && note.job_open === false) ? el("p", { class: "nt-ctx" }, ctxText, ctxText && s.job_uid && note.job_open === false ? " · " : "", s.job_uid && note.job_open === false ? T.edClosed : "") : null,
+    el("label", { class: "lab", for: "neTitle" }, T.edTitleLabel), s.title,
+    el("label", { class: "lab", for: "neBody" }, T.edBodyLabel), s.body,
+    el("div", { class: "nt-stat" }, s.status, el("span", { class: "sp" }), chars),
+    s.err, confirmBox,
+    el("div", { class: "nt-acts" },
+      el("button", { type: "button", class: "btn primary", title: T.saveNowTitle, onclick: () => neFlush() }, T.saveNow),
+      el("button", { type: "button", class: "btn", onclick: () => neCopy() }, T.copy),
+      el("button", { type: "button", class: "btn", onclick: () => neExport() }, T.exportMd),
+      el("span", { class: "grow", style: "flex:1" }), s.delBtn,
+      el("button", { type: "button", class: "btn", onclick: () => neRequestClose() }, T.edClose)));
+  s.blk = blk; s.dlg = dlg;
+  NE = s;
+  document.body.append(blk, dlg);
+  const app = document.querySelector(".app"); if (app) app.inert = true;
+  s.onKey = (e) => {
+    if (e.isComposing) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === "s" || e.key === "S")) { e.preventDefault(); neFlush(); }
+    else if (e.key === "Escape") {
+      e.preventDefault();
+      if (!confirmBox.hidden) { confirmBox.hidden = true; confirmBox.replaceChildren(); s.delBtn.focus(); } else neRequestClose();
+    } else if (e.key === "Tab") {  // il focus resta dentro la finestra
+      const f = [...dlg.querySelectorAll("button:not([disabled]), input, textarea")].filter((x) => !x.closest("[hidden]"));
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (!dlg.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  document.addEventListener("keydown", s.onKey, true);
+  (s.last.title || s.id != null ? s.body : s.title).focus();
+}
+async function neRequestClose() {
+  const s = NE; if (!s || s.closing) return;
+  s.closing = true;
+  const ok = await neFlush();
+  s.closing = false;
+  if (!ok && !s.warned) { s.warned = true; neShowError(s, T_NOTE.saveFail("") + " " + T_NOTE.closeWarn); return; }  // primo tentativo: non si chiude, il testo non va perso
+  neFinish(s);
+}
+function neFinish(s) {
+  if (NE !== s) return;
+  clearTimeout(s.timer);
+  document.removeEventListener("keydown", s.onKey, true);
+  s.blk.remove(); s.dlg.remove(); NE = null;
+  const app = document.querySelector(".app"); if (app) app.inert = false;
+  const back = s.prevFocus && document.contains(s.prevFocus) ? s.prevFocus : null;
+  try { (back || $("btnScan")).focus(); } catch (e) {}
+  if (s.changed) afterNoteChange();
+}
+async function neCopy() {
+  const s = NE; if (!s) return;
+  const text = s.body.value;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); toast(T_NOTE.copied); return; }
+    throw new Error("no clipboard");
+  } catch (e) {
+    try {
+      s.body.focus(); s.body.select();
+      if (document.execCommand("copy")) { s.body.setSelectionRange(text.length, text.length); toast(T_NOTE.copied); return; }
+    } catch (e2) {}
+    toast(T_NOTE.copyFail, T_NOTE.copyFailSub);
+  }
+}
+async function neExport() {
+  const s = NE; if (!s) return;
+  const ok = await neFlush();
+  if (!ok) return;
+  if (s.id == null) { toast(T_NOTE.exportEmpty); return; }
+  let r; try { r = await postRaw(`/api/notes/${s.id}/export`); } catch (e) { r = { ok: false, data: {} }; }
+  if (r.ok && r.data && r.data.path) toast(T_NOTE.exported, r.data.path);
+  else toast(T_NOTE.exportFail, r.data && r.data.error);
+}
+async function neDelete() {
+  const s = NE; if (!s) return;
+  clearTimeout(s.timer);
+  if (s.id != null) {
+    let r; try { r = await postRaw(`/api/notes/${s.id}/delete`); } catch (e) { r = { ok: false, status: 0, data: {} }; }
+    if (!r.ok && r.status !== 404) { toast(T_NOTE.delFail, r.data && r.data.error); return; }
+    s.changed = true;
+  }
+  neFinish(s);
+  toast(T_NOTE.deleted);
 }
 
 /* ---- ponte con l'app nativa (solo dentro JobsHunter.app) ---- */
@@ -1572,7 +2131,7 @@ async function loadSettings() {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA" || (typeof OB !== "undefined" && OB) || (typeof TOUR !== "undefined" && TOUR)) return;  // niente scorciatoie della lista mentre si scrive o con la guida o il tutorial aperti
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT" || e.target.tagName === "TEXTAREA" || (typeof OB !== "undefined" && OB) || NE || PK || (typeof TOUR !== "undefined" && TOUR)) return;  // niente scorciatoie della lista mentre si scrive o con la guida o il tutorial aperti
   if (e.key === "Escape") closeDrawer();
   if (e.key === "j" || e.key === "k") {
     const i = jobs.findIndex((j) => j.uid === selected);
@@ -1686,6 +2245,7 @@ const TOUR_STEPS = [
   { id: "saved", sel: '[data-tour="saved"]', title: "Salvati", text: "Qui trovi tutti gli annunci salvati, anche quelli che nel frattempo non sono più online." },
   { id: "search-tab", sel: '.tab[data-v="search"]', title: "Ricerca", text: "Qui decidi cosa cerchi: profili di ricerca, paesi e luoghi." },
   { id: "apps", sel: '.tab[data-v="apps"]', title: "Candidature", text: "Quando ti candidi, qui tieni il conto: fasi, contatti e promemoria." },
+  { id: "notes", sel: '.tab[data-v="notes"]', title: "Note", text: "Appunti e lettere di presentazione, anche legati a un annuncio. Parti da un modello di lettera: tutto resta sul tuo computer." },
   { id: "scan", sel: "#btnScan", title: "Scan", text: "Cerca nuovi annunci nelle fonti attive. Puoi anche pianificare la scansione dalle Impostazioni." },
   { id: "settings", sel: '.tab[data-v="settings"]', title: "Impostazioni", text: "Qui trovi le chiavi delle fonti, il CV, la scansione automatica e le notifiche. Per rivedere questo giro: «Rivedi il tutorial»." },
 ];

@@ -2,6 +2,20 @@
 
 Formato ispirato a [Keep a Changelog](https://keepachangelog.com/it/1.1.0/).
 
+## [0.5.0] - 2026-11-02
+
+### Aggiunto
+- **Blocco note e lettere di presentazione** (backend; l'interfaccia arriva dallo stesso rilascio): nuova tabella `notes` (database esistenti migrati senza perdere nulla), `jobshunter/notes.py` (modello, segnaposto, formato `.md`, nomi di file sicuri), rotte `GET/POST /api/notes`, `POST /api/notes/<id>`, `/delete`, `/export`, `POST /api/notes/export`, `GET/POST /api/notes/template`, `notes` in `/api/stats`, `note_count` in `/api/apps`; comandi `./jh notes list|show|add|export|template`.
+- **Modello di lettera** in `settings.json` (chiave `notes.letter_template`, non in `localStorage`), con segnaposto italiani e inglesi (`{azienda}`/`{company}`, `{ruolo}`/`{role}`, `{sede}`/`{location}`, `{data}`/`{date}`, `{link}`/`{url}`), sostituzione semplice (niente `str.format`), segnaposto sconosciuti o senza dato lasciati com'e'.
+- **Le note seguono la candidatura** (da annuncio, da "Segna candidato", o create dentro la candidatura); cancellare una candidatura NON cancella le note; nessuna pulizia le tocca; si cancellano solo con la rotta esplicita. Limiti chiari: titolo 200, testo 100.000 caratteri, modello 20.000, mai troncati.
+- **Esportazione in Markdown:** un file per nota in `<report>/Note/` con blocco iniziale (titolo, tipo, azienda, ruolo, annuncio, candidatura, date), stesse zone protette dei report, nome file ripulito (niente `..`, `/`, caratteri di controllo, nomi riservati di Windows), mai sovrascrive (suffisso -2, -3).
+- **Titolo della lettera piu' corto:** `Lettera per <azienda>, <ruolo>` in al massimo 70 caratteri; se il ruolo e' lungo si accorcia sull'ultima parola intera con "…" (se anche l'azienda e' lunga, si accorcia l'azienda). Anche il nome del file esportato si taglia sull'ultima parola intera (80 caratteri e 200 byte), senza spazi, punti, trattini o `&` appesi in fondo; una parola unica lunghissima si taglia comunque.
+- Versione 0.5.0.
+
+### Corretto
+- Note, dopo il collaudo (B126-B134): un testo con caratteri Unicode non validi riceve un errore chiaro invece di un 500; i nomi dei file esportati stanno in 200 byte e non hanno mai `..`; la sottocartella `Note` che e' un collegamento verso fuori dalla cartella dei report viene rifiutata; il testo esportato e' esattamente quello della nota (nessun a capo aggiunto); una nota non si lega a un annuncio e a una candidatura di annunci diversi; le note di un annuncio nascosto come duplicato si trovano e si contano dall'annuncio tenuto; `?app=` enorme da 400; tutti i 400 delle note hanno `{ok:false, error}`.
+- La ricerca degli annunci (e delle note) non ignorava le maiuscole fuori dall'ASCII (`Qualità` non trovava `QUALITÀ`): ora il confronto e' in minuscolo con le funzioni di Python (B125).
+
 ## [0.4.1] - 2026-10-31
 
 ### Corretto

@@ -23,11 +23,13 @@ from .. import APP_NAME, autoscan, onboarding, scheduler
 from .. import profiles as prof
 from .. import cv as cvmod, cvfile, cvmatch
 from ..rescore import rescore
+from .. import notes as notesmod
 
 STATIC = Path(__file__).resolve().parent / "static"
 STATUSES = {"new", "seen", "applied", "discarded"}
 CATEGORIES = {"RED", "BLUE", "PURPLE", "SYSADM", "SEC"}
 MAX_JSON_BYTES = 256 * 1024
+NOTES_JSON_BYTES = 640 * 1024  # una nota arriva a 100.000 caratteri (fino a 4 byte l'uno con le emoji)
 CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
        "connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 # Dentro la finestra nativa pywebview crea le funzioni del ponte (window.pywebview.api.*) con `new Function(...)`: senza 'unsafe-eval' WebKit le blocca
@@ -89,7 +91,9 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
                 abort(403)  # il browser dichiara che la richiesta arriva da un altro sito (anche un'altra porta di localhost)
             if "chunked" in request.headers.get("Transfer-Encoding", "").lower():
                 abort(413)  # senza Content-Length il limite non si puo' controllare prima di leggere: il browser non li usa
-            if request.path != "/api/cv":
+            if request.path.startswith("/api/notes"):
+                request.max_content_length = NOTES_JSON_BYTES  # il testo di una nota puo' essere lungo
+            elif request.path != "/api/cv":
                 request.max_content_length = MAX_JSON_BYTES  # solo il CV puo' essere grande; il resto e' JSON piccolo
 
     @app.errorhandler(RecursionError)
@@ -361,7 +365,8 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         dc = db.dup_counts()
         return jsonify(by_cat=by_cat, all_cats=all_cats, new=total_new, near=near, total=max(0, sum(by_cat.values()) - jooble),
                        dups_pending=dc.get("pending", 0), dup_counts=dc, jooble=jooble, jooble_near_new=jooble_near_new,
-                       app_counts=db.app_counts(), needs_setup=needs_setup(), closed=closed, saved=db.saved_count(pid))
+                       app_counts=db.app_counts(), needs_setup=needs_setup(), closed=closed, saved=db.saved_count(pid),
+                       notes=db.note_counts()["total"])
 
     # ---- novita' dall'ultimo accesso, cronologia, scansione automatica ----
     def now_iso() -> str:
@@ -1056,6 +1061,158 @@ def create_app(config_path: str | None = None, port: int = 8765) -> Flask:
         if path is None:
             return jsonify(ok=False, error=f"tutti gli annunci ({closed}) risultano chiusi"), 404
         return jsonify(ok=True, path=str(path), name=path.name, n=n, full=full, closed=closed, blocked=blocked)
+
+    # ---- note e lettere di presentazione (fase 10) ----
+    def note_error(msg: str, code: int):
+        return jsonify(ok=False, error=msg), code
+
+    def note_json(r, db) -> dict:
+        d = dict(r)
+        if r["job_uid"]:
+            d["job_open"] = bool(db.job_is_open(r["job_uid"]))
+        return d
+
+    def notes_body() -> dict:
+        b = request.get_json(silent=True)
+        if not isinstance(b, dict):
+            raise notesmod.NoteError(notesmod.MSG_NEED_JSON)  # lo risponde il gestore qui sotto: {ok: false, error}, come tutti gli errori delle note
+        return b
+
+    @app.errorhandler(notesmod.NoteError)
+    def note_error_handler(e):
+        return note_error(str(e), 400)
+
+    @app.get("/api/notes")
+    def notes_list():
+        a = request.args
+        db = open_db()
+        job = a.get("job") or None
+        app_raw = a.get("app")
+        app_id = to_int(app_raw, -1) if app_raw not in (None, "") else None
+        if app_id is not None and not 0 <= app_id <= 2**62:  # fuori dall'intervallo di sqlite: mai un 500
+            return note_error(notesmod.MSG_BAD_ID, 400)
+        kind = a.get("kind") or None
+        if kind is not None and kind not in notesmod.KINDS:
+            return note_error(notesmod.MSG_KIND, 400)
+        rows = db.list_notes(job_uid=job, app_id=app_id, kind=kind, q=(a.get("q") or "")[:200] or None, general=a.get("general") == "1")
+        return jsonify([note_json(r, db) for r in rows])
+
+    @app.post("/api/notes")
+    def notes_create():
+        b = notes_body()
+        db = open_db()
+        kind = b.get("kind", "note")
+        job_uid, app_id = b.get("job_uid"), b.get("app_id")
+        if kind not in notesmod.KINDS:
+            return note_error(notesmod.MSG_KIND, 400)
+        if job_uid is not None and not isinstance(job_uid, str):
+            return note_error(notesmod.MSG_BAD_ID, 400)
+        if app_id is not None and (isinstance(app_id, bool) or not isinstance(app_id, int)):
+            return note_error(notesmod.MSG_BAD_ID, 400)
+        if app_id is not None and not 0 <= app_id <= 2**62:
+            return note_error(notesmod.MSG_APP_NOT_FOUND, 404)
+        if job_uid and not db.conn.execute("SELECT 1 FROM jobs WHERE uid=?", (job_uid,)).fetchone():
+            return note_error(notesmod.MSG_JOB_NOT_FOUND, 404)
+        if app_id is not None and not db.conn.execute("SELECT 1 FROM applications WHERE id=?", (app_id,)).fetchone():
+            return note_error(notesmod.MSG_APP_NOT_FOUND, 404)
+        title, body = b.get("title", ""), b.get("body")
+        try:
+            data = {}
+            if kind == "letter":
+                src = notesmod.source_data(db, job_uid or None, app_id)
+                if not isinstance(title, str) or not title.strip():
+                    title = notesmod.letter_title(src.get("company"), src.get("role"))
+                if body is None:
+                    body = notesmod.render_template(notesmod.get_template(cfg), src)
+                data = src
+            nid = db.add_note(kind=kind, title=title, body="" if body is None else body, job_uid=job_uid or None, app_id=app_id,
+                              company=data.get("company") or "", role=data.get("role") or "")
+        except notesmod.NoteError as e:
+            return note_error(str(e), 400)
+        except LookupError as e:
+            return note_error(str(e), 404)
+        return jsonify(ok=True, **note_json(db.get_note(nid), db)), 201
+
+    @app.get("/api/notes/template")
+    def notes_template_get():
+        t = notesmod.get_template(cfg)
+        return jsonify(template=t, is_default=t == notesmod.DEFAULT_TEMPLATE, default=notesmod.DEFAULT_TEMPLATE,
+                       placeholders=sorted(notesmod.PLACEHOLDERS), max_length=notesmod.MAX_TEMPLATE)
+
+    @app.post("/api/notes/template")
+    def notes_template_set():
+        b = notes_body()
+        try:
+            text = notesmod.clean_template(b.get("template", ""))
+        except notesmod.NoteError as e:
+            return note_error(str(e), 400)
+        if text.strip():
+            settings.save_overrides(cfg_file, {notesmod.TEMPLATE_KEY: text})
+        else:  # vuoto = ripristina il modello predefinito
+            settings.save_overrides(cfg_file, {}, [notesmod.TEMPLATE_KEY])
+        fresh = settings.load_config(cfg_file)
+        cfg.clear()
+        cfg.update(fresh)
+        t = notesmod.get_template(cfg)
+        return jsonify(ok=True, template=t, is_default=t == notesmod.DEFAULT_TEMPLATE)
+
+    @app.post("/api/notes/<int:note_id>")
+    def notes_update(note_id):
+        if note_id > 2**62:
+            return note_error(notesmod.MSG_NOTE_NOT_FOUND, 404)
+        b = notes_body()
+        db = open_db()
+        try:
+            r = db.update_note(note_id, title=b.get("title"), body=b.get("body"))
+        except notesmod.NoteError as e:
+            return note_error(str(e), 400)
+        if r is None:
+            return note_error(notesmod.MSG_NOTE_NOT_FOUND, 404)
+        return jsonify(ok=True, **note_json(r, db))
+
+    @app.post("/api/notes/<int:note_id>/delete")
+    def notes_delete(note_id):
+        if note_id > 2**62:
+            return note_error(notesmod.MSG_NOTE_NOT_FOUND, 404)
+        if not open_db().delete_note(note_id):
+            return note_error(notesmod.MSG_NOTE_NOT_FOUND, 404)
+        return jsonify(ok=True)
+
+    @app.post("/api/notes/export")
+    def notes_export_all():
+        """Esporta TUTTE le note: un file .md per nota nella sottocartella `Note` dei report (mai sovrascrive: suffisso -2, -3...)."""
+        db = open_db()
+        rows = db.list_notes(limit=100000)
+        if not rows:
+            return note_error(notesmod.MSG_NO_NOTES, 404)
+        try:
+            folder = notesmod.export_folder(cfg)
+        except ValueError as e:
+            return note_error(str(e), 400)
+        try:
+            paths = [notesmod.export_note(db, r, folder) for r in rows]
+        except OSError:
+            return note_error(notesmod.MSG_EXPORT_FAILED, 500)
+        return jsonify(ok=True, count=len(paths), folder=str(folder), paths=[str(p) for p in paths])
+
+    @app.post("/api/notes/<int:note_id>/export")
+    def notes_export_one(note_id):
+        if note_id > 2**62:
+            return note_error(notesmod.MSG_NOTE_NOT_FOUND, 404)
+        db = open_db()
+        r = db.get_note(note_id)
+        if r is None:
+            return note_error(notesmod.MSG_NOTE_NOT_FOUND, 404)
+        try:
+            folder = notesmod.export_folder(cfg)
+        except ValueError as e:
+            return note_error(str(e), 400)
+        try:
+            path = notesmod.export_note(db, r, folder)
+        except OSError:
+            return note_error(notesmod.MSG_EXPORT_FAILED, 500)
+        return jsonify(ok=True, path=str(path), name=path.name)
+
 
     return app
 

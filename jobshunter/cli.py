@@ -16,7 +16,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 from rich.table import Table
 from rich.text import Text
 
-from . import __version__, availability, fsperm, cv as cvmod, cvfile, cvmatch, profiles as prof, settings
+from . import __version__, availability, fsperm, cv as cvmod, cvfile, cvmatch, notes as notesmod, profiles as prof, settings
 from .db import DB
 from .fulltext import fetch_full
 from .report import build_report
@@ -804,6 +804,127 @@ def export(cfg, out, min_score):
             attr = "Jobs by Adzuna (https://www.adzuna.co.uk)" if (r["source"] or "").startswith("adzuna") else ""
             w.writerow([_csv_safe(v) for v in (r["score"], r["category"], r["title"], r["company"], r["location"], r["status"], r["url"], attr, r["saved_at"] or "")])
     console.print(f"[green]{len(rows)} annunci esportati in[/] {out}")
+
+
+# ------------------------------------------------------------------ note e lettere ----
+@main.group("notes")
+def notes_group():
+    """Blocco note e lettere di presentazione (restano nel database locale)."""
+
+
+def _note_or_exit(db, note_id: int):
+    r = db.get_note(note_id)
+    if r is None:
+        console.print(f"[red]{escape(notesmod.MSG_NOTE_NOT_FOUND.capitalize())}:[/] {note_id}")
+        sys.exit(1)
+    return r
+
+
+@notes_group.command("list")
+@click.option("--job", "job_prefix", default=None, help="Solo le note di questo annuncio (ID o inizio dell'ID)")
+@click.option("--q", "query", default=None, help="Cerca nel titolo, nel testo, nell'azienda e nel ruolo")
+@click.pass_obj
+def notes_list(cfg, job_prefix, query):
+    """Elenco delle note, dalla piu' recente."""
+    db = open_db(cfg)
+    job_uid = None
+    if job_prefix:
+        _, j = _find(cfg, job_prefix)
+        job_uid = j["uid"]
+    rows = db.list_notes(job_uid=job_uid, q=query)
+    if not rows:
+        console.print("Nessuna nota.")
+        return
+    t = Table(box=box.SIMPLE_HEAD, header_style="bold green")
+    for col in ("ID", "Tipo", "Titolo", "Azienda / ruolo", "Aggiornata"):
+        t.add_column(col)
+    for r in rows:
+        ctx = " / ".join(x for x in (r["company"], r["role"]) if x)
+        t.add_row(str(r["id"]), "lettera" if r["kind"] == "letter" else "nota", escape(r["title"] or "(senza titolo)"), escape(ctx), (r["updated"] or "")[:10])
+    console.print(t)
+    console.print(f"[dim]{len(rows)} {'nota' if len(rows) == 1 else 'note'}[/]")
+
+
+@notes_group.command("show")
+@click.argument("note_id", type=int)
+@click.pass_obj
+def notes_show(cfg, note_id):
+    """Mostra una nota per intero."""
+    r = _note_or_exit(open_db(cfg), note_id)
+    console.print(f"[bold]{escape(r['title'] or '(senza titolo)')}[/]  [dim]{'lettera' if r['kind'] == 'letter' else 'nota'} n. {r['id']}[/]")
+    ctx = " / ".join(x for x in (r["company"], r["role"]) if x)
+    if ctx:
+        console.print(f"[dim]{escape(ctx)}[/]")
+    console.print()
+    console.print(escape(r["body"]), highlight=False)
+
+
+@notes_group.command("add")
+@click.option("--title", default="", help="Titolo (massimo 200 caratteri)")
+@click.option("--body", default="", help="Testo della nota")
+@click.option("--letter", is_flag=True, help="Crea una lettera dal modello (serve --job)")
+@click.option("--job", "job_prefix", default=None, help="Annuncio a cui collegare la nota (ID o inizio dell'ID)")
+@click.pass_obj
+def notes_add(cfg, title, body, letter, job_prefix):
+    """Crea una nota, oppure una lettera dal modello con i dati dell'annuncio."""
+    db = open_db(cfg)
+    job_uid = None
+    if job_prefix:
+        _, j = _find(cfg, job_prefix)
+        job_uid = j["uid"]
+    if letter and not job_uid:
+        console.print("[red]Per una lettera serve l'annuncio:[/] aggiungi --job ID")
+        sys.exit(1)
+    try:
+        if letter:
+            nid = notesmod.make_letter(cfg, db, job_uid=job_uid, title=title)
+        else:
+            if not title and not body:
+                console.print("[red]Scrivi almeno un titolo o un testo:[/] --title \"...\" --body \"...\"")
+                sys.exit(1)
+            nid = db.add_note(kind="note", title=title, body=body, job_uid=job_uid)
+    except notesmod.NoteError as e:
+        console.print(f"[red]{escape(str(e)).capitalize()}[/]")
+        sys.exit(1)
+    console.print(f"[green]ok[/] {'lettera' if letter else 'nota'} n. {nid} creata")
+
+
+@notes_group.command("export")
+@click.argument("note_id", type=int, required=False)
+@click.pass_obj
+def notes_export(cfg, note_id):
+    """Esporta in Markdown (.md) una nota, o tutte, nella sottocartella Note della cartella dei report. Non sovrascrive mai un file."""
+    db = open_db(cfg)
+    rows = [_note_or_exit(db, note_id)] if note_id is not None else db.list_notes(limit=100000)
+    if not rows:
+        console.print(notesmod.MSG_NO_NOTES.capitalize() + ".")
+        sys.exit(1)
+    try:
+        folder = notesmod.export_folder(cfg)
+        paths = [notesmod.export_note(db, r, folder) for r in rows]
+    except ValueError as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        sys.exit(1)
+    except OSError:
+        console.print(f"[red]{escape(notesmod.MSG_EXPORT_FAILED.capitalize())}[/]")
+        sys.exit(1)
+    for p in paths:
+        console.print(f"[green]ok[/] {escape(str(p))}")
+
+
+@notes_group.command("template")
+@click.option("--reset", is_flag=True, help="Torna al modello predefinito")
+@click.pass_obj
+def notes_template(cfg, reset):
+    """Mostra il modello di lettera in uso (o lo ripristina con --reset)."""
+    if reset:
+        settings.save_overrides(Path(cfg["_config_path"]), {}, [notesmod.TEMPLATE_KEY])
+        console.print("[green]ok[/] modello ripristinato a quello predefinito")
+        return
+    t = notesmod.get_template(cfg)
+    console.print("[dim]Modello predefinito[/]" if t == notesmod.DEFAULT_TEMPLATE else "[dim]Modello personalizzato[/]")
+    console.print(escape(t), highlight=False)
+    console.print("[dim]Segnaposto: " + ", ".join("{" + p + "}" for p in sorted(notesmod.PLACEHOLDERS)) + "[/]")
 
 
 # ------------------------------------------------------------------ il tuo CV ----

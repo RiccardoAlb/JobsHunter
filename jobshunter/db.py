@@ -7,6 +7,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import fsperm
+from . import notes as notesmod
 from .models import Job
 
 SCHEMA = """
@@ -98,6 +99,21 @@ CREATE TABLE IF NOT EXISTS cv_match (
 );
 CREATE INDEX IF NOT EXISTS idx_cvm_score ON cv_match(score);
 
+CREATE TABLE IF NOT EXISTS notes (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind    TEXT NOT NULL DEFAULT 'note',  -- note | letter
+    title   TEXT NOT NULL DEFAULT '',
+    body    TEXT NOT NULL DEFAULT '',
+    job_uid TEXT,                          -- annuncio (facoltativo, senza vincolo: la nota sopravvive all'annuncio)
+    app_id  INTEGER,                       -- candidatura (facoltativa)
+    company TEXT DEFAULT '',               -- copia al momento della creazione: il contesto resta anche se l'annuncio sparisce
+    role    TEXT DEFAULT '',
+    created TEXT,
+    updated TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_notes_job ON notes(job_uid);
+CREATE INDEX IF NOT EXISTS idx_notes_app ON notes(app_id);
+
 CREATE TABLE IF NOT EXISTS kv (
     key   TEXT PRIMARY KEY,
     value TEXT
@@ -150,6 +166,7 @@ class DB:
         if not existed:
             fsperm.secure_file(path)  # il database contiene candidature e testi: solo per l'utente
         self.conn.row_factory = sqlite3.Row
+        self.conn.create_function("nlower", 1, lambda v: (v or "").lower(), deterministic=True)  # minuscole anche per accenti e non ASCII (LOWER di SQLite non le fa)
         # alla prima apertura piu' processi o richieste possono prepararsi lo schema insieme: si riprova se e' occupato
         for attempt in range(60):
             try:
@@ -398,8 +415,8 @@ class DB:
         else:
             sql += " AND status!='discarded'"
         if search:
-            sql += " AND (title LIKE ? ESCAPE '\\' OR company LIKE ? ESCAPE '\\')"
-            args += [f"%{like_escape(search)}%"] * 2
+            sql += " AND (nlower(title) LIKE ? ESCAPE '\\' OR nlower(company) LIKE ? ESCAPE '\\')"  # minuscole anche non ASCII (B125)
+            args += [f"%{like_escape(search.lower())}%"] * 2
         if order_cv and cv_version:  # prima l'affinita' col CV, poi il punteggio di sempre
             sql += (" ORDER BY (SELECT score FROM cv_match m WHERE m.uid=jobs.uid AND m.cv_version=?) IS NULL,"
                     " (SELECT score FROM cv_match m WHERE m.uid=jobs.uid AND m.cv_version=?) DESC, score DESC, first_seen DESC")
@@ -615,6 +632,116 @@ class DB:
         if dates:
             self.conn.execute("UPDATE jobs SET saved_at=? WHERE uid=?", (min(dates), keep))
 
+    # ---- note e lettere (fase 10) ----
+    _HIDDEN_NOTE_JOBS = "job_uid IN (SELECT hidden_uid FROM dup_pairs WHERE status='confirmed' AND keep_uid=?)"
+
+    def _note_context(self, job_uid, app_id, company, role):
+        """Azienda, ruolo e legami di una nota nuova: dalla candidatura (che porta anche l'annuncio) o dall'annuncio."""
+        app = None
+        if app_id is not None:
+            app = self.conn.execute("SELECT * FROM applications WHERE id=?", (app_id,)).fetchone()
+            if not app:
+                raise LookupError(notesmod.MSG_APP_NOT_FOUND)
+            if job_uid and app["job_uid"] and app["job_uid"] != job_uid:  # annuncio e candidatura di annunci diversi: dati incoerenti
+                raise notesmod.NoteError(notesmod.MSG_LINK_MISMATCH)
+            job_uid = job_uid or app["job_uid"]
+        job = None
+        if job_uid:
+            job = self.conn.execute("SELECT uid, title, company FROM jobs WHERE uid=?", (job_uid,)).fetchone()
+            if app is None:  # annuncio che ha gia' una candidatura: la nota si lega anche a quella
+                app = self.conn.execute("SELECT * FROM applications WHERE job_uid=? ORDER BY id DESC LIMIT 1", (job_uid,)).fetchone()
+                app_id = app["id"] if app else None
+        company = company or (app["company"] if app else "") or (job["company"] if job else "") or ""
+        role = role or (app["role"] if app else "") or (job["title"] if job else "") or ""
+        return job_uid, app_id, company, role
+
+    def add_note(self, *, kind: str = "note", title: str = "", body: str = "", job_uid: str | None = None, app_id: int | None = None,
+                 company: str = "", role: str = "") -> int:
+        """Crea una nota. NoteError se i dati non vanno (kind, limiti), LookupError se la candidatura indicata non esiste.
+        L'annuncio indicato puo' non esistere piu' (nessun vincolo): la nota tiene azienda e ruolo che le si danno."""
+        if kind not in notesmod.KINDS:
+            raise notesmod.NoteError(notesmod.MSG_KIND)
+        title, body = notesmod.clean_title(title), notesmod.clean_body(body)
+        job_uid, app_id, company, role = self._note_context(job_uid or None, app_id, company, role)
+        now = datetime.now(timezone.utc).isoformat()
+        cur = self.conn.execute(
+            "INSERT INTO notes (kind, title, body, job_uid, app_id, company, role, created, updated) VALUES (?,?,?,?,?,?,?,?,?)",
+            (kind, title, body, job_uid, app_id, str(company)[:300], str(role)[:300], now, now))
+        self.conn.commit()
+        return cur.lastrowid
+
+    def get_note(self, note_id: int):
+        return self.conn.execute("SELECT * FROM notes WHERE id=?", (note_id,)).fetchone()
+
+    def list_notes(self, *, job_uid: str | None = None, app_id: int | None = None, kind: str | None = None, q: str | None = None,
+                   general: bool = False, limit: int = 1000):
+        """Note dalla piu' recente modificata. `general`: solo quelle senza annuncio e senza candidatura. `q` cerca (senza maiuscole, `%` e `_` letterali)
+        in titolo, testo, azienda e ruolo."""
+        sql, args = "SELECT * FROM notes WHERE 1=1", []
+        if job_uid is not None:
+            # anche le note degli annunci nascosti come duplicati confermati di questo (restano dove sono, ma si trovano da qui)
+            sql += f" AND (job_uid=? OR {self._HIDDEN_NOTE_JOBS})"
+            args += [job_uid, job_uid]
+        if app_id is not None:
+            sql += (" AND (app_id=? OR job_uid IN (SELECT hidden_uid FROM dup_pairs WHERE status='confirmed' AND keep_uid="
+                    "(SELECT job_uid FROM applications WHERE id=?)))")
+            args += [int(app_id), int(app_id)]
+        if kind in notesmod.KINDS:
+            sql += " AND kind=?"
+            args.append(kind)
+        if general:
+            sql += " AND job_uid IS NULL AND app_id IS NULL"
+        if q and q.strip():
+            like = f"%{like_escape(q.strip().lower())}%"
+            sql += " AND (" + " OR ".join(f"nlower({c}) LIKE ? ESCAPE '\\'" for c in ("title", "body", "company", "role")) + ")"
+            args += [like] * 4
+        sql += " ORDER BY updated DESC, id DESC LIMIT ?"
+        return self.conn.execute(sql, args + [int(limit)]).fetchall()
+
+    def update_note(self, note_id: int, *, title: str | None = None, body: str | None = None):
+        """Aggiorna titolo e/o testo (e `updated`). Ritorna la nota, o None se non esiste. NoteError se oltre i limiti."""
+        if not self.get_note(note_id):
+            return None
+        sets, args = [], []
+        if title is not None:
+            sets.append("title=?")
+            args.append(notesmod.clean_title(title))
+        if body is not None:
+            sets.append("body=?")
+            args.append(notesmod.clean_body(body))
+        if sets:
+            sets.append("updated=?")
+            args.append(datetime.now(timezone.utc).isoformat())
+            self.conn.execute(f"UPDATE notes SET {', '.join(sets)} WHERE id=?", args + [note_id])
+            self.conn.commit()
+        return self.get_note(note_id)
+
+    def delete_note(self, note_id: int) -> bool:
+        """Cancella UNA nota (solo su richiesta esplicita: nessuna pulizia o cancellazione di annunci/candidature la tocca)."""
+        cur = self.conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
+        self.conn.commit()
+        return cur.rowcount > 0
+
+    def note_counts(self) -> dict:
+        r = self.conn.execute("SELECT COUNT(*) t, COALESCE(SUM(kind='letter'),0) l, COALESCE(SUM(job_uid IS NULL AND app_id IS NULL),0) g FROM notes").fetchone()
+        return {"total": r["t"], "letters": r["l"], "notes": r["t"] - r["l"], "general": r["g"]}
+
+    def note_counts_by(self, what: str) -> dict:
+        """Quante note per annuncio (`job`) o per candidatura (`app`): {uid o id: n}."""
+        col = {"job": "job_uid", "app": "app_id"}[what]
+        out = {r[0]: r[1] for r in self.conn.execute(f"SELECT {col}, COUNT(*) FROM notes WHERE {col} IS NOT NULL GROUP BY {col}")}
+        if what == "job":  # le note degli annunci nascosti come duplicati contano per quello tenuto
+            for keep, n in self.conn.execute("SELECT p.keep_uid, COUNT(*) FROM notes n JOIN dup_pairs p ON p.hidden_uid=n.job_uid AND p.status='confirmed' GROUP BY p.keep_uid"):
+                out[keep] = out.get(keep, 0) + n
+        return out
+
+    def job_is_open(self, job_uid: str | None) -> bool | None:
+        """None se la nota non ha annuncio; False se l'annuncio non c'e' piu' o risulta chiuso."""
+        if not job_uid:
+            return None
+        r = self.conn.execute("SELECT avail FROM jobs WHERE uid=?", (job_uid,)).fetchone()
+        return bool(r) and r["avail"] != "closed"
+
     # ---- candidature ----
     def _event(self, app_id: int, kind: str, value: str, at: str | None, note: str = "") -> None:
         self.conn.execute("INSERT INTO app_events (app_id, kind, value, at, note) VALUES (?,?,?,?,?)",
@@ -630,6 +757,8 @@ class DB:
             "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
             (job_uid, company, role, location, url, day, notes, contact, follow_up, now, now))
         self._event(cur.lastrowid, "created", "sent", day)
+        if job_uid:  # le note dell'annuncio seguono la candidatura
+            self.conn.execute("UPDATE notes SET app_id=? WHERE job_uid=? AND app_id IS NULL", (cur.lastrowid, job_uid))
         self.conn.commit()
         return cur.lastrowid
 
@@ -655,6 +784,7 @@ class DB:
             d = dict(r)
             d["events"] = [dict(e) for e in self.conn.execute(
                 "SELECT kind, value, at, note FROM app_events WHERE app_id=? ORDER BY id", (r["id"],))]
+            d["note_count"] = len(self.list_notes(app_id=r["id"], limit=1000000))
             out.append(d)
         return out
 
@@ -701,6 +831,8 @@ class DB:
     def delete_application(self, app_id: int) -> bool:
         if not self.conn.execute("SELECT 1 FROM applications WHERE id=?", (app_id,)).fetchone():
             return False
+        # le note NON si cancellano mai insieme alla candidatura: perdono solo il legame (il legame con l'annuncio, azienda e ruolo restano)
+        self.conn.execute("UPDATE notes SET app_id=NULL WHERE app_id=?", (app_id,))
         self.conn.execute("DELETE FROM app_events WHERE app_id=?", (app_id,))
         self.conn.execute("DELETE FROM applications WHERE id=?", (app_id,))
         self.conn.commit()

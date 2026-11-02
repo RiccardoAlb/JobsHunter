@@ -56,7 +56,7 @@ def test_ordine_logo_inizia_screenshot_indice(lang):
     assert pos == sorted(pos) and len(set(pos)) == 4
     head = text[: pos[1]]
     assert head.count("\n") < 20  # in cima: logo, titolo, link, UNA riga di descrizione, avvisi brevi
-    for word in ("MIT", "0.4.1"):
+    for word in ("MIT", "0.5.0"):
         assert word in head
     assert any(w in head for w in ("Non affiliato", "Not affiliated"))
 

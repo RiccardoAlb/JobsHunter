@@ -6,7 +6,7 @@
 
 <p align="center">A personal radar for job postings, running locally on your computer: macOS, Windows and Linux, for any field and in several countries.</p>
 
-> **Not affiliated** with Adzuna, Jooble, LinkedIn or Indeed: read the [Disclaimer](#disclaimer). License **MIT** (see [License](#license)). Version 0.4.1.
+> **Not affiliated** with Adzuna, Jooble, LinkedIn or Indeed: read the [Disclaimer](#disclaimer). License **MIT** (see [License](#license)). Version 0.5.0.
 > Your data and keys stay yours, no account and no telemetry. The interface and the messages of the program are in Italian; this document is in English.
 
 ## Get started in a minute
@@ -275,6 +275,34 @@ posting too. If you discard a saved posting the page asks for confirmation and r
 if the pair is later undone, no bookmark is lost. The bookmark is stored in the local database (`saved_at` column), is included in backups and the CSV export, and never leaves your computer.
 Service interface: `POST /api/jobs/<uid>/save` and `/unsave`, `saved=1` filter on `/api/jobs`, `saved` count in `/api/stats`.
 
+### Notepad and cover letters
+The **Notes** tab collects **notes** (also general ones, not tied to a posting) and **cover letters**, with search and filters (All, Letters, Notes, General).
+- **Letter template:** **New letter** starts from a template with placeholders, which you edit in the notes settings (and restore whenever you like). Accepted placeholders: `{azienda}` / `{company}`, `{ruolo}` / `{role}`,
+  `{sede}` / `{location}`, `{data}` / `{date}` (today, dd/mm/yyyy), `{link}` / `{url}` (the posting's address). An unknown placeholder, or one without data, is left as it is, never an error; values are inserted without being interpreted.
+  The letter is created with the title `Lettera per <company>, <role>` ("Letter for ...", at most 70 characters: a long role is shortened at the last whole word, with "…") and the template filled with the posting's or application's data.
+- **Everything linked:** a posting's notes appear in its application when you mark it as applied; a note created inside an application brings the posting, company and role with it. The application's old "Note" field stays as it is.
+- **Never lost silently:** deleting an application does NOT delete the notes (they only lose the link to the application); no cleanup or scan touches them; a note is deleted only on explicit request (the interface asks for confirmation). Title up to 200 characters, text up to 100,000: beyond that the error is clear and nothing is truncated.
+  Notes live in the local database (so in backups) and are personal data: they never leave your computer.
+- **Export to Markdown:** one `.md` file per note in the `Note` subfolder of the reports folder (same protected zones as reports; it never overwrites: if the name exists it adds `-2`, `-3`...). Format:
+
+```
+---
+titolo: Lettera per Azienda, Ruolo
+tipo: lettera
+azienda: Azienda
+ruolo: Ruolo
+annuncio: https://...
+candidatura: inviata il 01/11/2026
+creata: 2026-11-01
+aggiornata: 2026-11-01
+---
+
+(the text of the note, as it is)
+```
+(The keys are Italian like the rest of the exported files: `titolo` title, `tipo` type, `azienda` company, `ruolo` role, `annuncio` posting, `candidatura` application, `creata` created, `aggiornata` updated.)
+From the terminal: `./jh notes list [--job ID] [--q TEXT]`, `notes show ID`, `notes add --title T [--body B] [--letter --job ID]`, `notes export [ID]`, `notes template [--reset]`.
+Service interface: `GET/POST /api/notes`, `POST /api/notes/<id>` and `/delete` and `/export`, `POST /api/notes/export`, `GET/POST /api/notes/template`; `notes` in `/api/stats`.
+
 ### 8. Filters and derived data
 Postings have no precise fields for RAL, work mode or city: JobsHunter **derives them from the text** (module `meta.py`) and stores them in the database, so they can be filtered:
 
@@ -472,7 +500,7 @@ Important notes:
 Every outgoing request introduces itself with a declared name, **never as a browser**:
 
 ```
-JobsHunter/0.4.1 (+personal job search tool; contact: you@example.org)
+JobsHunter/0.5.0 (+personal job search tool; contact: you@example.org)
 ```
 
 The contact is optional (an email or the project address) and is set in `[net] contact` or in Settings, "Advanced, network" block; with `[net] user_agent` you replace the whole header. If a site refuses requests (HTTP 403 or 429)
